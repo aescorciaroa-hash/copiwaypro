@@ -3,7 +3,8 @@
     "description": "Unica dependencia de Composer del proyecto: envio de Web Push (VAPID). El resto de la app es PHP plano sin namespaces ni autoload de Composer (ver public/index.php).",
     "require": {
         "php": ">=8.1",
-        "minishlink/web-push": "^9.0"
+        "minishlink/web-push": "^9.0",
+        "phpmailer/phpmailer": "^7.1"
     },
     "config": {
         "optimize-autoloader": true,

@@ -11,6 +11,13 @@ class SyncController {
         $rol = $auth->haySesion() ? $auth->rolActual() : 'guest';
         $idUsuario = $auth->haySesion() ? $auth->idActual() : null;
 
+        // Este endpoint solo LEE la sesion. Soltarla ya evita que el polling
+        // (una peticion cada pocos segundos por pestana) bloquee las demas
+        // peticiones del mismo usuario mientras se arma el payload.
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
         $payload = [
             'products' => (new Producto($conn))->listar($rol !== 'admin', $rol === 'admin'),
             'settings' => (new Configuracion($conn))->obtener(),

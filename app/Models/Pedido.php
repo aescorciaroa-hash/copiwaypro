@@ -47,10 +47,12 @@ class Pedido {
     public function porRol($rol, $usuarioId) {
         $sql = "SELECT p.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono,
                        d.nombre AS domiciliario_nombre, d.telefono AS domiciliario_telefono,
-                       d.placa AS domiciliario_placa, d.tipo_vehiculo AS domiciliario_vehiculo
+                       d.placa AS domiciliario_placa, d.tipo_vehiculo AS domiciliario_vehiculo,
+                       a.nombre AS ayudante_nombre
                 FROM PEDIDO p
                 JOIN CLIENTE c ON c.id_cliente = p.id_cliente
-                LEFT JOIN DOMICILIARIO d ON d.id_domiciliario = p.id_domiciliario";
+                LEFT JOIN DOMICILIARIO d ON d.id_domiciliario = p.id_domiciliario
+                LEFT JOIN AYUDANTE_COCINA a ON a.id_ayudante = p.id_ayudante";
 
         if ($rol === 'client') {
             $sql .= ' WHERE p.id_cliente = ? ORDER BY p.fecha_hora DESC';
@@ -87,10 +89,12 @@ class Pedido {
         $numero = $this->numeroDesdeId($id);
         $sql = "SELECT p.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono,
                        d.nombre AS domiciliario_nombre, d.telefono AS domiciliario_telefono,
-                       d.placa AS domiciliario_placa, d.tipo_vehiculo AS domiciliario_vehiculo
+                       d.placa AS domiciliario_placa, d.tipo_vehiculo AS domiciliario_vehiculo,
+                       a.nombre AS ayudante_nombre
                 FROM PEDIDO p
                 JOIN CLIENTE c ON c.id_cliente = p.id_cliente
                 LEFT JOIN DOMICILIARIO d ON d.id_domiciliario = p.id_domiciliario
+                LEFT JOIN AYUDANTE_COCINA a ON a.id_ayudante = p.id_ayudante
                 WHERE p.id_pedido = ?";
         $stmt = $this->consulta($sql, [$numero]);
         $fila = $stmt->get_result()->fetch_assoc();

@@ -100,7 +100,10 @@ function configurarSeguridadHttp() {
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
         "font-src 'self' https://fonts.gstatic.com; " .
         "img-src 'self' data: https://images.unsplash.com https://*.tile.openstreetmap.org; " .
-        "connect-src 'self' https://router.project-osrm.org https://nominatim.openstreetmap.org"
+        "connect-src 'self' https://router.project-osrm.org https://nominatim.openstreetmap.org; " .
+        // La vista previa del PDF de cierre de caja se muestra en un <iframe>
+        // con una URL blob: generada en el navegador.
+        "frame-src 'self' blob:; object-src 'self' blob:"
     );
 
     $origen = $_SERVER['HTTP_ORIGIN'] ?? '';

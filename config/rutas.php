@@ -71,9 +71,15 @@ return [
     'PATCH /api/orders/{id}/preparing' => ['OrderController', 'markPreparing', ['admin', 'kitchen']],
     'PATCH /api/orders/{id}/ready' => ['OrderController', 'markReady', ['admin', 'kitchen']],
     'PATCH /api/orders/{id}/take' => ['OrderController', 'take', ['delivery']],
+    'PATCH /api/orders/{id}/release' => ['OrderController', 'release', ['delivery', 'admin']],
     'PATCH /api/orders/{id}/accept' => ['OrderController', 'accept', ['delivery']],
     'PATCH /api/orders/{id}/deliver' => ['OrderController', 'deliver', ['delivery']],
     'PATCH /api/orders/{id}/review' => ['OrderController', 'review', ['client']],
+
+    // ---- Pagos (pasarela de prueba, mecanica tipo Wompi) ----
+    'POST /api/payments/prepare' => ['PaymentController', 'prepare', ['client']],
+    'POST /api/payments/transactions' => ['PaymentController', 'createTransaction', ['client']],
+    'GET /api/payments/transactions/{id}' => ['PaymentController', 'showTransaction', ['client']],
 
     // ---- Cierre de caja / Dashboard ----
     // El orden importa: /preview debe ir antes de /{id} para que no la capture el patron generico.

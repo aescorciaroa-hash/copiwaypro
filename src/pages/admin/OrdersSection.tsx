@@ -5,7 +5,7 @@ import {
   Bell, Check, Eye, MapPin, Maximize2, Minimize2, Package, Plus, Utensils
 } from 'lucide-react';
 
-import { Order, OrderItem, Staff } from '../../store/almacenAplicacion';
+import { Order, OrderItem, Staff, useStore } from '../../store/almacenAplicacion';
 import { CustomZoomControl, RoutePolyline, DriverMockInfo } from '../AdminDashboard';
 import { vehicleWithModel } from '../../lib/format';
 
@@ -38,6 +38,7 @@ export default function OrdersSection({
   setNewAddress,
   handleViewOrder,
 }: OrdersSectionProps) {
+  const releaseOrder = useStore(state => state.releaseOrder);
 
     const pendientes = orders.filter(o => o.status === 'Pendiente' || o.status === 'Pagado').length;
     const enCocina = orders.filter(o => o.status === 'En Preparación').length;
@@ -209,6 +210,12 @@ export default function OrdersSection({
                         </div>
                       )}
 
+                      {order.preparedBy && (
+                        <p className="text-[11px] font-semibold text-gray-500 dark:text-stone-400 flex items-center gap-1.5">
+                          <Utensils className="w-3 h-3" /> Preparó: <span className="text-gray-800 dark:text-stone-200">{order.preparedBy}</span>
+                        </p>
+                      )}
+
                       {/* Domiciliario Asignado */}
                       {(order.driverName || order.status === 'En Camino') && (
                         <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-orange-50/70 dark:bg-brand-orange/10 border border-brand-orange/20">
@@ -228,6 +235,18 @@ export default function OrdersSection({
                           <span className="text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-brand-orange/20 text-brand-orange shrink-0">
                             {order.status === 'Entregado' ? 'Completado' : 'En Camino'}
                           </span>
+                          {order.driverName && (order.status === 'Listos' || order.status === 'En Camino') && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm('¿Quitar este pedido al domiciliario y dejarlo disponible para otro?')) {
+                                  releaseOrder(order.id).catch(() => window.alert('No se pudo liberar el pedido.'));
+                                }
+                              }}
+                              className="text-[10px] font-bold text-gray-500 hover:text-red-600 underline underline-offset-2 shrink-0"
+                            >
+                              Liberar
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

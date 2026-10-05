@@ -84,10 +84,13 @@ class AuthController {
             $codigo = (string) random_int(100000, 999999);
             (new CodigoVerificacion($conn))->crearParaCliente($idCliente, $codigo);
 
-            // TODO Fase futura: enviar $codigo real por correo/SMS via un proveedor.
-            // Solo en entorno local: nunca exponer el codigo en staging/produccion,
-            // ni siquiera si APP_DEBUG quedo mal configurado a true por error.
-            if (env('APP_ENV', 'production') === 'local') {
+            // El codigo se manda por correo (SMTP, ver CorreoService / MAIL_* en .env).
+            $enviado = CorreoService::enviarCodigoRecuperacion($email, $codigo);
+
+            // Solo en entorno local y SOLO si el correo no pudo salir (SMTP sin
+            // configurar o caido): se devuelve el codigo para poder probar.
+            // Nunca en staging/produccion, ni siquiera con APP_DEBUG mal puesto.
+            if (!$enviado && env('APP_ENV', 'production') === 'local') {
                 responderJson(['ok' => true, 'debugCode' => $codigo]);
             }
         }
@@ -137,7 +140,11 @@ class AuthController {
         $usaPin = !empty($datos['pin']);
 
         $errores = [];
-        if (empty($datos['email']) || !filter_var($datos['email'], FILTER_VALIDATE_EMAIL)) $errores['email'] = ['El campo email debe ser un correo válido.'];
+        // Con PIN (paneles de Cocina/Domicilio) tambien se acepta solo el usuario, sin "@dominio".
+        $usuarioValido = $usaPin && !empty($datos['email']) && preg_match('/^[A-Za-z0-9._+-]{2,64}$/', (string) $datos['email']);
+        if (empty($datos['email']) || (!$usuarioValido && !filter_var($datos['email'], FILTER_VALIDATE_EMAIL))) {
+            $errores['email'] = [$usaPin ? 'Ingresa tu usuario (lo que va antes del @) o tu correo.' : 'El campo email debe ser un correo válido.'];
+        }
         if ($usaPin) {
             if (!preg_match('/^\d{4}$/', (string) $datos['pin'])) $errores['pin'] = ['El PIN debe tener 4 dígitos.'];
         } else {

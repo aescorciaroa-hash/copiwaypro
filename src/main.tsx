@@ -9,7 +9,7 @@ import ClientDashboard from './pages/ClientDashboard';
 import KitchenDashboard from './pages/KitchenDashboard';
 import DeliveryDashboard from './pages/DeliveryDashboard';
 import {ThemeProvider} from './context/ThemeContext';
-import FirebaseSync from './components/FirebaseSync';
+import SyncDatos from './components/SyncDatos';
 import './index.css';
 
 // Sin BrowserRouter: cada URL la resuelve el backend PHP (config/paginas.php)
@@ -41,7 +41,7 @@ const Pagina = PAGINAS[nombrePagina] || Landing;
 createRoot(contenedor!).render(
   <StrictMode>
     <ThemeProvider>
-      <FirebaseSync />
+      <SyncDatos />
       <Pagina />
     </ThemeProvider>
   </StrictMode>,

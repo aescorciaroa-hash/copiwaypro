@@ -3,7 +3,7 @@ import { useTheme } from '../context/ThemeContext';
 import { ToastNotification, ToastData } from '../components/ToastNotification';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ArrowLeft,
-  ChefHat, LogOut, Sun, Moon, Printer, CheckCircle2, AlertCircle, RefreshCw, Utensils, Volume2, VolumeX, Bell, Menu, X, Eye, EyeOff, ShoppingBag
+  ChefHat, LogOut, Sun, Moon, Printer, CheckCircle2, AlertCircle, RefreshCw, Utensils, Volume2, VolumeX, Bell, Menu, X, Eye, EyeOff, ShoppingBag, Clock, Timer, Hourglass, ClipboardList, CookingPot, PackageCheck
  } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore, Order, Product } from '../store/almacenAplicacion';
@@ -45,6 +45,26 @@ export default function KitchenDashboard() {
   const [showInventory, setShowInventory] = useState(false);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Tiempo real de preparacion: desde que llega el pedido hasta que cocina lo marca Listo (solo hoy).
+  const prepStats = React.useMemo(() => {
+    const parse = (v?: string | null) => (v ? new Date(v.replace(' ', 'T')).getTime() : NaN);
+    const today = new Date().toDateString();
+    const mins = orders
+      .filter(o => o.readyAt && new Date(parse(o.date)).toDateString() === today)
+      .map(o => (parse(o.readyAt) - parse(o.date)) / 60000)
+      .filter(m => Number.isFinite(m) && m >= 0);
+    const count = mins.length;
+    const avg = count ? Math.round((mins.reduce((a, b) => a + b, 0) / count) * 10) / 10 : 0;
+    const tone = count === 0
+      ? { bg: 'bg-gray-100 dark:bg-stone-800', text: 'text-gray-400' }
+      : avg <= 10
+        ? { bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-600 dark:text-emerald-400' }
+        : avg <= 20
+          ? { bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-600 dark:text-amber-400' }
+          : { bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-600 dark:text-red-400' };
+    return { avg, count, tone };
+  }, [orders]);
+
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -204,9 +224,13 @@ export default function KitchenDashboard() {
               <input 
                 type="text"
                 value={username}
-                onChange={e => setUsername(e.target.value)}
+                onChange={e => setUsername(e.target.value.trim())}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                autoComplete="username"
                 className="w-full h-16 px-6 rounded-2xl bg-gray-50 dark:bg-stone-900 border-2 border-gray-100 dark:border-stone-800 focus:border-brand-orange dark:focus:border-brand-orange outline-none transition-colors text-lg text-gray-900 dark:text-white font-medium"
-                placeholder="Ej: cocina"
+                placeholder="Tu usuario, ej: maria"
               />
             </div>
             <div>
@@ -285,10 +309,6 @@ export default function KitchenDashboard() {
         </div>
 
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto min-w-0 custom-scrollbar">
-          <button className="w-full flex items-center gap-4 px-5 py-4 rounded-full transition-all font-bold text-sm bg-brand-orange text-white shadow-lg shadow-brand-orange/20">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-            Pedidos
-          </button>
         </nav>
 
         {/* Sidebar Inventory Alert */}
@@ -393,10 +413,6 @@ export default function KitchenDashboard() {
               </div>
               
               <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto custom-scrollbar min-w-0">
-                <button className="w-full flex items-center gap-4 px-5 py-4 rounded-full bg-brand-orange text-white font-bold text-sm">
-                  <Utensils className="w-5 h-5" />
-                  Pedidos
-                </button>
               </nav>
 
               <div className="p-6 border-t border-gray-100 dark:border-stone-800 mt-auto space-y-4">
@@ -432,11 +448,21 @@ export default function KitchenDashboard() {
               <span className="font-bold text-[10px] md:text-xs uppercase tracking-wider">Sistema en Línea</span>
             </div>
             
-            <div className="hidden sm:flex items-center gap-2 bg-gray-50 dark:bg-stone-900 text-gray-600 dark:text-gray-300 px-5 py-2.5 rounded-full border border-gray-200 dark:border-stone-700 shadow-sm">
-              <RefreshCw className="w-3.5 h-3.5 text-brand-orange" />
-              <span className="text-xs font-bold uppercase tracking-wider">
-                Tiempo prom: <strong className="text-gray-900 dark:text-white ml-1">8.5 min</strong>
-              </span>
+            <div
+              className="hidden sm:flex items-center gap-3 pl-2.5 pr-5 py-1.5 rounded-2xl bg-white dark:bg-[#151515] border border-gray-200 dark:border-stone-800 shadow-sm"
+              title={prepStats.count > 0 ? `Promedio entre la llegada del pedido y el momento en que cocina lo marca Listo (${prepStats.count} pedidos de hoy)` : 'Aún no hay pedidos listos hoy'}
+            >
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${prepStats.tone.bg} ${prepStats.tone.text}`}>
+                <Timer className="w-4.5 h-4.5" />
+              </div>
+              <div className="leading-none">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-stone-500">Preparación promedio</p>
+                <p className="mt-1 flex items-baseline gap-1 tabular-nums">
+                  <span className="font-black text-lg text-gray-900 dark:text-white">{prepStats.count > 0 ? prepStats.avg : '—'}</span>
+                  {prepStats.count > 0 && <span className="text-xs font-bold text-gray-500 dark:text-stone-400">min</span>}
+                  {prepStats.count > 0 && <span className="text-[10px] font-semibold text-gray-400 dark:text-stone-500 ml-1">· {prepStats.count} hoy</span>}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -454,10 +480,23 @@ export default function KitchenDashboard() {
               <span className="hidden md:inline">{soundEnabled ? 'Sonido Activo' : 'Silenciado'}</span>
             </button>
 
-            <div className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 md:px-6 py-2 md:py-2.5 rounded-2xl shadow-lg shadow-gray-900/20 dark:shadow-white/10">
-              <span className="font-black text-sm md:text-lg tracking-widest font-mono">
-                {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </span>
+            <div className="flex items-center gap-3 pl-3 pr-4 md:pl-4 md:pr-5 py-1.5 md:py-2 rounded-2xl bg-white dark:bg-[#151515] border border-gray-200 dark:border-stone-800 shadow-sm">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4 md:w-5 md:h-5" />
+              </div>
+              <div className="leading-none">
+                <div className="flex items-baseline gap-1 tabular-nums">
+                  <span className="font-black text-lg md:text-2xl tracking-tight text-gray-900 dark:text-white">
+                    {time.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                  </span>
+                  <span className="font-bold text-xs md:text-sm text-brand-orange w-[1.4em]">
+                    {String(time.getSeconds()).padStart(2, '0')}
+                  </span>
+                </div>
+                <p className="hidden md:block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-stone-500 mt-1">
+                  {time.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </p>
+              </div>
             </div>
           </div>
         </header>
@@ -505,7 +544,9 @@ export default function KitchenDashboard() {
                 </AnimatePresence>
                 {getColumnOrders('Pendientes').length === 0 && (
                   <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4 text-brand-orange/30"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    <div className="w-16 h-16 rounded-full bg-brand-orange/10 flex items-center justify-center mb-4">
+                      <ClipboardList className="w-7 h-7 text-brand-orange/70" strokeWidth={1.75} />
+                    </div>
                     <p className="font-medium">Sin pedidos pendientes</p>
                   </div>
                 )}
@@ -532,7 +573,9 @@ export default function KitchenDashboard() {
                 
                 {getColumnOrders('En Preparación').length === 0 && (
                   <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4 text-brand-orange/30"><path d="M7 2v4"></path><path d="M12 2v4"></path><path d="M17 2v4"></path><rect x="3" y="10" width="18" height="8" rx="2"></rect><path d="M7 18v4"></path><path d="M17 18v4"></path></svg>
+                    <div className="w-16 h-16 rounded-full bg-brand-orange/10 flex items-center justify-center mb-4">
+                      <CookingPot className="w-7 h-7 text-brand-orange/70" strokeWidth={1.75} />
+                    </div>
                     <p className="font-medium">Sin pedidos en curso</p>
                   </div>
                 )}
@@ -559,7 +602,9 @@ export default function KitchenDashboard() {
                 
                 {getColumnOrders('Listos').length === 0 && (
                   <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4 text-brand-orange/30"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <div className="w-16 h-16 rounded-full bg-brand-orange/10 flex items-center justify-center mb-4">
+                      <PackageCheck className="w-7 h-7 text-brand-orange/70" strokeWidth={1.75} />
+                    </div>
                     <p className="font-medium">Sin pedidos listos</p>
                   </div>
                 )}
@@ -867,7 +912,7 @@ function OrderCard({ order, products, onMove, onPrint, isReady = false }: { orde
       {isReady && (
         <div className="mt-auto pt-4 border-t border-gray-100 dark:border-stone-800 text-center">
           <p className="font-bold text-gray-500 dark:text-stone-400 flex items-center justify-center gap-2">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <Hourglass className="w-5 h-5 animate-pulse" />
             Esperando domiciliario
           </p>
         </div>

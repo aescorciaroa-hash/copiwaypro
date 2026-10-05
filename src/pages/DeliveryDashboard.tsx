@@ -4,7 +4,7 @@ import { ToastNotification, ToastData } from '../components/ToastNotification';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ArrowLeft, Map as MapIcon,  
   MapPin, LogOut, Navigation, Phone, CheckCircle, CheckCircle2, MessageCircle, AlertCircle, Utensils, Plus, Minus, X, Target
-, Sun, Moon, Eye, EyeOff } from 'lucide-react';
+, Sun, Moon, Eye, EyeOff, Undo2 } from 'lucide-react';
 import { useStore, Order } from '../store/almacenAplicacion';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -31,7 +31,7 @@ const RoutePolyline = ({ origin, destination, outerColor, innerColor, onRouteLoa
         setPositions(fallbackCoords);
         if (onRouteLoaded) onRouteLoaded(fallbackCoords);
       });
-  }, [origin, destination]);
+  }, [origin[0], origin[1], destination[0], destination[1]]);
 
   if (!positions.length) return null;
 
@@ -79,7 +79,7 @@ const CustomZoomControl = () => {
 export default function DeliveryDashboard() {
     const { theme, toggleTheme } = useTheme();
 
-  const { orders, updateOrder, updateOrderStatus, takeOrder: takeOrderApi, staff, updateStaff, confirmDelivery } = useStore();
+  const { orders, updateOrder, updateOrderStatus, takeOrder: takeOrderApi, releaseOrder: releaseOrderApi, staff, updateStaff, confirmDelivery } = useStore();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null);
@@ -246,10 +246,6 @@ export default function DeliveryDashboard() {
   };
 
   const takeOrder = async (orderId: string) => {
-    if (acceptedOrders.length >= 3 && !acceptedOrders.includes(orderId)) {
-      alert('Has alcanzado el límite máximo de 3 pedidos simultáneos en tu ruta.');
-      return;
-    }
     // La asignación se persiste al tomar el pedido (no al iniciar la ruta).
     try {
       await takeOrderApi(orderId);
@@ -261,6 +257,18 @@ export default function DeliveryDashboard() {
     if (!acceptedOrders.includes(orderId)) {
       setAcceptedOrders([...acceptedOrders, orderId]);
       showToast('info', `Tomaste el pedido #${orderId}. Prepárate para iniciar la ruta.`, 'Pedido Asignado');
+    }
+  };
+
+  const releaseOrder = async (orderId: string) => {
+    try {
+      await releaseOrderApi(orderId);
+      setAcceptedOrders(prev => prev.filter(id => id !== orderId));
+      if (activeRoute?.id === orderId) setActiveRoute(null);
+      showToast('info', 'Soltaste el pedido. Quedó disponible para otros domiciliarios.', 'Pedido Liberado');
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'No se pudo soltar el pedido. Intenta de nuevo.';
+      showToast('danger', message, 'No se Pudo Soltar');
     }
   };
 
@@ -353,9 +361,13 @@ export default function DeliveryDashboard() {
               <input 
                 type="text"
                 value={username}
-                onChange={e => setUsername(e.target.value)}
+                onChange={e => setUsername(e.target.value.trim())}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                autoComplete="username"
                 className="w-full h-14 px-5 rounded-2xl bg-gray-50 dark:bg-stone-900 border-2 border-gray-100 dark:border-stone-800 focus:border-brand-orange dark:focus:border-brand-orange outline-none transition-colors text-gray-900 dark:text-white font-medium"
-                placeholder="Ej: domicilio"
+                placeholder="Tu usuario, ej: santiago"
               />
             </div>
             <div>
@@ -471,9 +483,11 @@ export default function DeliveryDashboard() {
               })}
             />
             {destCoords && (
-                <Polyline 
-                  positions={[mapCenter, destCoords]} 
-                  pathOptions={{ color: '#ea4335', weight: 4, dashArray: '10, 10' }} 
+                <RoutePolyline
+                  origin={mapCenter}
+                  destination={destCoords}
+                  outerColor="#b91c1c"
+                  innerColor="#ea4335"
                 />
               )}
             </MapContainer>
@@ -700,7 +714,9 @@ export default function DeliveryDashboard() {
                         onClick={(e) => { 
                           e.stopPropagation(); 
                           const phone = (order.clientPhone || '').replace(/\D/g, '');
-                          const message = encodeURIComponent(`¡Hola! Soy el domiciliario de Copiway PRO. Voy en camino con tu pedido ${orderCode(order.id)}. ¿Me podrías dar indicaciones exactas para llegar o confirmar si estás disponible?`);
+                          const firstName = (order.client || '').trim().split(/\s+/)[0];
+                          const greeting = firstName ? `¡Hola, ${firstName}! 👋` : '¡Hola! 👋';
+                          const message = encodeURIComponent(`${greeting} Te escribo de Copiway PRO, soy tu domiciliario y ya voy en camino con tu pedido ${orderCode(order.id)}. 🛵\n\nPara llegar más rápido, ¿me confirmas la dirección exacta o alguna referencia? Y por favor avísame si estarás disponible para recibirlo. ¡Gracias!`);
                           window.open(`https://wa.me/${phone}?text=${message}`, '_blank'); 
                         }}
                         className="w-full border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 py-2.5 rounded-[12px] text-sm font-bold flex items-center justify-center gap-2 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
@@ -758,6 +774,15 @@ export default function DeliveryDashboard() {
                         Iniciar Ruta (En Camino)
                       </button>
                     </div>
+                  )}
+
+                  {order.status === 'Listos' && isAccepted && (
+                    <button
+                      onClick={() => releaseOrder(order.id)}
+                      className="w-full mt-3 py-3 rounded-[16px] text-sm font-bold flex items-center justify-center gap-2 border-2 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 hover:bg-red-600 hover:border-red-600 hover:text-white transition-colors"
+                    >
+                      <Undo2 className="w-4 h-4" /> Soltar pedido
+                    </button>
                   )}
 
                   {order.status === 'En Camino' && (

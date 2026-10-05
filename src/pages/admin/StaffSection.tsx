@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ChefHat, ChevronLeft, ChevronRight, Download, Eye, EyeOff, Filter, IdCard, Package, Search, User, UserPlus
 } from 'lucide-react';
@@ -31,6 +31,10 @@ interface StaffSectionProps {
   setStaffCurrentPage: React.Dispatch<React.SetStateAction<number>>;
   staffSearch: string;
   setStaffSearch: React.Dispatch<React.SetStateAction<string>>;
+  staffRoleFilter: string;
+  setStaffRoleFilter: React.Dispatch<React.SetStateAction<string>>;
+  staffStatusFilter: string;
+  setStaffStatusFilter: React.Dispatch<React.SetStateAction<string>>;
   addStaff: (employee: Staff) => Promise<void>;
   updateStaff: (id: string, updates: Partial<Staff>) => Promise<void>;
   deleteStaff: (id: string, role?: string) => Promise<void>;
@@ -52,6 +56,10 @@ export default function StaffSection({
   setStaffCurrentPage,
   staffSearch,
   setStaffSearch,
+  staffRoleFilter,
+  setStaffRoleFilter,
+  staffStatusFilter,
+  setStaffStatusFilter,
   addStaff,
   updateStaff,
   deleteStaff,
@@ -63,6 +71,47 @@ export default function StaffSection({
   showToast,
   setConfirmModal,
 }: StaffSectionProps) {
+    const [showFilters, setShowFilters] = useState(false);
+    const filterRef = useRef<HTMLDivElement>(null);
+    const activeFilters = (staffRoleFilter !== 'all' ? 1 : 0) + (staffStatusFilter !== 'all' ? 1 : 0);
+
+    useEffect(() => {
+      if (!showFilters) return;
+      const close = (e: MouseEvent) => {
+        if (filterRef.current && !filterRef.current.contains(e.target as Node)) setShowFilters(false);
+      };
+      document.addEventListener('mousedown', close);
+      return () => document.removeEventListener('mousedown', close);
+    }, [showFilters]);
+
+    const applyFilter = (setter: (v: string) => void, value: string) => {
+      setter(value);
+      setStaffCurrentPage(1);
+    };
+
+    // Exporta a CSV (con BOM para que Excel respete tildes) lo que se ve tras filtrar/buscar.
+    const handleExport = () => {
+      if (filteredStaff.length === 0) {
+        showToast('warning', 'No hay empleados para exportar con los filtros actuales.', 'Sin Datos');
+        return;
+      }
+      const esc = (v: unknown) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+      const header = ['Nombre', 'Correo', 'Teléfono', 'Rol', 'Estado', 'Vehículo', 'Placa'];
+      const rows = filteredStaff.map(e => [
+        e.name, e.email, e.phone || '', e.role, e.active ? 'Activo' : 'Inactivo',
+        e.role === 'Domiciliario' ? [e.vehicle, e.vehicleModel].filter(Boolean).join(' ') : '',
+        e.role === 'Domiciliario' ? e.plate || '' : '',
+      ]);
+      const csv = '\uFEFF' + [header, ...rows].map(r => r.map(esc).join(';')).join('\r\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'personal-copiway-' + new Date().toISOString().slice(0, 10) + '.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('success', 'Se exportaron ' + filteredStaff.length + ' empleados.', 'Exportación Lista');
+    };
+
     const handleAddStaff = async () => {
       if (!newStaff.name || !newStaff.email || newStaff.password.length < 8 || newStaff.pin.length !== 4) return;
       try {
@@ -284,10 +333,45 @@ export default function StaffSection({
                     className="bg-transparent border-none outline-none text-sm w-full text-gray-800 dark:text-stone-300 placeholder-gray-500 font-medium" 
                   />
                 </div>
-                <button className="w-10 h-10 rounded-full border border-gray-200 dark:border-stone-700 flex items-center justify-center text-gray-600 dark:text-stone-400 hover:bg-gray-50 dark:hover:bg-stone-900 transition-colors shrink-0">
-                  <Filter className="w-4 h-4" />
-                </button>
-                <button className="w-10 h-10 rounded-full border border-gray-200 dark:border-stone-700 flex items-center justify-center text-gray-600 dark:text-stone-400 hover:bg-gray-50 dark:hover:bg-stone-900 transition-colors shrink-0">
+                <div className="relative" ref={filterRef}>
+                  <button
+                    onClick={() => setShowFilters(v => !v)}
+                    title="Filtrar"
+                    className={`relative w-10 h-10 rounded-full border flex items-center justify-center transition-colors shrink-0 ${activeFilters > 0 ? 'border-brand-orange text-brand-orange bg-brand-orange/10' : 'border-gray-200 dark:border-stone-700 text-gray-600 dark:text-stone-400 hover:bg-gray-50 dark:hover:bg-stone-900'}`}
+                  >
+                    <Filter className="w-4 h-4" />
+                    {activeFilters > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-brand-orange text-white text-[10px] font-black flex items-center justify-center">{activeFilters}</span>
+                    )}
+                  </button>
+                  {showFilters && (
+                    <div className="absolute right-0 top-12 z-30 w-64 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-stone-700 rounded-2xl shadow-xl p-4 space-y-4">
+                      <div>
+                        <p className="text-[11px] font-black uppercase tracking-wider text-gray-400 mb-2">Rol</p>
+                        <div className="flex flex-wrap gap-2">
+                          {[['all', 'Todos'], ['Ayudante de cocina', 'Cocina'], ['Domiciliario', 'Domiciliario']].map(([v, l]) => (
+                            <button key={v} onClick={() => applyFilter(setStaffRoleFilter, v)}
+                              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${staffRoleFilter === v ? 'bg-brand-orange text-white border-brand-orange' : 'border-gray-200 dark:border-stone-700 text-gray-600 dark:text-stone-300 hover:border-brand-orange/50'}`}>{l}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-black uppercase tracking-wider text-gray-400 mb-2">Estado</p>
+                        <div className="flex flex-wrap gap-2">
+                          {[['all', 'Todos'], ['active', 'Activos'], ['inactive', 'Inactivos']].map(([v, l]) => (
+                            <button key={v} onClick={() => applyFilter(setStaffStatusFilter, v)}
+                              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${staffStatusFilter === v ? 'bg-brand-orange text-white border-brand-orange' : 'border-gray-200 dark:border-stone-700 text-gray-600 dark:text-stone-300 hover:border-brand-orange/50'}`}>{l}</button>
+                          ))}
+                        </div>
+                      </div>
+                      {activeFilters > 0 && (
+                        <button onClick={() => { setStaffRoleFilter('all'); setStaffStatusFilter('all'); setStaffCurrentPage(1); }}
+                          className="w-full text-xs font-bold text-gray-500 hover:text-brand-orange transition-colors">Limpiar filtros</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button onClick={handleExport} title="Exportar a CSV" className="w-10 h-10 rounded-full border border-gray-200 dark:border-stone-700 flex items-center justify-center text-gray-600 dark:text-stone-400 hover:bg-gray-50 dark:hover:bg-stone-900 transition-colors shrink-0">
                   <Download className="w-4 h-4" />
                 </button>
               </div>

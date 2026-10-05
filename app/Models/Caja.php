@@ -52,7 +52,12 @@ class Caja {
         return $pedidos;
     }
 
-    /** Consumo real de insumos: RECETA x cantidad vendida, para los pedidos dados. */
+    /**
+     * Consumo real de insumos de los pedidos dados: suma de los movimientos de
+     * salida que el propio pedido genero al crearse (receta base, extras, bolsa
+     * de empaque y hamburguesas personalizadas; ya excluye lo que el cliente
+     * quito). Antes se recalculaba solo desde RECETA y se perdia todo lo demas.
+     */
     public function consumoTeorico($idsPedidos) {
         if (empty($idsPedidos)) {
             return [];
@@ -60,12 +65,12 @@ class Caja {
 
         $placeholders = implode(',', array_fill(0, count($idsPedidos), '?'));
         $stmt = $this->consulta(
-            "SELECT i.id_ingrediente, i.nombre, SUM(r.cantidad_necesaria * dp.cantidad) AS consumido
-             FROM DETALLE_PEDIDO dp
-             JOIN RECETA r ON r.id_producto = dp.id_producto
-             JOIN INGREDIENTE i ON i.id_ingrediente = r.id_ingrediente
-             WHERE dp.id_pedido IN ($placeholders)
-             GROUP BY i.id_ingrediente, i.nombre",
+            "SELECT i.id_ingrediente, i.nombre, i.unidad_medida, i.costo_unitario,
+                    SUM(m.cantidad) AS consumido
+             FROM MOVIMIENTO_INVENTARIO m
+             JOIN INGREDIENTE i ON i.id_ingrediente = m.id_ingrediente
+             WHERE m.tipo_movimiento = 'salida' AND m.id_pedido IN ($placeholders)
+             GROUP BY i.id_ingrediente, i.nombre, i.unidad_medida, i.costo_unitario",
             $idsPedidos
         );
         $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -73,7 +78,12 @@ class Caja {
 
         $resultado = [];
         foreach ($filas as $fila) {
-            $resultado[$fila['id_ingrediente']] = ['nombre' => $fila['nombre'], 'consumido' => (float) $fila['consumido']];
+            $resultado[$fila['id_ingrediente']] = [
+                'nombre' => $fila['nombre'],
+                'consumido' => (float) $fila['consumido'],
+                'unidad' => $fila['unidad_medida'],
+                'costoUnitario' => (float) $fila['costo_unitario'],
+            ];
         }
         return $resultado;
     }

@@ -54,13 +54,24 @@ class CajaService {
 
         $idsPedidos = array_column($pedidos, 'id_pedido');
         $insumosConsumidos = [];
+        $costoInsumos = 0.0;
         foreach ($this->cajaModelo->consumoTeorico($idsPedidos) as $idIngrediente => $datos) {
+            $costo = $datos['consumido'] * $datos['costoUnitario'];
+            $costoInsumos += $costo;
             $insumosConsumidos[] = [
                 'name' => $datos['nombre'],
                 'used' => $datos['consumido'],
+                'unit' => $datos['unidad'],
+                'unitCost' => $datos['costoUnitario'],
+                'cost' => round($costo, 2),
                 'stockReal' => $this->cajaModelo->stockActual($idIngrediente),
             ];
         }
+        // Lo cobrado por domicilio no es ganancia: cubre el costo del reparto
+        // (gasolina, etc.), asi que se resta. El margen se mide sobre lo vendido en producto.
+        $costoDomicilios = $totales['totalDomicilios'];
+        $ventasProducto = $totales['totalVentas'] - $costoDomicilios;
+        $ganancia = $ventasProducto - $costoInsumos;
 
         return [
             'date' => $hoy,
@@ -69,6 +80,11 @@ class CajaService {
             'desglose' => ['efectivo' => $totales['totalEfectivo'], 'digital' => $totales['totalDigital']],
             'driverLiquidations' => $driverLiquidations,
             'insumosConsumidos' => $insumosConsumidos,
+            'costoInsumos' => round($costoInsumos, 2),
+            'costoDomicilios' => round($costoDomicilios, 2),
+            'ventasProducto' => round($ventasProducto, 2),
+            'gananciaBruta' => round($ganancia, 2),
+            'margen' => $ventasProducto > 0 ? round($ganancia / $ventasProducto * 100, 1) : 0,
             'orders' => array_map(function ($o) {
                 return [
                     'id' => '#ORD-' . $o['id_pedido'],
@@ -83,12 +99,14 @@ class CajaService {
 
     private function calcularTotales($pedidos) {
         $totalVentas = 0.0;
+        $totalDomicilios = 0.0;
         $totalEfectivo = 0.0;
         $totalDigital = 0.0;
         $efectivoPorDomiciliario = [];
 
         foreach ($pedidos as $pedido) {
             $totalVentas += (float) $pedido['total'];
+            $totalDomicilios += (float) $pedido['costo_domicilio'];
             if ($pedido['metodo_pago'] === 'efectivo') {
                 $totalEfectivo += (float) $pedido['total'];
                 if ($pedido['id_domiciliario']) {
@@ -102,6 +120,7 @@ class CajaService {
 
         return [
             'totalVentas' => $totalVentas,
+            'totalDomicilios' => $totalDomicilios,
             'totalEfectivo' => $totalEfectivo,
             'totalDigital' => $totalDigital,
             'efectivoPorDomiciliario' => $efectivoPorDomiciliario,

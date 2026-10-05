@@ -151,6 +151,12 @@ export default function CheckoutSection({
                     placeholder="Ej: 300 123 4567"
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-[#2a2a2a] outline-none focus:border-brand-orange transition-all text-gray-900 dark:text-white font-medium"
                   />
+                  <p className="mt-2 text-[11px] leading-relaxed text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-lg px-3 py-2 font-medium">
+                    <span className="font-black uppercase tracking-wide">Modo pruebas</span> · No se cobra dinero real.
+                    Prueba con <span className="font-mono font-bold">3991111111</span> (aprobado),{' '}
+                    <span className="font-mono font-bold">3992222222</span> (rechazado) o{' '}
+                    <span className="font-mono font-bold">3993333333</span> (error). Cualquier otro número se aprueba.
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-stone-500 font-medium pt-1">

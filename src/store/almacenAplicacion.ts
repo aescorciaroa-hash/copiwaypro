@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../servicios/api';
+import type { DatosCheckout } from '../lib/pasarela';
 
 export interface ProductComponent {
   id?: string;
@@ -115,6 +116,9 @@ export interface Order {
   discount?: number;
   pointsEarned?: number;
   time?: string;
+  readyAt?: string | null;
+  paymentTransactionId?: string;
+  preparedBy?: string | null;
   lat?: number;
   lng?: number;
 }
@@ -179,7 +183,7 @@ interface AppState {
   inventory: InventoryItem[];
   staff: Staff[];
   orders: Order[];
-  /** true tras el primer setOrders con datos reales del servidor (ver FirebaseSync). Evita que la UI confunda la carga inicial de pedidos con una orden nueva. */
+  /** true tras el primer setOrders con datos reales del servidor (ver SyncDatos). Evita que la UI confunda la carga inicial de pedidos con una orden nueva. */
   ordersSynced: boolean;
   ingredients: Ingredient[];
   clients: Client[];
@@ -207,8 +211,11 @@ interface AppState {
 
   setOrders: (orders: Order[]) => void;
   addOrder: (order: Order) => Promise<void>;
+  /** Pide al servidor monto, referencia y firma para iniciar el pago digital (pasarela de prueba). */
+  prepareOnlinePayment: (order: Pick<Order, 'items' | 'address'>) => Promise<DatosCheckout>;
   updateOrderStatus: (id: string, status: Order['status']) => Promise<void>;
   takeOrder: (id: string) => Promise<void>;
+  releaseOrder: (id: string) => Promise<void>;
   driverName?: string;
   updateOrder: (id: string, updates: Partial<Order>) => Promise<void>;
   deleteOrder: (id: string) => Promise<void>;
@@ -341,9 +348,16 @@ export const useStore = create<AppState>()((set, get) => ({
       address: order.address,
       paymentMethod: order.paymentMethod === 'online' ? 'online' : 'cash',
       bank: order.paymentMethod === 'online' ? order.digitalBank : undefined,
+      paymentTransactionId: order.paymentMethod === 'online' ? order.paymentTransactionId : undefined,
     };
     const created = await api.post<Order>('/orders', payload);
     set(state => ({ orders: [created, ...state.orders] }));
+  },
+  prepareOnlinePayment: async (order) => {
+    return api.post<DatosCheckout>('/payments/prepare', {
+      items: (order.items || []).map(toApiOrderItem),
+      address: order.address,
+    });
   },
   updateOrderStatus: async (id, status) => {
     const endpoint = STATUS_TO_ENDPOINT[status];
@@ -353,6 +367,10 @@ export const useStore = create<AppState>()((set, get) => ({
       return;
     }
     const updated = await api.patch<Order>(`/orders/${encodeURIComponent(id)}/${endpoint}`);
+    set(state => ({ orders: state.orders.map(o => o.id === id ? updated : o) }));
+  },
+  releaseOrder: async (id) => {
+    const updated = await api.patch<Order>(`/orders/${encodeURIComponent(id)}/release`);
     set(state => ({ orders: state.orders.map(o => o.id === id ? updated : o) }));
   },
   takeOrder: async (id) => {

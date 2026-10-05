@@ -71,16 +71,20 @@ class OrderController {
     /** Cocina: Pendiente -> En Preparacion */
     public function markPreparing($id) {
         global $conn;
-        $this->aplicarTransicion($id, function ($pedidoServicio, $idInterno) {
-            $pedidoServicio->marcarPreparando($idInterno);
+        $auth = new Autenticacion($conn);
+        $idAyudante = $auth->rolActual() === 'kitchen' ? $auth->idActual() : null;
+        $this->aplicarTransicion($id, function ($pedidoServicio, $idInterno) use ($idAyudante) {
+            $pedidoServicio->marcarPreparando($idInterno, $idAyudante);
         });
     }
 
     /** Cocina: -> Listos */
     public function markReady($id) {
         global $conn;
-        $this->aplicarTransicion($id, function ($pedidoServicio, $idInterno) {
-            $pedidoServicio->marcarListo($idInterno);
+        $auth = new Autenticacion($conn);
+        $idAyudante = $auth->rolActual() === 'kitchen' ? $auth->idActual() : null;
+        $this->aplicarTransicion($id, function ($pedidoServicio, $idInterno) use ($idAyudante) {
+            $pedidoServicio->marcarListo($idInterno, $idAyudante);
         });
     }
 
@@ -90,6 +94,17 @@ class OrderController {
         $auth = new Autenticacion($conn);
         $this->aplicarTransicion($id, function ($pedidoServicio, $idInterno) use ($auth) {
             $pedidoServicio->tomarPedido($idInterno, $auth->idActual());
+        });
+    }
+
+    /** Domiciliario suelta su pedido (o el admin reasigna uno): vuelve a quedar disponible */
+    public function release($id) {
+        global $conn;
+        $auth = new Autenticacion($conn);
+        $rol = $auth->rolActual();
+        $idActor = $auth->idActual();
+        $this->aplicarTransicion($id, function ($pedidoServicio, $idInterno) use ($rol, $idActor) {
+            $pedidoServicio->liberarPedido($idInterno, $rol, $idActor);
         });
     }
 

@@ -26,23 +26,26 @@ interface PaymentGatewayModalProps {
   bank: 'nequi' | 'daviplata' | 'bancolombia';
   phone: string;
   amount: number;
+  /** Referencia emitida por el servidor (misma que se verifica al crear el pedido). */
+  reference?: string;
   declineReason?: string;
 }
 
-export default function PaymentGatewayModal({ step, bank, phone, amount, declineReason }: PaymentGatewayModalProps) {
+export default function PaymentGatewayModal({ step, bank, phone, amount, reference: referenciaServidor, declineReason }: PaymentGatewayModalProps) {
   const brand = BANKS[bank];
   const BrandIcon = brand.icon;
   const maskedPhone = phone.length >= 4 ? `${'*'.repeat(Math.max(phone.length - 4, 0))}${phone.slice(-4)}` : phone;
 
   // Referencia de transaccion: una por intento de pago (se regenera cada vez
   // que arranca un nuevo ciclo 'connecting'), como en una pasarela real.
-  const [reference, setReference] = useState('');
+  const [referenciaLocal, setReferenciaLocal] = useState('');
   useEffect(() => {
     if (step === 'connecting') {
       const azar = Math.floor(100000 + Math.random() * 900000);
-      setReference(`COP-${azar}`);
+      setReferenciaLocal(`COP-${azar}`);
     }
   }, [step]);
+  const reference = referenciaServidor || referenciaLocal;
 
   const pasoActualIndex = step === 'declined' ? PASOS.indexOf('verifying') : PASOS.indexOf(step);
   const fallo = step === 'declined';
@@ -68,6 +71,7 @@ export default function PaymentGatewayModal({ step, bank, phone, amount, decline
                   <ShieldCheck className="w-3 h-3" /> Pasarela de pagos segura
                 </p>
               </div>
+              <span className="shrink-0 text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-white/25">Modo pruebas</span>
             </div>
 
             {/* Barra de comercio/monto, como en una pasarela real */}
@@ -167,7 +171,7 @@ export default function PaymentGatewayModal({ step, bank, phone, amount, decline
             </div>
 
             <div className="px-6 py-3 border-t border-gray-100 dark:border-stone-800 flex items-center justify-center gap-1.5 text-[11px] text-gray-400 dark:text-stone-500 font-medium">
-              <Lock className="w-3 h-3" /> Conexión cifrada TLS · Cumplimiento PCI DSS
+              <Lock className="w-3 h-3" /> Conexión cifrada TLS · Sandbox: no se cobra dinero real
             </div>
           </motion.div>
         </motion.div>

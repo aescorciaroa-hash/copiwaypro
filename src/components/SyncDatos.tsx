@@ -13,15 +13,20 @@ interface SyncData {
   clients?: Client[];
 }
 
-const POLL_INTERVAL_MS = 2500;
+// Cadencia adaptativa: rapida mientras la pestana esta a la vista y hay cambios,
+// y mas lenta cuando nada cambia (304 seguidos) o la pestana esta oculta.
+const POLL_ACTIVE_MS = 2500;
+const POLL_IDLE_MS = 6000;
+const POLL_HIDDEN_MS = 20000;
+const IDLE_AFTER_UNCHANGED = 6;
 
 /**
  * Sustituye los onSnapshot de Firestore por polling corto con ETag contra
  * /api/sync (ver src/servicios/api.ts: fetchSync). Mantiene el mismo nombre y
- * posición en el árbol que el componente original, y llena el store
+ * posición en el árbol que el componente original (antes FirebaseSync), y llena el store
  * exactamente igual que antes — solo cambia el origen de los datos.
  */
-export default function FirebaseSync() {
+export default function SyncDatos() {
   const {
     setProducts, setInventory, setStaff, setOrders,
     setIngredients, setInventoryLogs, setClients, setStoreConfig
@@ -29,6 +34,7 @@ export default function FirebaseSync() {
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stoppedRef = useRef(false);
+  const unchangedRef = useRef(0);
 
   useEffect(() => {
     stoppedRef.current = false;
@@ -53,6 +59,7 @@ export default function FirebaseSync() {
       if (stoppedRef.current) return;
       try {
         const data = await fetchSync<SyncData>();
+        unchangedRef.current = data ? 0 : unchangedRef.current + 1;
         if (data) {
           if (data.products) setProducts(data.products);
           if (data.settings) setStoreConfig(data.settings);
@@ -67,15 +74,28 @@ export default function FirebaseSync() {
         // Error de red pasajero: se reintenta en el siguiente ciclo, sin romper la UI.
       } finally {
         if (!stoppedRef.current) {
-          timerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
+          const delay = document.hidden
+            ? POLL_HIDDEN_MS
+            : unchangedRef.current >= IDLE_AFTER_UNCHANGED ? POLL_IDLE_MS : POLL_ACTIVE_MS;
+          timerRef.current = setTimeout(poll, delay);
         }
       }
     };
+
+    // Al volver a la pestana se sincroniza de inmediato (no espera el ciclo lento).
+    const onVisible = () => {
+      if (document.hidden || stoppedRef.current) return;
+      unchangedRef.current = 0;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      poll();
+    };
+    document.addEventListener('visibilitychange', onVisible);
 
     poll();
 
     return () => {
       stoppedRef.current = true;
+      document.removeEventListener('visibilitychange', onVisible);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [setProducts, setInventory, setStaff, setOrders, setIngredients, setInventoryLogs, setClients, setStoreConfig]);

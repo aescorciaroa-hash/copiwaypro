@@ -60,6 +60,16 @@ class Autenticacion {
             'delivery' => ['tabla' => 'DOMICILIARIO', 'pk' => 'id_domiciliario'],
         ];
 
+        // En los paneles de Cocina/Domicilio basta escribir lo que va antes del
+        // "@" (ej. "santiago" para santiago@gmail.com). Si ese usuario existe con
+        // mas de un dominio, es ambiguo y se exige el correo completo.
+        if (strpos($correo, '@') === false) {
+            $correo = $this->resolverUsuarioSinDominio($correo, $tablas);
+            if ($correo === null) {
+                return null;
+            }
+        }
+
         foreach ($tablas as $rol => $info) {
             $sql = "SELECT * FROM {$info['tabla']} WHERE correo = ? LIMIT 1";
             $stmt = $this->conn->prepare($sql);
@@ -82,6 +92,23 @@ class Autenticacion {
             return $this->iniciarSesionUsuario($rol, $fila);
         }
         return null;
+    }
+
+    /** Devuelve el correo completo cuyo "usuario" (antes del @) coincide, o null si no existe o es ambiguo. */
+    private function resolverUsuarioSinDominio($usuario, $tablas) {
+        // Los comodines de LIKE escritos por el usuario se escapan: solo cuenta el texto literal.
+        $patron = addcslashes($usuario, '%_\\') . '@%';
+        $encontrados = [];
+        foreach ($tablas as $info) {
+            $stmt = $this->conn->prepare("SELECT correo FROM {$info['tabla']} WHERE correo LIKE ? AND activo = 1");
+            $stmt->bind_param('s', $patron);
+            $stmt->execute();
+            foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $fila) {
+                $encontrados[strtolower($fila['correo'])] = $fila['correo'];
+            }
+            $stmt->close();
+        }
+        return count($encontrados) === 1 ? array_values($encontrados)[0] : null;
     }
 
     /** Guarda al usuario en sesion (con regeneracion de ID contra fijacion de sesion). */

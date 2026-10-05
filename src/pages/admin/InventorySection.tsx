@@ -641,6 +641,10 @@ export default function InventorySection({
           {filteredInventoryLogs.length > 0 ? filteredInventoryLogs.map((log) => {
             const isEntrada = log.type === 'Entrada';
             const logDate = new Date(log.date);
+            const invItem = inventory.find(i => i.id === log.itemId);
+            const unit = invItem?.unit;
+            const unitCost = log.unitCost ?? invItem?.unitCost ?? 0;
+            const cost = log.totalCost ?? unitCost * Math.abs(log.amount);
             return (
               <div key={log.id} className="flex items-center gap-4 p-5 md:p-6 hover:bg-gray-50/50 dark:hover:bg-[#1A1A1A]/50 transition-colors">
                 <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
@@ -654,11 +658,19 @@ export default function InventorySection({
                   <p className="font-bold text-gray-900 dark:text-white text-sm truncate">{log.itemName}</p>
                   <p className="text-xs text-gray-500 dark:text-stone-500 truncate mt-0.5">{log.reason}</p>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className={`font-black text-sm ${isEntrada ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {isEntrada ? '+' : '-'}{log.amount}
-                  </p>
-                  <p className="text-[11px] text-gray-400 dark:text-stone-600 mt-0.5 whitespace-nowrap">
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <span className={`inline-flex items-baseline gap-1 px-3 py-1 rounded-full text-sm font-black tabular-nums ${
+                    isEntrada
+                      ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                      : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                  }`}>
+                    {isEntrada ? '+' : '−'}{Math.abs(log.amount)}
+                    {unit && <span className="text-[10px] font-bold opacity-70">{unit}</span>}
+                  </span>
+                  {cost > 0 && (
+                    <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">{formatCOP(cost)}</p>
+                  )}
+                  <p className="text-[11px] text-gray-400 dark:text-stone-500 whitespace-nowrap">
                     {logDate.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })} · {logDate.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>

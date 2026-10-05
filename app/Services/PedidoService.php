@@ -67,63 +67,12 @@ class PedidoService {
             throw new InvalidArgumentException('Cliente no encontrado.');
         }
 
-        // ---- Recalcula todo en el servidor; nunca confia en precios/totales del cliente ----
-        // El PVP de cada insumo no se guarda manualmente: se deriva del costo unitario
-        // (Inventario Express) + el margen de ganancia que el admin configura en Ajustes,
-        // igual que lo previsualiza el Creador Interactivo del lado del cliente.
-        $margen = $configuracion->margenGanancia();
-        $itemsResueltos = [];
-        $subtotal = 0.0;
-
-        foreach ($items as $item) {
-            $cantidad = max(1, (int) ($item['quantity'] ?? 1));
-
-            if (empty($item['productId']) && !empty($item['stack'])) {
-                // "Creador interactivo": hamburguesa armada capa por capa, sin producto base.
-                $pila = $this->resolverIngredientes($item['stack'], $margen);
-                if (empty($pila)) {
-                    throw new InvalidArgumentException('La hamburguesa personalizada no tiene ingredientes válidos.');
-                }
-                $producto = $this->productoPersonalizadoOculto();
-                $precioUnitario = array_sum(array_map(function ($e) { return (float) $e['precio_extra']; }, $pila));
-                $subtotal += $precioUnitario * $cantidad;
-
-                $itemsResueltos[] = [
-                    'producto' => $producto,
-                    'cantidad' => $cantidad,
-                    'precioUnitario' => $precioUnitario,
-                    'extras' => $pila,
-                    'removidos' => [],
-                ];
-                continue;
-            }
-
-            $stmtProd = $this->consulta("SELECT * FROM PRODUCTO WHERE id_producto = ? AND estado = 'activo' LIMIT 1", [$item['productId'] ?? '']);
-            $producto = $stmtProd->get_result()->fetch_assoc();
-            $stmtProd->close();
-            if (!$producto) {
-                throw new InvalidArgumentException('Uno de los productos del carrito ya no está disponible.');
-            }
-
-            $extras = $this->resolverIngredientes($item['extras'] ?? [], $margen);
-            $removidos = $this->resolverIngredientes($item['removed'] ?? [], $margen);
-
-            $costoExtras = array_sum(array_map(function ($e) { return (float) $e['precio_extra']; }, $extras));
-            $precioUnitario = (float) $producto['precio'] + $costoExtras;
-            $subtotal += $precioUnitario * $cantidad;
-
-            $itemsResueltos[] = [
-                'producto' => $producto,
-                'cantidad' => $cantidad,
-                'precioUnitario' => $precioUnitario,
-                'extras' => $extras,
-                'removidos' => $removidos,
-            ];
-        }
-
-        $envio = (float) $configuracion->tarifaDomicilio();
-        $descuento = $this->descuentoCumpleanos($cliente, $subtotal);
-        $total = round($subtotal - $descuento + $envio, 2);
+        $calculo = $this->calcular($cliente, $payload, $configuracion);
+        $itemsResueltos = $calculo['items'];
+        $subtotal = $calculo['subtotal'];
+        $envio = $calculo['envio'];
+        $descuento = $calculo['descuento'];
+        $total = $calculo['total'];
         $puntos = (int) floor($total / 1000);
 
         $esEfectivo = ($payload['paymentMethod'] ?? 'online') === 'cash';
@@ -135,14 +84,21 @@ class PedidoService {
         $comprobante = null;
 
         if (!$esEfectivo) {
-            $pago = $this->cobrarPagoSimulado($total);
-            if (!$pago['aprobado']) {
-                // Un pago digital rechazado NUNCA crea un pedido (cero credito).
-                throw new Exception('El pago fue rechazado por la pasarela. Intenta con otro método.');
+            // El pago ya ocurrio en el checkout de la pasarela; aqui se VERIFICA la
+            // transaccion (estado, monto, cliente y que no se haya usado antes)
+            // antes de crear nada. Un pago que no se pueda comprobar NUNCA crea un pedido.
+            $pago = (new PagoService($this->conn))->verificarTransaccion(
+                (string) ($payload['paymentTransactionId'] ?? ''), $total, $idCliente
+            );
+            $stmtDup = $this->consulta('SELECT id_pedido FROM PEDIDO WHERE comprobante_pago = ? LIMIT 1', [$pago['id']]);
+            $yaUsada = $stmtDup->get_result()->fetch_assoc();
+            $stmtDup->close();
+            if ($yaUsada) {
+                throw new Exception('Este pago ya fue usado en otro pedido.');
             }
+            $comprobante = $pago['id'];
             $estadoPago = 'aprobado';
             $fechaPago = date('Y-m-d H:i:s');
-            $comprobante = $pago['referencia'];
         }
         // Si es efectivo: el pedido SI pasa a cocina, pero el pago queda 'pendiente'
         // hasta que el domiciliario liquide el efectivo en el cierre de caja.
@@ -232,12 +188,8 @@ class PedidoService {
                 $ingredienteModelo->descontarPorReceta($lineasDescuento, $idPedido);
             }
 
-            $stmtPuntos = $this->consulta(
-                'UPDATE CLIENTE SET puntos_fidelidad = puntos_fidelidad + ?, total_gastado = total_gastado + ? WHERE id_cliente = ?',
-                [$puntos, $total, $idCliente]
-            );
-            $stmtPuntos->close();
-
+            // Los puntos y el total gastado se acreditan al ENTREGAR el pedido
+            // (confirmarEntrega), no aqui: un pedido que no llega no suma nada.
             $this->conn->commit();
         } catch (Exception $e) {
             $this->conn->rollback();
@@ -245,6 +197,102 @@ class PedidoService {
         }
 
         return $this->pedidoModelo->buscar($idPedido, 'client', $idCliente);
+    }
+
+    /**
+     * Recalcula en el servidor items, precios, descuento y total (nunca confia
+     * en lo que manda el cliente). Lo usan crear() y cotizar().
+     * @return array{items: array, subtotal: float, envio: float, descuento: float, total: float}
+     */
+    private function calcular($cliente, $payload, $configuracion) {
+        $items = $payload['items'] ?? [];
+        if (empty($items)) {
+            throw new InvalidArgumentException('El pedido no tiene ítems.');
+        }
+
+        // ---- Recalcula todo en el servidor; nunca confia en precios/totales del cliente ----
+        // El PVP de cada insumo no se guarda manualmente: se deriva del costo unitario
+        // (Inventario Express) + el margen de ganancia que el admin configura en Ajustes,
+        // igual que lo previsualiza el Creador Interactivo del lado del cliente.
+        $margen = $configuracion->margenGanancia();
+        $itemsResueltos = [];
+        $subtotal = 0.0;
+
+        foreach ($items as $item) {
+            $cantidad = max(1, (int) ($item['quantity'] ?? 1));
+
+            if (empty($item['productId']) && !empty($item['stack'])) {
+                // "Creador interactivo": hamburguesa armada capa por capa, sin producto base.
+                $pila = $this->resolverIngredientes($item['stack'], $margen);
+                if (empty($pila)) {
+                    throw new InvalidArgumentException('La hamburguesa personalizada no tiene ingredientes válidos.');
+                }
+                $producto = $this->productoPersonalizadoOculto();
+                $precioUnitario = array_sum(array_map(function ($e) { return (float) $e['precio_extra']; }, $pila));
+                $subtotal += $precioUnitario * $cantidad;
+
+                $itemsResueltos[] = [
+                    'producto' => $producto,
+                    'cantidad' => $cantidad,
+                    'precioUnitario' => $precioUnitario,
+                    'extras' => $pila,
+                    'removidos' => [],
+                ];
+                continue;
+            }
+
+            $stmtProd = $this->consulta("SELECT * FROM PRODUCTO WHERE id_producto = ? AND estado = 'activo' LIMIT 1", [$item['productId'] ?? '']);
+            $producto = $stmtProd->get_result()->fetch_assoc();
+            $stmtProd->close();
+            if (!$producto) {
+                throw new InvalidArgumentException('Uno de los productos del carrito ya no está disponible.');
+            }
+
+            $extras = $this->resolverIngredientes($item['extras'] ?? [], $margen);
+            $removidos = $this->resolverIngredientes($item['removed'] ?? [], $margen);
+
+            $costoExtras = array_sum(array_map(function ($e) { return (float) $e['precio_extra']; }, $extras));
+            $precioUnitario = (float) $producto['precio'] + $costoExtras;
+            $subtotal += $precioUnitario * $cantidad;
+
+            $itemsResueltos[] = [
+                'producto' => $producto,
+                'cantidad' => $cantidad,
+                'precioUnitario' => $precioUnitario,
+                'extras' => $extras,
+                'removidos' => $removidos,
+            ];
+        }
+
+        $envio = (float) $configuracion->tarifaDomicilio();
+        $descuento = $this->descuentoCumpleanos($cliente, $subtotal);
+        $total = round($subtotal - $descuento + $envio, 2);
+
+        return [
+            'items' => $itemsResueltos,
+            'subtotal' => $subtotal,
+            'envio' => $envio,
+            'descuento' => $descuento,
+            'total' => $total,
+        ];
+    }
+
+    /**
+     * Total que el servidor cobraria por este carrito (para abrir la pasarela de
+     * pago con el monto correcto, y para verificar despues que lo pagado coincide).
+     */
+    public function cotizar($idCliente, $payload) {
+        $configuracion = new Configuracion($this->conn);
+        if (!$configuracion->tiendaAbiertaAhora()) {
+            throw new Exception('La tienda está cerrada o pausada en este momento. No se pueden procesar pagos.');
+        }
+        $stmt = $this->consulta('SELECT * FROM CLIENTE WHERE id_cliente = ? LIMIT 1', [$idCliente]);
+        $cliente = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$cliente) {
+            throw new InvalidArgumentException('Cliente no encontrado.');
+        }
+        return $this->calcular($cliente, $payload, $configuracion)['total'];
     }
 
     /**
@@ -329,24 +377,29 @@ class PedidoService {
         return $cumple === $hoy ? round($subtotal * 0.15, 2) : 0.0;
     }
 
-    /** Pasarela simulada (deterministica, sin aleatoriedad) para pagos digitales. */
-    private function cobrarPagoSimulado($monto) {
-        return [
-            'aprobado' => true,
-            'referencia' => 'SIM-' . strtoupper(bin2hex(random_bytes(6))),
-        ];
-    }
-
     // ---------------------------------------------------------------
     // Transiciones de estado
     // ---------------------------------------------------------------
 
-    public function marcarPreparando($idPedido) {
+    public function marcarPreparando($idPedido, $idAyudante = null) {
         $this->transicion($idPedido, ['pendiente'], 'en_preparacion');
+        $this->registrarAyudante($idPedido, $idAyudante);
     }
 
-    public function marcarListo($idPedido) {
+    public function marcarListo($idPedido, $idAyudante = null) {
         $this->transicion($idPedido, ['pendiente', 'en_preparacion'], 'listo');
+        $stmt = $this->consulta('UPDATE PEDIDO SET fecha_listo = NOW() WHERE id_pedido = ?', [$idPedido]);
+        $stmt->close();
+        $this->registrarAyudante($idPedido, $idAyudante);
+    }
+
+    /** Guarda quien de cocina preparo el pedido (el primero que lo toca; no se pisa). */
+    private function registrarAyudante($idPedido, $idAyudante) {
+        if (!$idAyudante) {
+            return;
+        }
+        $stmt = $this->consulta('UPDATE PEDIDO SET id_ayudante = ? WHERE id_pedido = ? AND id_ayudante IS NULL', [$idAyudante, $idPedido]);
+        $stmt->close();
     }
 
     /** El domiciliario toma un pedido 'listo': queda asignado a el, sin iniciar la ruta. */
@@ -363,6 +416,39 @@ class PedidoService {
             }
 
             $stmtUpd = $this->consulta("UPDATE PEDIDO SET id_domiciliario = ? WHERE id_pedido = ?", [$idDomiciliario, $idPedido]);
+            $stmtUpd->close();
+
+            $this->conn->commit();
+        } catch (Exception $e) {
+            $this->conn->rollback();
+            throw $e;
+        }
+    }
+
+    /**
+     * Suelta un pedido para que otro domiciliario pueda tomarlo. El domiciliario
+     * solo suelta los suyos que aun no salieron (estado 'listo'); el admin puede
+     * soltar cualquiera, incluso uno 'en_camino' (domiciliario desconectado).
+     */
+    public function liberarPedido($idPedido, $rol, $idActor) {
+        $this->conn->begin_transaction();
+        try {
+            $stmt = $this->consulta('SELECT estado, id_domiciliario FROM PEDIDO WHERE id_pedido = ? FOR UPDATE', [$idPedido]);
+            $fila = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            if (!$fila || $fila['id_domiciliario'] === null) {
+                throw new Exception('Este pedido no tiene domiciliario asignado.');
+            }
+            if ($rol === 'delivery') {
+                if ($fila['id_domiciliario'] !== $idActor || $fila['estado'] !== 'listo') {
+                    throw new Exception('Solo puedes soltar un pedido tuyo que aún no has iniciado.');
+                }
+            } elseif (!in_array($fila['estado'], ['listo', 'en_camino'], true)) {
+                throw new Exception('Este pedido ya no se puede reasignar.');
+            }
+
+            $stmtUpd = $this->consulta("UPDATE PEDIDO SET estado = 'listo', id_domiciliario = NULL WHERE id_pedido = ?", [$idPedido]);
             $stmtUpd->close();
 
             $this->conn->commit();
@@ -396,7 +482,7 @@ class PedidoService {
 
     /** Entrega solo con PIN de 4 digitos verificado en el servidor. */
     public function confirmarEntrega($idPedido, $idDomiciliario, $pin) {
-        $stmt = $this->consulta('SELECT pin_entrega, estado, id_domiciliario, id_cliente FROM PEDIDO WHERE id_pedido = ?', [$idPedido]);
+        $stmt = $this->consulta('SELECT pin_entrega, estado, id_domiciliario, id_cliente, puntos_ganados, total FROM PEDIDO WHERE id_pedido = ?', [$idPedido]);
         $fila = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
@@ -407,8 +493,31 @@ class PedidoService {
             throw new Exception('PIN incorrecto.');
         }
 
-        $stmtUpd = $this->consulta("UPDATE PEDIDO SET estado = 'entregado' WHERE id_pedido = ?", [$idPedido]);
-        $stmtUpd->close();
+        $this->conn->begin_transaction();
+        try {
+            // Al entregar, el efectivo ya fue cobrado en la puerta: el pago pasa a
+            // 'aprobado' (en digital ya lo estaba, por eso solo se toca si seguia pendiente).
+            $stmtUpd = $this->consulta(
+                "UPDATE PEDIDO SET estado = 'entregado',
+                        estado_pago = 'aprobado',
+                        fecha_pago = COALESCE(fecha_pago, NOW())
+                 WHERE id_pedido = ?",
+                [$idPedido]
+            );
+            $stmtUpd->close();
+
+            // Los puntos de fidelidad y el total gastado se acreditan solo al entregar.
+            $stmtPuntos = $this->consulta(
+                'UPDATE CLIENTE SET puntos_fidelidad = puntos_fidelidad + ?, total_gastado = total_gastado + ? WHERE id_cliente = ?',
+                [(int) $fila['puntos_ganados'], (float) $fila['total'], $fila['id_cliente']]
+            );
+            $stmtPuntos->close();
+
+            $this->conn->commit();
+        } catch (Exception $e) {
+            $this->conn->rollback();
+            throw $e;
+        }
 
         // Notificacion real del sistema operativo (Web Push), no un aviso
         // dentro de la app: si falla (VAPID sin configurar, sin conexion,

@@ -49,7 +49,7 @@ export const RoutePolyline = ({ origin, destination, outerColor, innerColor, onR
         }
       })
       .catch(err => console.error("Error fetching route:", err));
-  }, [origin, destination]);
+  }, [origin[0], origin[1], destination[0], destination[1]]);
 
   if (!positions.length) return null;
 
@@ -132,7 +132,12 @@ interface CashClosingReport {
   totalOrdenes: number;
   activeOrdersCount: number;
   desglose: { efectivo: number; digital: number };
-  insumosConsumidos: Array<{ name: string; used: number; unit?: string }>;
+  insumosConsumidos: Array<{ name: string; used: number; unit?: string; cost?: number }>;
+  costoInsumos?: number;
+  costoDomicilios?: number;
+  ventasProducto?: number;
+  gananciaBruta?: number;
+  margen?: number;
   driverLiquidations: Array<{ driverName: string; ordersCount: number; cashCollected: number; baseCash: number; totalDue: number }>;
 }
 
@@ -152,7 +157,12 @@ interface CierreData {
   totalOrdenes: number;
   activeOrdersCount: number;
   desglose: { efectivo: number; digital: number };
-  insumosConsumidos: Array<{ name: string; used: number }>;
+  insumosConsumidos: Array<{ name: string; used: number; unit?: string; cost?: number }>;
+  costoInsumos: number;
+  costoDomicilios: number;
+  ventasProducto: number;
+  gananciaBruta: number;
+  margen: number;
   liquidaciones: Array<{ driverName: string; ordersCount: number; cashCollected: number; base: number; totalDue: number }>;
 }
 
@@ -470,6 +480,8 @@ export default function AdminDashboard() {
   const [catalogSearch, setCatalogSearch] = useState('');
   const [inventorySearch, setInventorySearch] = useState('');
   const [staffSearch, setStaffSearch] = useState('');
+  const [staffRoleFilter, setStaffRoleFilter] = useState('all');
+  const [staffStatusFilter, setStaffStatusFilter] = useState('all');
   const [staffCurrentPage, setStaffCurrentPage] = useState(1);
   const staffItemsPerPage = 10;
   const [customerSearch, setCustomerSearch] = useState('');
@@ -526,7 +538,11 @@ export default function AdminDashboard() {
     return false;
   });
   const filteredInventory = inventory.filter(i => i.name.toLowerCase().includes(inventorySearch.toLowerCase()));
-  const filteredStaff = staff.filter(s => s.name.toLowerCase().includes(staffSearch.toLowerCase()) || s.email.toLowerCase().includes(staffSearch.toLowerCase()));
+  const filteredStaff = staff.filter(s =>
+    (s.name.toLowerCase().includes(staffSearch.toLowerCase()) || s.email.toLowerCase().includes(staffSearch.toLowerCase())) &&
+    (staffRoleFilter === 'all' || s.role === staffRoleFilter) &&
+    (staffStatusFilter === 'all' || (staffStatusFilter === 'active' ? s.active : !s.active))
+  );
   const staffTotalPages = Math.max(1, Math.ceil(filteredStaff.length / staffItemsPerPage));
   const paginatedStaff = filteredStaff.slice((staffCurrentPage - 1) * staffItemsPerPage, staffCurrentPage * staffItemsPerPage);
   const filteredInventoryLogs = inventoryLogs ? inventoryLogs.filter(log => log.itemName.toLowerCase().includes(inventoryHistorySearch.toLowerCase()) || log.reason.toLowerCase().includes(inventoryHistorySearch.toLowerCase())) : [];
@@ -569,7 +585,12 @@ export default function AdminDashboard() {
         totalOrdenes: report.totalOrdenes,
         activeOrdersCount: report.activeOrdersCount,
         desglose: report.desglose,
-        insumosConsumidos: report.insumosConsumidos.map((i) => ({ name: i.name, used: i.used })),
+        insumosConsumidos: report.insumosConsumidos.map((i) => ({ name: i.name, used: i.used, unit: i.unit, cost: i.cost })),
+        costoInsumos: report.costoInsumos ?? 0,
+        costoDomicilios: report.costoDomicilios ?? 0,
+        ventasProducto: report.ventasProducto ?? report.totalVentas,
+        gananciaBruta: report.gananciaBruta ?? report.totalVentas,
+        margen: report.margen ?? 0,
         liquidaciones: report.driverLiquidations.map((l) => ({
           driverName: l.driverName,
           ordersCount: l.ordersCount,
@@ -653,7 +674,7 @@ export default function AdminDashboard() {
   const prevAdminOrdersCount = useRef<number | null>(null);
 
   useEffect(() => {
-    // Espera al primer setOrders real del polling (ver FirebaseSync): antes
+    // Espera al primer setOrders real del polling (ver SyncDatos): antes
     // de eso `orders` está vacío por el estado inicial del store, y compararlo
     // contra el primer fetch real disparaba la alerta en cada login.
     if (!ordersSynced) return;
@@ -1105,6 +1126,10 @@ export default function AdminDashboard() {
                 staffCurrentPage={staffCurrentPage}
                 setStaffCurrentPage={setStaffCurrentPage}
                 staffSearch={staffSearch}
+                staffRoleFilter={staffRoleFilter}
+                setStaffRoleFilter={setStaffRoleFilter}
+                staffStatusFilter={staffStatusFilter}
+                setStaffStatusFilter={setStaffStatusFilter}
                 setStaffSearch={setStaffSearch}
                 addStaff={addStaff}
                 updateStaff={updateStaff}
@@ -1196,6 +1221,27 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {cierreData && (
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div className="rounded-[20px] p-5 border border-amber-100 dark:border-amber-900/30 bg-amber-50/60 dark:bg-amber-950/20">
+                      <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mb-1 uppercase tracking-wider">Costo domicilios</p>
+                      <p className="font-black text-xl text-gray-900 dark:text-white">{formatCOP(cierreData.costoDomicilios)}</p>
+                    </div>
+                    <div className="rounded-[20px] p-5 border border-red-100 dark:border-red-900/30 bg-red-50/60 dark:bg-red-950/20">
+                      <p className="text-xs font-bold text-red-600 dark:text-red-400 mb-1 uppercase tracking-wider">Insumos gastados</p>
+                      <p className="font-black text-xl text-gray-900 dark:text-white">{formatCOP(cierreData.costoInsumos)}</p>
+                    </div>
+                    <div className="rounded-[20px] p-5 border border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/60 dark:bg-emerald-950/20">
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1 uppercase tracking-wider">Ganancia bruta</p>
+                      <p className="font-black text-xl text-gray-900 dark:text-white">{formatCOP(cierreData.gananciaBruta)}</p>
+                    </div>
+                    <div className="rounded-[20px] p-5 border border-blue-100 dark:border-blue-900/30 bg-blue-50/60 dark:bg-blue-950/20">
+                      <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mb-1 uppercase tracking-wider">Margen</p>
+                      <p className="font-black text-xl text-gray-900 dark:text-white">{cierreData.margen}%</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mb-8 bg-gray-50 dark:bg-stone-900 rounded-[24px] p-6 border border-gray-100 dark:border-stone-800">
                   <h3 className="font-bold text-sm text-gray-900 dark:text-white mb-4 uppercase tracking-wider">{salesFilter.includes('mes') ? 'Estadísticas de Ventas (Mes)' : 'Estadísticas de Ventas (Semana)'}</h3>
                   <div className="h-48">
@@ -1235,8 +1281,9 @@ export default function AdminDashboard() {
                             <div key={idx} className="flex items-center justify-between gap-3 bg-white dark:bg-[#151515] rounded-xl px-4 py-3 border border-gray-100 dark:border-stone-800">
                               <span className="text-sm font-medium text-gray-700 dark:text-stone-300 truncate">{insumo.name}</span>
                               <span className="shrink-0 text-xs font-black text-brand-orange bg-orange-50 dark:bg-orange-950/30 px-2.5 py-1 rounded-full">
-                                {insumo.used} unid.
+                                {insumo.used} {insumo.unit || 'unid.'}
                               </span>
+                              {!!insumo.cost && <span className="shrink-0 text-xs font-bold text-gray-500">{formatCOP(insumo.cost)}</span>}
                             </div>
                           ))}
                         </div>
@@ -1374,84 +1421,18 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              {/* Document Paper Body */}
-              <div className="p-4 sm:p-8 overflow-y-auto flex-1 bg-gray-100/60 dark:bg-[#0f0f12]">
-                <div className="max-w-2xl mx-auto bg-white dark:bg-[#1f1f23] rounded-2xl shadow-sm border border-gray-200/80 dark:border-stone-800 p-6 sm:p-8 text-gray-900 dark:text-stone-100 space-y-6">
-                  {/* Brand Header */}
-                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-brand-orange to-orange-600 text-white flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                    <div>
-                      <h1 className="text-lg sm:text-xl font-black tracking-tight">HAMBURGUER COPIWAY</h1>
-                      <p className="text-xs text-orange-100 font-medium">REPORTE OFICIAL DE CIERRE DE CAJA — DARK KITCHEN</p>
-                    </div>
-                    <div className="text-xs text-right sm:text-right font-medium text-orange-100">
-                      {cierreData.date}
-                    </div>
-                  </div>
-
-                  {cierreData.activeOrdersCount > 0 && (
-                    <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-semibold flex items-center gap-2">
-                      <TriangleAlert className="w-4 h-4 shrink-0" />
-                      <span>Nota: Cierre ejecutado con {cierreData.activeOrdersCount} órdenes activas.</span>
-                    </div>
-                  )}
-
-                  {/* Summary Grid */}
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-stone-400 mb-2.5">
-                      Resumen General de Ingresos
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-4 rounded-xl bg-gray-50 dark:bg-stone-900 border border-gray-100 dark:border-stone-800">
-                        <span className="text-xs text-gray-500 dark:text-stone-400 font-medium block">Total Ventas</span>
-                        <span className="text-lg sm:text-xl font-black text-brand-orange block mt-1">
-                          {formatCOP(cierreData.totalVentas)}
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl bg-gray-50 dark:bg-stone-900 border border-gray-100 dark:border-stone-800">
-                        <span className="text-xs text-gray-500 dark:text-stone-400 font-medium block">Total Órdenes</span>
-                        <span className="text-lg sm:text-xl font-black text-gray-900 dark:text-white block mt-1">
-                          {cierreData.totalOrdenes} pedidos
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl bg-gray-50 dark:bg-stone-900 border border-gray-100 dark:border-stone-800">
-                        <span className="text-xs text-gray-500 dark:text-stone-400 font-medium block">Recaudo Efectivo</span>
-                        <span className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 block mt-1">
-                          {formatCOP(cierreData.desglose?.efectivo || 0)}
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl bg-gray-50 dark:bg-stone-900 border border-gray-100 dark:border-stone-800">
-                        <span className="text-xs text-gray-500 dark:text-stone-400 font-medium block">Digital / Transferencias</span>
-                        <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400 block mt-1">
-                          {formatCOP(cierreData.desglose?.digital || 0)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Insumos */}
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-stone-400 mb-2.5">
-                      Consumo de Insumos (Escandallo)
-                    </h4>
-                    {cierreData.insumosConsumidos && cierreData.insumosConsumidos.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        {cierreData.insumosConsumidos.map((ins, i: number) => (
-                          <div key={i} className="flex items-center justify-between gap-2 bg-gray-50 dark:bg-stone-900 rounded-lg px-3 py-2 border border-gray-100 dark:border-stone-800 text-xs">
-                            <span className="text-gray-600 dark:text-stone-300 truncate">{ins.name}</span>
-                            <span className="shrink-0 font-bold text-gray-900 dark:text-white">{ins.used} u</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-500 italic">Sin insumos consumidos.</p>
-                    )}
-                  </div>
-
-                  <div className="pt-4 border-t border-gray-100 dark:border-stone-800 text-[11px] text-gray-400 dark:text-stone-500 flex justify-between items-center">
-                    <span>Sistema de Automatización Copiway</span>
-                    <span>Documento Válido de Turno</span>
-                  </div>
-                </div>
+              {/* El PDF real: lo que se ve aqui es exactamente lo que se descarga */}
+              <div className="flex-1 min-h-[60vh] bg-white overflow-hidden relative">
+                {pdfPreviewUrl ? (
+                  <iframe
+                    title="Vista previa del reporte de cierre"
+                    src={`${pdfPreviewUrl}#toolbar=0&navpanes=0&scrollbar=1&zoom=page-width`}
+                    className="absolute border-0 max-w-none"
+                    style={{ top: -10, left: -10, width: 'calc(100% + 10px)', height: 'calc(100% + 20px)' }}
+                  />
+                ) : (
+                  <div className="h-full min-h-[60vh] flex items-center justify-center text-sm text-gray-500">Generando vista previa...</div>
+                )}
               </div>
 
               {/* Footer Actions */}
@@ -1597,7 +1578,7 @@ export default function AdminDashboard() {
                               const linePrice = (item.finalPrice ?? item.price ?? 0) * qty;
                               return (
                                 <div key={item.id || i} className="flex gap-3 items-start">
-                                  <div className="w-14 h-14 rounded-2xl overflow-hidden bg-gray-100 dark:bg-stone-800 shrink-0 ring-1 ring-black/5">
+                                  <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-gray-100 dark:bg-stone-800 shrink-0 ring-1 ring-black/5">
                                     {img ? (
                                       <img src={img} alt={name} className="w-full h-full object-cover" />
                                     ) : item.extras && item.extras.length > 0 ? (
@@ -1605,10 +1586,11 @@ export default function AdminDashboard() {
                                     ) : (
                                       <div className="w-full h-full flex items-center justify-center text-gray-400"><ShoppingBag className="w-5 h-5" /></div>
                                     )}
+                                    <span className="absolute bottom-0.5 right-0.5 min-w-[20px] h-5 px-1 rounded-full bg-brand-orange text-white text-[11px] font-black flex items-center justify-center shadow ring-2 ring-white dark:ring-[#151515]">{qty}x</span>
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex justify-between gap-2">
-                                      <p className="text-sm font-bold text-gray-900 dark:text-white"><span className="text-brand-orange">{qty}x</span> {name}</p>
+                                      <p className="text-sm font-bold text-gray-900 dark:text-white">{name}</p>
                                       {linePrice > 0 && <p className="text-sm font-bold text-gray-700 dark:text-stone-300 shrink-0">{formatCOP(linePrice)}</p>}
                                     </div>
                                     {item.extras && item.extras.length > 0 && (

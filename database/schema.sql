@@ -278,12 +278,31 @@ CREATE TABLE PEDIDO (
     puntos_ganados       INT          NOT NULL DEFAULT 0,
     total                DECIMAL(10,2) NOT NULL DEFAULT 0,
     creado_en            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_listo          DATETIME NULL,           -- cuando cocina lo marco 'listo' (tiempo de preparacion)
     FOREIGN KEY (id_cliente) REFERENCES CLIENTE(id_cliente),
     FOREIGN KEY (id_domiciliario) REFERENCES DOMICILIARIO(id_domiciliario),
     FOREIGN KEY (id_ayudante) REFERENCES AYUDANTE_COCINA(id_ayudante),
     FOREIGN KEY (id_reporte) REFERENCES REPORTE_CAJA(id_reporte),
     INDEX idx_pedido_estado (estado),
     INDEX idx_pedido_fecha (fecha_hora)
+);
+
+-- Pasarela de pagos de PRUEBA (simula la mecanica de Wompi: referencia + firma del servidor,
+-- transaccion PENDING -> APPROVED/DECLINED, y verificacion antes de crear el pedido).
+CREATE TABLE IF NOT EXISTS PAGO_TRANSACCION (
+    id              VARCHAR(40)  NOT NULL PRIMARY KEY,      -- 'sbx-...' (como el id de transaccion de Wompi)
+    referencia      VARCHAR(80)  NOT NULL,                  -- emitida por el servidor en /payments/prepare
+    id_cliente      INT UNSIGNED NOT NULL,
+    monto_centavos  BIGINT       NOT NULL,
+    moneda          CHAR(3)      NOT NULL DEFAULT 'COP',
+    metodo          ENUM('nequi','daviplata','bancolombia') NOT NULL,
+    telefono        VARCHAR(20)  NULL,
+    estado          ENUM('PENDING','APPROVED','DECLINED','ERROR') NOT NULL DEFAULT 'PENDING',
+    estado_final    ENUM('APPROVED','DECLINED','ERROR') NOT NULL, -- a lo que resuelve tras la "aprobacion en el celular"
+    creado_en       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resuelto_en     DATETIME     NULL,
+    UNIQUE KEY uq_pago_referencia (referencia),
+    FOREIGN KEY (id_cliente) REFERENCES CLIENTE(id_cliente)
 );
 
 CREATE TABLE DETALLE_PEDIDO (

@@ -140,13 +140,20 @@ class Configuracion {
             return false;
         }
 
-        $ahora = date('H:i');
-        $abre = $config['openTime'];
-        $cierra = $config['closeTime'];
+        // Se compara en minutos (no como texto) y con la zona horaria de la app
+        // (APP_TIMEZONE, America/Bogota por defecto), no la del servidor.
+        $aMinutos = function ($hhmm) {
+            [$h, $m] = array_map('intval', explode(':', substr((string) $hhmm, 0, 5)) + [0, 0]);
+            return $h * 60 + $m;
+        };
+        $ahora = (int) date('G') * 60 + (int) date('i');
+        $abre = $aMinutos($config['openTime']);
+        $cierra = $aMinutos($config['closeTime']);
 
         if ($abre <= $cierra) {
             return $ahora >= $abre && $ahora <= $cierra;
         }
+        // Horario que cruza la medianoche (ej. 18:00 -> 02:00).
         return $ahora >= $abre || $ahora <= $cierra;
     }
 

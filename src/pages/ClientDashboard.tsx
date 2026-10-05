@@ -16,6 +16,7 @@ import { CustomBurgerThumb, IngredientThumb } from './client/ingredientArt';
 import { CustomDatePicker } from '../components/CustomDatePicker';
 import { useStore, Product, ProductComponent, Order, NamedRef } from '../store/almacenAplicacion';
 import { api, ApiError, irA } from '../servicios/api';
+import { crearTransaccion, esperarResultado } from '../lib/pasarela';
 import { activarNotificacionesPush, pushDisponible, sincronizarSuscripcionPush } from '../lib/pushNotifications';
 import { ToastNotification, ToastData } from '../components/ToastNotification';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -166,7 +167,7 @@ export default function ClientDashboard() {
   const [catalogCategory, setCatalogCategory] = useState('Todas');
 
   // Datos Simulados & Sincronización en Tiempo Real
-  const { products, ingredients, inventory, orders, addOrder, updateOrderStatus, storeConfig, updateStoreConfig, updateOrder, clients, updateClient, changeClientPassword } = useStore();
+  const { products, ingredients, inventory, orders, addOrder, prepareOnlinePayment, updateOrderStatus, storeConfig, updateStoreConfig, updateOrder, clients, updateClient, changeClientPassword } = useStore();
   const catalog = products.filter(p => p.active);
   
   const orderHistory = orders.filter(o => o.status === 'Entregado' || o.status === 'entregado');
@@ -393,6 +394,7 @@ export default function ClientDashboard() {
   const [paymentStatus, setPaymentStatus] = useState<'idle'|'processing'|'success'|'error'>('idle');
   const [simulationStep, setSimulationStep] = useState<string>('');
   const [gatewayStep, setGatewayStep] = useState<GatewayStep>('idle');
+  const [gatewayReference, setGatewayReference] = useState('');
 
   const showToast = (type: ToastData['type'] = 'cart', message: string, title?: string) => {
     setToastMessage({ type, message, title });
@@ -510,99 +512,116 @@ export default function ClientDashboard() {
     });
   };
 
-  const processPayment = () => {
+  const esperar = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const processPayment = async () => {
     setPaymentStatus('processing');
 
     if (paymentMethod === 'online') {
-      const bankName = digitalBank === 'nequi' ? 'Nequi' : digitalBank === 'daviplata' ? 'Daviplata' : 'Bancolombia';
-      setGatewayStep('connecting');
-      setSimulationStep('Conectando con ' + bankName + '...');
-      setTimeout(() => {
-        setGatewayStep('waiting');
-        setSimulationStep('Esperando aprobación en tu celular...');
-        setTimeout(() => {
-          setGatewayStep('verifying');
-          setSimulationStep('Verificando transacción...');
-          setTimeout(() => {
-            completePayment();
-          }, 1200);
-        }, 3200);
-      }, 1600);
+      await payWithGateway();
     } else {
-      setTimeout(() => {
-        completePayment();
-      }, 1000);
+      setTimeout(() => { void submitOrder(); }, 1000);
     }
   };
 
-  const completePayment = () => {
-    if (Math.random() > 0.2 || paymentMethod === 'cash') {
-      if (paymentMethod === 'online') setGatewayStep('approved');
-      setSimulationStep(paymentMethod === 'online' ? '¡Pago aprobado exitosamente!' : '¡Pedido confirmado!');
-      setTimeout(async () => {
-        // HU-04: Acumulación de puntos
-        const pointsEarned = Math.floor(cartTotal);
+  const failPayment = (message: string, title: string) => {
+    setPaymentStatus('error');
+    setSimulationStep(message);
+    setGatewayStep('idle');
+    showToast('danger', message, title);
+    setTimeout(() => { setPaymentStatus('idle'); setSimulationStep(''); }, 2500);
+  };
 
-        const deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
-        const newOrder = {
-          id: '#ORD-' + Math.floor(1000 + Math.random() * 9000),
-          client: userProfile.name,
-          date: new Date().toISOString(),
-          items: [...cart],
-          subtotal: cartSubtotal,
-          discount: birthdayDiscount,
-          shipping: FLAT_SHIPPING_RATE,
-          total: cartTotal,
-          pointsEarned,
-          status: 'Pendiente' as const, // Global Store status
-          paymentMethod: paymentMethod,
-          digitalBank: paymentMethod === 'online' ? digitalBank : null,
-          paymentStatus: paymentMethod === 'online' ? 'Pagado' : 'Pendiente Efectivo',
-          address: userProfile.address || 'Dirección Cliente Predeterminada',
-          clientPhone: userProfile.phone,
-          deliveryPin
-        };
+  /**
+   * Pago digital contra la pasarela de PRUEBA (misma mecanica que Wompi):
+   * el servidor emite referencia + firma, se crea la transaccion, se espera a que
+   * deje de estar PENDING y el pedido solo se crea si el servidor la verifica APPROVED.
+   */
+  const payWithGateway = async () => {
+    const bankName = digitalBank === 'nequi' ? 'Nequi' : digitalBank === 'daviplata' ? 'Daviplata' : 'Bancolombia';
+    setGatewayReference('');
+    setGatewayStep('connecting');
+    setSimulationStep('Conectando con ' + bankName + '...');
 
-        try {
-          await addOrder(newOrder as unknown as Order);
-        } catch (err) {
-          // El servidor rechazó el pedido (tienda cerrada, sin stock, pago no
-          // confirmado, etc.) — se muestra el motivo real en vez de fingir éxito.
-          const message = err instanceof ApiError ? err.message : 'No se pudo procesar tu pedido. Intenta de nuevo.';
-          setPaymentStatus('error');
-          setSimulationStep(message);
-          setGatewayStep('idle');
-          showToast('danger', message, 'Pedido no procesado');
-          setTimeout(() => setPaymentStatus('idle'), 2500);
-          return;
-        }
+    try {
+      const datos = await prepareOnlinePayment({ items: [...cart] as unknown as Order['items'], address: userProfile.address || '' });
+      setGatewayReference(datos.reference);
+      await esperar(900);
 
-        setPaymentStatus('success');
-        setUserProfile(prev => ({ ...prev, points: prev.points + pointsEarned }));
-        showToast('success', '¡Pedido confirmado! Tu orden ha sido enviada a cocina.', 'Copiway - Pedido Recibido');
+      const creada = await crearTransaccion(datos, digitalBank, paymentPhone);
+      setGatewayStep('waiting');
+      setSimulationStep('Esperando aprobación en tu celular...');
 
-        // Bloqueo y envío a cocina
-        setTimeout(() => {
-          setCart([]);
-          setIsCheckingOut(false);
-          setPaymentStatus('idle');
-          setSimulationStep('');
-          setGatewayStep('idle');
-          setActiveTab('activeOrders');
-        }, 2000);
-      }, 1000);
-    } else {
-      // Pago rechazado, se mantiene editable
-      setGatewayStep('declined');
-      setSimulationStep('El pago fue rechazado. Intenta de nuevo.');
-      setPaymentStatus('error');
-      showToast('danger', 'El pago fue rechazado por el banco. Intenta de nuevo.', 'Pago no procesado');
-      setTimeout(() => {
-        setPaymentStatus('idle');
-        setSimulationStep('');
-        setGatewayStep('idle');
-      }, 3000);
+      const tx = await esperarResultado(creada.id);
+      setGatewayStep('verifying');
+      setSimulationStep('Verificando transacción...');
+      await esperar(900);
+
+      if (tx.status !== 'APPROVED') {
+        setGatewayStep('declined');
+        setSimulationStep(tx.status === 'ERROR' ? 'Error al procesar el pago. Intenta de nuevo.' : 'El pago fue rechazado. Intenta de nuevo.');
+        setPaymentStatus('error');
+        showToast('danger', tx.status === 'ERROR' ? 'La pasarela reportó un error al procesar el pago.' : 'El pago fue rechazado por el banco. Intenta de nuevo.', 'Pago no procesado');
+        setTimeout(() => { setPaymentStatus('idle'); setSimulationStep(''); setGatewayStep('idle'); }, 3000);
+        return;
+      }
+
+      setGatewayStep('approved');
+      setSimulationStep('¡Pago aprobado exitosamente!');
+      await esperar(900);
+      await submitOrder(tx.id);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'No se pudo completar el pago. Intenta de nuevo.';
+      failPayment(message, 'Pago no procesado');
     }
+  };
+
+  /** Crea el pedido en el servidor (que re-verifica el pago digital) y limpia el checkout. */
+  const submitOrder = async (paymentTransactionId?: string) => {
+    const deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
+    const newOrder = {
+      id: '#ORD-' + Math.floor(1000 + Math.random() * 9000),
+      client: userProfile.name,
+      date: new Date().toISOString(),
+      items: [...cart],
+      subtotal: cartSubtotal,
+      discount: birthdayDiscount,
+      shipping: FLAT_SHIPPING_RATE,
+      total: cartTotal,
+      status: 'Pendiente' as const, // Global Store status
+      paymentMethod: paymentMethod,
+      digitalBank: paymentMethod === 'online' ? digitalBank : null,
+      paymentStatus: paymentMethod === 'online' ? 'Pagado' : 'Pendiente Efectivo',
+      paymentTransactionId,
+      address: userProfile.address || 'Dirección Cliente Predeterminada',
+      clientPhone: userProfile.phone,
+      deliveryPin
+    };
+
+    try {
+      await addOrder(newOrder as unknown as Order);
+    } catch (err) {
+      // El servidor rechazó el pedido (tienda cerrada, sin stock, pago no
+      // confirmado, etc.) — se muestra el motivo real en vez de fingir éxito.
+      const message = err instanceof ApiError ? err.message : 'No se pudo procesar tu pedido. Intenta de nuevo.';
+      failPayment(message, 'Pedido no procesado');
+      return;
+    }
+
+    if (paymentMethod === 'online') setGatewayStep('approved');
+    setPaymentStatus('success');
+    // Los puntos de fidelidad los acredita el servidor al ENTREGAR el pedido.
+    showToast('success', '¡Pedido confirmado! Tu orden ha sido enviada a cocina.', 'Copiway - Pedido Recibido');
+
+    // Bloqueo y envío a cocina
+    setTimeout(() => {
+      setCart([]);
+      setIsCheckingOut(false);
+      setPaymentStatus('idle');
+      setSimulationStep('');
+      setGatewayStep('idle');
+      setActiveTab('activeOrders');
+    }, 2000);
   };
 
   const formatOrderDate = (order: Order) => {
@@ -993,7 +1012,7 @@ export default function ClientDashboard() {
       <AnimatePresence>
         {(() => {
           // selectedOrderInfo es una copia tomada al momento del clic; el
-          // polling de FirebaseSync sigue refrescando `orders` cada 2.5s (p.ej.
+          // polling de SyncDatos sigue refrescando `orders` cada 2.5s (p.ej.
           // cuando un domiciliario acepta el pedido), pero esa copia congelada
           // nunca se enteraba, así que el modal mostraba "sin asignar" aunque ya
           // hubiera repartidor. Se resuelve siempre contra el pedido vivo.
@@ -1471,6 +1490,7 @@ export default function ClientDashboard() {
           bank={digitalBank}
           phone={paymentPhone}
           amount={cartTotal}
+          reference={gatewayReference}
         />
       )}
 

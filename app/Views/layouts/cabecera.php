@@ -16,7 +16,10 @@ header('Content-Type: text/html; charset=utf-8');
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CopiwayPRO</title>
-    <link rel="icon" type="image/svg+xml" href="<?php echo rutaBase(); ?>/favicon.svg">
+    <link rel="icon" href="<?php echo rutaBase(); ?>/favicon.ico?v=3" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo rutaBase(); ?>/favicon-32.png?v=3">
+    <link rel="icon" type="image/svg+xml" href="<?php echo rutaBase(); ?>/favicon.svg?v=3">
+    <link rel="apple-touch-icon" href="<?php echo rutaBase(); ?>/apple-touch-icon.png?v=3">
     <link rel="manifest" href="<?php echo rutaBase(); ?>/manifest.json">
     <meta name="theme-color" content="#f97316">
     <link rel="stylesheet" href="<?php echo rutaBase(); ?>/assets/main.css?v=<?php echo $verCss; ?>">

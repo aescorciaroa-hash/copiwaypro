@@ -16,6 +16,11 @@
     # vez de la imagen).
     RewriteRule ^uploads/(.*)$ public/uploads/$1 [L]
 
-    # 3) Todo lo demas (API y paginas) -> front controller unico
+    # 3) Archivos estaticos sueltos de public/ (favicon, manifest PWA, service
+    # worker) -> servir tal cual. Sin esta regla caian en la 4) y devolvian 404,
+    # y el navegador mostraba el icono generico de "hoja" en la pestana.
+    RewriteRule ^(favicon\.svg|favicon\.ico|favicon-32\.png|apple-touch-icon\.png|manifest\.json|sw\.js)$ public/$1 [L]
+
+    # 4) Todo lo demas (API y paginas) -> front controller unico
     RewriteRule ^ public/index.php [L]
 </IfModule>

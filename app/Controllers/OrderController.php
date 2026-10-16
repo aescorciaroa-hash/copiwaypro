@@ -7,7 +7,6 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../Core/helpers.php';
 require_once __DIR__ . '/../Core/Session.php';
 require_once __DIR__ . '/../Core/Auth.php';
-require_once __DIR__ . '/../Models/Pedido.php';
 require_once __DIR__ . '/../Services/PedidoService.php';
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';

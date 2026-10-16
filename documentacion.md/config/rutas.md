@@ -1,0 +1,60 @@
+# config/rutas.php
+
+## ¿Para qué sirve?
+Es la **lista de todas las direcciones de la API** y a qué controlador va cada una.
+La usa la función `despacharRuta()` de `app/Core/helpers.php`.
+
+## ¿Con qué se conecta?
+| Dirección | Archivo | Para qué |
+|---|---|---|
+| ← lo lee | `despacharRuta()` en `app/Core/helpers.php` | Busca qué ruta coincide con la petición. |
+| → apunta a | los archivos de `app/Controllers/` | Cada ruta dice qué controlador cargar y qué `$action` usar. |
+| ← la llama | `src/servicios/api.ts` (React) | Las funciones de React hacen `fetch` a estas mismas direcciones. |
+
+## Cómo se lee una ruta
+```php
+'PUT /api/products/{id}' => ['ProductController', 'update', ['admin']],
+```
+| Parte | Significado |
+|---|---|
+| `PUT` | Método HTTP (GET = leer, POST = crear, PUT = editar, PATCH = editar una parte, DELETE = borrar). |
+| `/api/products/{id}` | La dirección. `{id}` es un valor que cambia (ej: `/api/products/6`). |
+| `'ProductController'` | Archivo que se carga: `app/Controllers/ProductController.php`. |
+| `'update'` | El valor que tendrá `$action` dentro del controlador. |
+| `['admin']` | Roles que pueden usarla. `[]` = cualquiera, aunque no haya iniciado sesión. |
+
+Dentro del controlador, `{id}` llega como `$_GET['id']`.
+
+## La variable `$TODOS_LOS_ROLES`
+```php
+$TODOS_LOS_ROLES = ['admin', 'kitchen', 'delivery', 'client'];
+```
+Es solo un atajo para no repetir la lista de los 4 roles en varias rutas.
+
+## Los 4 roles
+| Rol | Quién es |
+|---|---|
+| `admin` | Administrador |
+| `kitchen` | Ayudante de cocina |
+| `delivery` | Domiciliario |
+| `client` | Cliente |
+
+## Grupos de rutas
+| Grupo | Controlador |
+|---|---|
+| `/api/auth/...` | AuthController (login, registro, recuperar contraseña) |
+| `/api/settings` | SettingController |
+| `/api/products` | ProductController |
+| `/api/uploads/product-image` | UploadController |
+| `/api/ingredients` | IngredientController |
+| `/api/inventory`, `/api/inventory-logs` | InventoryController |
+| `/api/clients` | ClientController |
+| `/api/staff` | StaffController |
+| `/api/orders` | OrderController |
+| `/api/payments` | PaymentController |
+| `/api/cash-closing`, `/api/dashboard` | CashClosingController, DashboardController |
+| `/api/sync` | SyncController |
+| `/api/push` | PushController |
+
+**El orden importa:** `GET /api/cash-closing/preview` va antes que `GET /api/cash-closing/{id}`.
+Si fuera al revés, la palabra `preview` se tomaría como si fuera un `{id}`.

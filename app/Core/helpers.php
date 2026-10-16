@@ -1,23 +1,21 @@
 <?php
-// Funciones de ayuda usadas en toda la app. Sin clases, sin namespaces.
+/**
+ * Funciones auxiliares usadas en toda la app.
+ */
 
-// Funciones puras "fila cruda -> JSON camelCase" usadas por los Models para dar
-// forma a la respuesta que espera el frontend. Sin clases, sin namespaces
-// (igual estilo que este archivo); se cargan aqui porque helpers.php es lo
-// primero que requieren todos los puntos de entrada (public/index.php, y
-// public/server-router.php que a su vez requiere index.php).
-require_once dirname(__DIR__) . '/Views/json/pedido.php';
-require_once dirname(__DIR__) . '/Views/json/ingrediente.php';
-require_once dirname(__DIR__) . '/Views/json/cliente.php';
-require_once dirname(__DIR__) . '/Views/json/producto.php';
-require_once dirname(__DIR__) . '/Views/json/personal.php';
+// Funciones que convierten filas de la base de datos al JSON del frontend.
+require_once __DIR__ . '/../Views/json/pedido.php';
+require_once __DIR__ . '/../Views/json/ingrediente.php';
+require_once __DIR__ . '/../Views/json/cliente.php';
+require_once __DIR__ . '/../Views/json/producto.php';
+require_once __DIR__ . '/../Views/json/personal.php';
 
 /**
- * Ruta base bajo la que corre la app (ej. '/copiwaypro'), para que las rutas
- * y el front de React funcionen igual en subcarpeta, servidor embebido o raiz.
- * APP_BASE_PATH en .env la sobreescribe si hace falta.
+ * Ruta base de la app (ej. '/copiwaypro'), para que funcione igual en subcarpeta,
+ * servidor embebido o raiz. APP_BASE_PATH en el .env la puede forzar.
  */
-function rutaBase() {
+function rutaBase()
+{
     static $base = null;
     if ($base !== null) {
         return $base;
@@ -28,10 +26,8 @@ function rutaBase() {
         return $base = rtrim($forzada, '/');
     }
 
-    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-    $directorioScript = str_replace('\\', '/', dirname($scriptName));
-    $calculada = preg_replace('#/public$#', '', $directorioScript);
-    $calculada = rtrim($calculada, '/');
+    $directorio = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+    $calculada = rtrim(preg_replace('#/public$#', '', $directorio), '/');
 
     if ($calculada === '' || $calculada === '.') {
         return $base = '';
@@ -39,8 +35,9 @@ function rutaBase() {
     return $base = $calculada;
 }
 
-/** Quita el prefijo de ruta base de un path (p.ej. REQUEST_URI). */
-function quitarRutaBase($path) {
+/** Quita la ruta base del inicio de un path. */
+function quitarRutaBase($path)
+{
     $base = rutaBase();
     if ($base !== '' && strpos($path, $base) === 0) {
         $path = substr($path, strlen($base));
@@ -48,21 +45,9 @@ function quitarRutaBase($path) {
     return $path === '' ? '/' : $path;
 }
 
-/** Carga Controllers/Models por nombre de clase, sin Composer. */
-function registrarAutoload() {
-    spl_autoload_register(function ($clase) {
-        foreach (['Controllers', 'Models', 'Services'] as $carpeta) {
-            $ruta = dirname(__DIR__) . "/$carpeta/$clase.php";
-            if (is_file($ruta)) {
-                require $ruta;
-                return;
-            }
-        }
-    });
-}
-
-/** Si algo revienta sin capturar, log real + mensaje generico (nunca detalles tecnicos). */
-function configurarManejadorErrores() {
+/** Si algo falla sin capturar: se guarda en el log y se responde un mensaje generico. */
+function configurarManejadorErrores()
+{
     set_exception_handler(function ($e) {
         error_log($e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
         $debug = env('APP_DEBUG', false);
@@ -74,26 +59,15 @@ function configurarManejadorErrores() {
     });
 }
 
-/** Cabeceras de seguridad + CORS de mismo origen (sin dominio fijo). */
-function configurarSeguridadHttp() {
+/** Cabeceras de seguridad y CORS de mismo origen. */
+function configurarSeguridadHttp()
+{
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: DENY');
     header('Referrer-Policy: strict-origin-when-cross-origin');
-    // default-src 'self' a secas bloqueaba: el <script> inline que
-    // app/Views/layouts/cabecera.php usa para inyectar window.__APP_BASE__/
-    // __DATOS__ (rompe TODA la navegacion: rutaBase() queda vacio y cada link
-    // pierde el prefijo de subcarpeta), los estilos inline que React/lucide-
-    // react aplican via el atributo style, la hoja de Google Fonts, las
-    // imagenes de producto servidas desde Unsplash, y los tiles del mapa
-    // (Leaflet + tiles gratis de OpenStreetMap, {s}.tile.openstreetmap.org --
-    // {s} es un subdominio variable de OSM, de ahi el comodin; no requieren
-    // API key, a diferencia de los tiles de CARTO que se usaban antes). curl
-    // nunca lo detecto porque no ejecuta JS ni aplica CSP -- solo aparece en
-    // un navegador real.
-    // connect-src: los paneles de admin/domiciliario hacen fetch() directo
-    // (sin pasar por el backend PHP) a OSRM (trazar la ruta en el mapa) y a
-    // Nominatim (geocodificar la direccion del pedido a lat/lng). Sin esto,
-    // default-src 'self' tambien bloquearia esas llamadas.
+    // Permite: el script inline del layout, estilos inline de React, Google Fonts,
+    // imagenes de Unsplash, mapas de OpenStreetMap, rutas (OSRM), geocodificacion
+    // (Nominatim) y el PDF del cierre de caja en un iframe blob:.
     header(
         "Content-Security-Policy: default-src 'self'; " .
         "script-src 'self' 'unsafe-inline'; " .
@@ -101,8 +75,6 @@ function configurarSeguridadHttp() {
         "font-src 'self' https://fonts.gstatic.com; " .
         "img-src 'self' data: https://images.unsplash.com https://*.tile.openstreetmap.org; " .
         "connect-src 'self' https://router.project-osrm.org https://nominatim.openstreetmap.org; " .
-        // La vista previa del PDF de cierre de caja se muestra en un <iframe>
-        // con una URL blob: generada en el navegador.
         "frame-src 'self' blob:; object-src 'self' blob:"
     );
 
@@ -120,77 +92,84 @@ function configurarSeguridadHttp() {
     }
 }
 
+/**
+ * Datos que envio el navegador: el query string + el cuerpo
+ * (JSON si el Content-Type es application/json, si no $_POST).
+ */
+function entrada()
+{
+    $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    $cuerpo = [];
+    if (!in_array($metodo, ['GET', 'HEAD'])) {
+        if (stripos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== false) {
+            $json = json_decode(file_get_contents('php://input') ?: '[]', true);
+            $cuerpo = is_array($json) ? $json : [];
+        } else {
+            $cuerpo = $_POST;
+        }
+    }
+    return array_merge($_GET, $cuerpo);
+}
 
 /**
- * El correo debe ser unico entre las 4 tablas de cuentas (ADMINISTRADOR,
- * AYUDANTE_COCINA, DOMICILIARIO, CLIENTE), no solo dentro de cada una: cada
- * tabla tiene su propio UNIQUE en correo, pero eso no impide que el mismo
- * correo se registre en dos tablas distintas (ambiguedad al hacer login).
- * $excluirId ignora la propia fila al actualizar (los IDs son UUID, unicos
- * entre tablas en la practica, asi que basta con excluir por id sin importar
- * en cual de las 4 tablas caiga).
+ * true si el correo ya existe en cualquiera de las 4 tablas de cuentas.
+ * $excluirId ignora la propia cuenta al editar.
  */
-function correoUsadoEnCualquierTabla($conn, $correo, $excluirId = null) {
+function correoUsadoEnCualquierTabla($correo, $excluirId = null)
+{
+    global $conn;
     $tablas = [
         'ADMINISTRADOR'   => 'id_admin',
         'AYUDANTE_COCINA' => 'id_ayudante',
         'DOMICILIARIO'    => 'id_domiciliario',
         'CLIENTE'         => 'id_cliente',
     ];
-    foreach ($tablas as $tabla => $columnaId) {
-        $sql = "SELECT $columnaId FROM $tabla WHERE correo = ?";
-        $parametros = [$correo];
+    foreach ($tablas as $tabla => $idCol) {
         if ($excluirId !== null) {
-            $sql .= " AND $columnaId != ?";
-            $parametros[] = $excluirId;
+            $stmt = $conn->prepare("SELECT {$idCol} FROM {$tabla} WHERE correo = ? AND {$idCol} != ?");
+            $stmt->bind_param("ss", $correo, $excluirId);
+        } else {
+            $stmt = $conn->prepare("SELECT {$idCol} FROM {$tabla} WHERE correo = ?");
+            $stmt->bind_param("s", $correo);
         }
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param(str_repeat('s', count($parametros)), ...$parametros);
         $stmt->execute();
-        $fila = $stmt->get_result()->fetch_assoc();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        if ($fila) {
+        if ($row) {
             return true;
         }
     }
     return false;
 }
 
-/** Guarda un aviso para mostrar en la siguiente pantalla (login, formularios, etc.). */
-function mensaje($tipo, $titulo, $texto) {
-    $_SESSION['_flash'] = ['tipo' => $tipo, 'titulo' => $titulo, 'texto' => $texto];
-}
-
-/** Toma el aviso guardado (si hay) y lo borra, para no repetirlo al recargar. */
-function tomarMensaje() {
-    if (!isset($_SESSION['_flash'])) {
-        return null;
+/**
+ * Tipos para bind_param segun cada valor: "i" (entero), "d" (decimal) o "s" (texto).
+ * Se usa en los UPDATE que se arman con los campos que lleguen.
+ */
+function tiposDe($valores)
+{
+    $tipos = "";
+    foreach ($valores as $v) {
+        if (is_int($v)) { $tipos .= "i"; }
+        elseif (is_float($v)) { $tipos .= "d"; }
+        else { $tipos .= "s"; }
     }
-    $flash = $_SESSION['_flash'];
-    unset($_SESSION['_flash']);
-    return $flash;
+    return $tipos;
 }
 
-/** Redirige (con la ruta base incluida) y termina la ejecucion. */
-function redirect($ruta) {
+/** Redirige (con la ruta base) y termina. */
+function redirect($ruta)
+{
     header('Location: ' . rutaBase() . $ruta);
     exit;
 }
 
-/** Token CSRF de la sesion actual; lo genera si todavia no existe. */
-function csrfToken() {
-    if (empty($_SESSION['_csrf'])) {
-        $_SESSION['_csrf'] = bin2hex(random_bytes(32));
-    }
-    return $_SESSION['_csrf'];
-}
-
 /**
- * Verifica el token CSRF de la peticion actual (header X-CSRF-Token para
- * llamadas a la API en JSON, o campo _csrf para formularios POST normales).
- * Si no coincide, responde con error y termina.
+ * Verifica el token CSRF (header X-CSRF-Token o campo _csrf).
+ * Si no coincide responde con error y termina.
  */
-function verificarCsrf($rutaVuelta = null) {
+function verificarCsrf($rutaVuelta = null)
+{
     $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
     if (in_array($metodo, ['GET', 'HEAD', 'OPTIONS'])) {
         return true;
@@ -201,7 +180,7 @@ function verificarCsrf($rutaVuelta = null) {
 
     if ($enviado === '' || $esperado === '' || !hash_equals($esperado, $enviado)) {
         if ($rutaVuelta !== null) {
-            mensaje('danger', 'Formulario invalido', 'Tu sesion expiro o la peticion no es valida. Intenta de nuevo.');
+            Session::flash('danger', 'Formulario invalido', 'Tu sesion expiro o la peticion no es valida. Intenta de nuevo.');
             redirect($rutaVuelta);
         }
         responderError('Token CSRF invalido o ausente.', 419);
@@ -209,16 +188,18 @@ function verificarCsrf($rutaVuelta = null) {
     return true;
 }
 
-/** Responde en JSON y termina la ejecucion. */
-function responderJson($datos, $codigo = 200) {
+/** Responde en JSON y termina. */
+function responderJson($datos, $codigo = 200)
+{
     http_response_code($codigo);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-/** Responde un error en JSON (con detalles de validacion opcionales) y termina. */
-function responderError($mensaje, $codigo = 400, $detalles = []) {
+/** Responde un error en JSON (con errores de validacion opcionales) y termina. */
+function responderError($mensaje, $codigo = 400, $detalles = [])
+{
     $cuerpo = ['error' => $mensaje];
     if (!empty($detalles)) {
         $cuerpo['errors'] = $detalles;
@@ -226,16 +207,14 @@ function responderError($mensaje, $codigo = 400, $detalles = []) {
     responderJson($cuerpo, $codigo);
 }
 
-/** Incluye una vista PHP de app/Views/paginas, con $datos disponibles como variables. */
-function mostrarVista($vista, $datos = []) {
-    // Cada pagina lleva horneado window.__APP_BASE__/__DATOS__ (sesion, CSRF)
-    // en el HTML mismo; si el navegador la cachea, esos valores quedan
-    // desactualizados (p.ej. rutaBase() vacia -> "Ingresar" navega a /login
-    // sin el prefijo de subcarpeta). Nunca cachear el documento HTML.
+/** Muestra una vista de app/Views/paginas con $datos como variables. */
+function mostrarVista($vista, $datos = [])
+{
+    // El HTML lleva la sesion y el token CSRF dentro, por eso nunca se cachea.
     header('Cache-Control: no-store, no-cache, must-revalidate');
     header('Pragma: no-cache');
     extract($datos);
-    $ruta = dirname(__DIR__) . '/Views/paginas/' . $vista . '.php';
+    $ruta = __DIR__ . '/../Views/paginas/' . $vista . '.php';
     if (!is_file($ruta)) {
         http_response_code(500);
         echo 'Vista no encontrada: ' . htmlspecialchars($vista);
@@ -245,22 +224,19 @@ function mostrarVista($vista, $datos = []) {
 }
 
 /**
- * Exige una sesion activa Y VIGENTE: vuelve a leer la cuenta en la base de
- * datos para que una cuenta desactivada (activo=0) pierda el acceso de
- * inmediato, no solo la proxima vez que inicie sesion. Devuelve el usuario.
+ * Exige una sesion activa y vigente (vuelve a leer la cuenta en la base de datos,
+ * asi una cuenta desactivada pierde el acceso de inmediato). Devuelve el usuario.
  */
-function requiereSesion($esApi = true) {
-    global $conn;
-
-    if (!isset($_SESSION['usuario_id'], $_SESSION['usuario_rol'])) {
+function requiereSesion($esApi = true)
+{
+    if (!Auth::check()) {
         if ($esApi) {
             responderError('No autenticado.', 401);
         }
         redirect('/login');
     }
 
-    $auth = new Autenticacion($conn);
-    $usuario = $auth->usuarioActual();
+    $usuario = Auth::usuarioActual();
     if ($usuario === null) {
         if ($esApi) {
             responderError('Sesion invalida o cuenta inactiva.', 401);
@@ -271,9 +247,10 @@ function requiereSesion($esApi = true) {
 }
 
 /** Exige uno de los roles dados (y sesion vigente). Devuelve el usuario. */
-function requiereRol($roles, $esApi = true) {
+function requiereRol($roles, $esApi = true)
+{
     $usuario = requiereSesion($esApi);
-    if (!in_array($_SESSION['usuario_rol'], $roles)) {
+    if (!in_array(Auth::rol(), $roles)) {
         if ($esApi) {
             responderError('No autorizado para este recurso.', 403);
         }
@@ -283,62 +260,69 @@ function requiereRol($roles, $esApi = true) {
 }
 
 /**
- * Recorre config/rutas.php, encuentra la ruta que coincide con metodo+path,
- * exige el rol si hace falta, e invoca [Controlador, accion](...parametros).
+ * Carga el archivo del controlador. La accion y los parametros de la ruta
+ * quedan en $_GET (ej. $_GET['action'], $_GET['id']).
  */
-function despacharRuta($metodo, $ruta) {
-    $tabla = require dirname(__DIR__, 2) . '/config/rutas.php';
-    $huboCoincidenciaDePath = false;
+function cargarControlador($controlador, $action, $parametros = [])
+{
+    $_GET['action'] = $action;
+    foreach ($parametros as $nombre => $valor) {
+        $_GET[$nombre] = $valor;
+    }
+    require __DIR__ . "/../Controllers/{$controlador}.php";
+}
+
+/**
+ * Busca en config/rutas.php la ruta que coincide con metodo + path,
+ * revisa CSRF y rol, y carga el controlador con su accion.
+ */
+function despacharRuta($metodo, $ruta)
+{
+    $tabla = require __DIR__ . '/../../config/rutas.php';
+    $coincidePath = false;
 
     foreach ($tabla as $clave => $destino) {
         list($metodoRuta, $patron) = explode(' ', $clave, 2);
-        $regex = preg_replace('#\{[a-zA-Z_]+\}#', '([^/]+)', $patron);
-        $regex = '#^' . $regex . '$#';
+        $regex = '#^' . preg_replace('#\{[a-zA-Z_]+\}#', '([^/]+)', $patron) . '$#';
 
-        if (!preg_match($regex, $ruta, $coincidencias)) {
+        if (!preg_match($regex, $ruta, $valores)) {
             continue;
         }
-        $huboCoincidenciaDePath = true;
+        $coincidePath = true;
 
         if ($metodoRuta !== $metodo) {
             continue;
         }
 
-        list($controlador, $accion, $roles) = $destino;
-        // CSRF: se aplica a TODAS las rutas de /api/* (verificarCsrf() ya es un
-        // no-op para GET/HEAD/OPTIONS), no solo a las que exigen rol, para
-        // cubrir tambien login/register/forgot-password (mutan estado sin
-        // sesion previa). El token llega al frontend desde la primera carga de
-        // cualquier pagina (PaginaController::render() siempre llama a
-        // csrfToken()), asi que ya esta disponible antes del primer POST.
+        list($controlador, $action, $roles) = $destino;
+        // CSRF en todas las rutas /api/* (en GET/HEAD/OPTIONS no hace nada).
         verificarCsrf();
         if (!empty($roles)) {
             requiereRol($roles);
         }
 
-        array_shift($coincidencias);
-        // Los parametros de ruta vienen tal cual el navegador los mando en la
-        // URL (p.ej. "%23ORD-4" para "#ORD-4"); se decodifican aqui, una sola
-        // vez, para que los controladores/modelos siempre reciban el valor real.
-        $coincidencias = array_map('urldecode', $coincidencias);
-        $instancia = new $controlador();
-        call_user_func_array([$instancia, $accion], $coincidencias);
+        // Nombre de cada {parametro} => su valor ya decodificado (ej. "%23ORD-4" -> "#ORD-4").
+        preg_match_all('#\{([a-zA-Z_]+)\}#', $patron, $nombres);
+        array_shift($valores);
+        $parametros = array_combine($nombres[1], array_map('urldecode', $valores));
+
+        cargarControlador($controlador, $action, $parametros);
         return;
     }
 
-    if ($huboCoincidenciaDePath) {
+    if ($coincidePath) {
         responderError('Metodo no permitido.', 405);
     }
     responderError('Ruta no encontrada.', 404);
 }
 
 /**
- * Recorre config/paginas.php, exige el rol si hace falta (modo pagina: si
- * no hay sesion o el rol no coincide, redirige a /login en vez de dar 401/403
- * en JSON), e invoca [Controlador, accion]().
+ * Busca la pagina en config/paginas.php, exige el rol si hace falta
+ * (sin sesion o con otro rol redirige a /login) y carga el controlador.
  */
-function despacharPagina($ruta) {
-    $tabla = require dirname(__DIR__, 2) . '/config/paginas.php';
+function despacharPagina($ruta)
+{
+    $tabla = require __DIR__ . '/../../config/paginas.php';
 
     if (!isset($tabla[$ruta])) {
         http_response_code(404);
@@ -346,12 +330,10 @@ function despacharPagina($ruta) {
         exit;
     }
 
-    list($controlador, $accion, $roles) = $tabla[$ruta];
+    list($controlador, $action, $roles) = $tabla[$ruta];
     if (!empty($roles)) {
         requiereRol($roles, false);
     }
 
-    $instancia = new $controlador();
-    $instancia->$accion();
+    cargarControlador($controlador, $action);
 }
-

@@ -1,8 +1,11 @@
 <?php
-// Shapes puros (sin SQL) de una fila INGREDIENTE -> JSON del frontend.
-// Dos formas: InventoryItem (/api/inventory) e Ingredient (/api/ingredients).
+/**
+ * Convierte una fila de INGREDIENTE al JSON del frontend.
+ * Dos formas: inventario (/api/inventory) y catalogo (/api/ingredients).
+ */
 
-function ingrediente_a_inventario($fila) {
+function ingrediente_a_inventario($fila)
+{
     return [
         'id' => (string) $fila['id_ingrediente'],
         'name' => $fila['nombre'],
@@ -18,7 +21,8 @@ function ingrediente_a_inventario($fila) {
     ];
 }
 
-function ingrediente_a_catalogo($fila) {
+function ingrediente_a_catalogo($fila)
+{
     $precio = (float) $fila['precio_extra'];
     if ($precio <= 0) {
         $precio = (float) $fila['costo_unitario'];

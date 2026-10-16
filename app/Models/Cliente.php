@@ -1,111 +1,117 @@
 <?php
-// Modelo de CLIENTE (+ CLIENTE_NOTIFICACION). Incluye ademas los metodos que
-// antes eran consultas SQL sueltas dentro de AuthController (duplicado de
-// correo/telefono, actualizacion de contrasena) para que el controlador nunca
-// toque SQL directamente.
+/**
+ * Modelo Cliente (CLIENTE y CLIENTE_NOTIFICACION).
+ */
+class Cliente
+{
+    private $conn;
 
-class Cliente {
-
-    public $conn;
-
-    public function __construct($conn) {
+    public function __construct()
+    {
+        global $conn;
         $this->conn = $conn;
     }
 
-    private function consulta($sql, $parametros = []) {
-        $stmt = $this->conn->prepare($sql);
-        if (!empty($parametros)) {
-            $tipos = '';
-            foreach ($parametros as $p) {
-                if (is_int($p)) {
-                    $tipos .= 'i';
-                } elseif (is_float($p)) {
-                    $tipos .= 'd';
-                } else {
-                    $tipos .= 's';
-                }
-            }
-            $stmt->bind_param($tipos, ...$parametros);
-        }
+    public function listar()
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM CLIENTE ORDER BY creado_en DESC");
         $stmt->execute();
-        return $stmt;
-    }
-
-    public function listar() {
-        $stmt = $this->consulta('SELECT * FROM CLIENTE ORDER BY creado_en DESC');
-        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-        return array_map([$this, 'comoJson'], $filas);
-    }
-
-    public function buscar($id) {
-        $stmt = $this->consulta('SELECT * FROM CLIENTE WHERE id_cliente = ? LIMIT 1', [$id]);
-        $fila = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        return $fila ? $this->comoJson($fila) : null;
-    }
-
-    /** Version cruda (sin formar el JSON), usada por Auth/register. */
-    public function buscarCrudo($id) {
-        $stmt = $this->consulta('SELECT * FROM CLIENTE WHERE id_cliente = ? LIMIT 1', [$id]);
-        $fila = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        return $fila ?: null;
-    }
-
-    public function buscarIdPorCorreo($correo) {
-        $stmt = $this->consulta('SELECT id_cliente FROM CLIENTE WHERE correo = ? LIMIT 1', [$correo]);
-        $fila = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        return $fila ? $fila['id_cliente'] : null;
-    }
-
-    /** Duplicado de correo o telefono (para el registro). */
-    public function correoOTelefonoExiste($correo, $telefono) {
-        $stmt = $this->consulta('SELECT COUNT(*) AS total FROM CLIENTE WHERE correo = ? OR telefono = ?', [$correo, $telefono]);
-        $fila = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        return (int) $fila['total'] > 0;
-    }
-
-    public function comoJson($fila) {
-        $stmtCount = $this->consulta('SELECT COUNT(*) AS total FROM PEDIDO WHERE id_cliente = ?', [$fila['id_cliente']]);
-        $ordersCount = (int) $stmtCount->get_result()->fetch_assoc()['total'];
-        $stmtCount->close();
-
-        $stmtUltimo = $this->consulta('SELECT MAX(fecha_hora) AS ultimo FROM PEDIDO WHERE id_cliente = ?', [$fila['id_cliente']]);
-        $lastOrderDate = $stmtUltimo->get_result()->fetch_assoc()['ultimo'] ?: null;
-        $stmtUltimo->close();
-
-        $datosCrudos = [
-            'fila' => $fila,
-            'ordersCount' => $ordersCount,
-            'lastOrderDate' => $lastOrderDate,
-            'notifications' => $this->notificacionesDe($fila['id_cliente']),
-        ];
-        return cliente_a_json($datosCrudos);
-    }
-
-    public function notificacionesDe($idCliente) {
-        $stmt = $this->consulta('SELECT * FROM CLIENTE_NOTIFICACION WHERE id_cliente = ? ORDER BY fecha DESC', [$idCliente]);
-        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
-        return array_map('notificacion_a_json', $filas);
+        $clientes = [];
+        foreach ($rows as $row) {
+            $clientes[] = $this->comoJson($row);
+        }
+        return $clientes;
     }
 
-    public function marcarNotificacionLeida($idCliente, $idNotificacion) {
-        $stmt = $this->consulta(
-            'UPDATE CLIENTE_NOTIFICACION SET leida = 1 WHERE id_notificacion_cliente = ? AND id_cliente = ?',
-            [$idNotificacion, $idCliente]
+    public function buscar($id)
+    {
+        $row = $this->buscarCrudo($id);
+        return $row ? $this->comoJson($row) : null;
+    }
+
+    /** Fila tal cual viene de la base de datos (sin formar el JSON). */
+    public function buscarCrudo($id)
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM CLIENTE WHERE id_cliente = ? LIMIT 1");
+        $stmt->bind_param("s", $id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $row ?: null;
+    }
+
+    public function buscarIdPorCorreo($correo)
+    {
+        $stmt = $this->conn->prepare("SELECT id_cliente FROM CLIENTE WHERE correo = ? LIMIT 1");
+        $stmt->bind_param("s", $correo);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $row ? $row['id_cliente'] : null;
+    }
+
+    public function correoOTelefonoExiste($correo, $telefono)
+    {
+        $stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM CLIENTE WHERE correo = ? OR telefono = ?");
+        $stmt->bind_param("ss", $correo, $telefono);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return (int) $row['total'] > 0;
+    }
+
+    public function comoJson($row)
+    {
+        $id = $row['id_cliente'];
+
+        $stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM PEDIDO WHERE id_cliente = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $conteo = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $stmtU = $this->conn->prepare("SELECT MAX(fecha_hora) AS ultimo FROM PEDIDO WHERE id_cliente = ?");
+        $stmtU->bind_param("i", $id);
+        $stmtU->execute();
+        $ultimo = $stmtU->get_result()->fetch_assoc();
+        $stmtU->close();
+
+        return cliente_a_json([
+            'fila'          => $row,
+            'ordersCount'   => (int) $conteo['total'],
+            'lastOrderDate' => $ultimo['ultimo'] ?: null,
+            'notifications' => $this->notificacionesDe($id),
+        ]);
+    }
+
+    public function notificacionesDe($idCliente)
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM CLIENTE_NOTIFICACION WHERE id_cliente = ? ORDER BY fecha DESC");
+        $stmt->bind_param("s", $idCliente);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return array_map('notificacion_a_json', $rows);
+    }
+
+    public function marcarNotificacionLeida($idCliente, $idNotificacion)
+    {
+        $stmt = $this->conn->prepare(
+            "UPDATE CLIENTE_NOTIFICACION SET leida = 1 WHERE id_notificacion_cliente = ? AND id_cliente = ?"
         );
+        $stmt->bind_param("ss", $idNotificacion, $idCliente);
+        $stmt->execute();
         $afectadas = $stmt->affected_rows;
         $stmt->close();
         return $afectadas > 0;
     }
 
-    /** Actualiza campos permitidos del cliente. $campos usa claves camelCase. */
-    public function actualizar($id, $campos) {
+    /** Actualiza solo los campos que vengan en $campos (claves en camelCase). */
+    public function actualizar($id, $campos)
+    {
         $mapa = [
             'name' => 'nombre', 'phone' => 'telefono', 'address' => 'direccion',
             'email' => 'correo', 'birthday' => 'fecha_nacimiento',
@@ -113,60 +119,62 @@ class Cliente {
         ];
 
         $sets = [];
-        $valores = [];
-        foreach ($mapa as $claveJson => $columna) {
-            if (array_key_exists($claveJson, $campos)) {
-                $sets[] = "$columna = ?";
-                $valores[] = $campos[$claveJson];
+        $values = [];
+        foreach ($mapa as $clave => $columna) {
+            if (array_key_exists($clave, $campos)) {
+                $sets[] = "{$columna} = ?";
+                $values[] = $campos[$clave];
             }
         }
 
-        // 'cart' y 'preferences' no son columnas 1:1: el carrito se guarda como
-        // JSON y el tema viene anidado en preferences.theme (unica preferencia
-        // que el frontend usa hoy -- ver ThemeContext.tsx/ClientDashboard.tsx).
+        // El carrito se guarda como JSON y el tema viene dentro de preferences.theme.
         if (array_key_exists('cart', $campos)) {
-            $sets[] = 'carrito_guardado = ?';
-            $valores[] = json_encode($campos['cart']);
+            $sets[] = "carrito_guardado = ?";
+            $values[] = json_encode($campos['cart']);
         }
-        if (array_key_exists('preferences', $campos) && is_array($campos['preferences']) && isset($campos['preferences']['theme'])) {
-            $sets[] = 'tema_preferido = ?';
-            $valores[] = $campos['preferences']['theme'];
+        if (isset($campos['preferences']) && is_array($campos['preferences']) && isset($campos['preferences']['theme'])) {
+            $sets[] = "tema_preferido = ?";
+            $values[] = $campos['preferences']['theme'];
         }
 
         if (empty($sets)) {
             return;
         }
+        $values[] = $id;
 
-        $valores[] = $id;
-        $stmt = $this->consulta('UPDATE CLIENTE SET ' . implode(', ', $sets) . ' WHERE id_cliente = ?', $valores);
+        $sql = "UPDATE CLIENTE SET " . implode(", ", $sets) . " WHERE id_cliente = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param(tiposDe($values), ...$values);
+        $stmt->execute();
         $stmt->close();
     }
 
-    /**
-     * Crea el cliente (regla Habeas Data: fecha + IP de aceptacion obligatorias).
-     * $datos['ip'] debe venir siempre de $_SERVER['REMOTE_ADDR'] (nunca de un
-     * header que el cliente pueda falsificar).
-     */
-    public function crear($datos) {
-        $stmt = $this->consulta(
-            'INSERT INTO CLIENTE
+    /** Crea el cliente guardando la fecha y la IP de aceptacion de Habeas Data. */
+    public function crear($d)
+    {
+        $hash = password_hash($d['password'], PASSWORD_DEFAULT);
+        $direccion = $d['address'] ?? null;
+        $fechaAceptacion = date('Y-m-d H:i:s');
+        $ip = $d['ip'] ?? '0.0.0.0';
+
+        $stmt = $this->conn->prepare(
+            "INSERT INTO CLIENTE
                 (nombre, telefono, correo, contrasena, direccion, fecha_nacimiento,
                  fecha_aceptacion_habeas_data, ip_aceptacion_habeas_data)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [
-                $datos['name'], $datos['phone'], $datos['email'],
-                password_hash($datos['password'], PASSWORD_DEFAULT),
-                $datos['address'] ?? null, $datos['birthday'],
-                date('Y-m-d H:i:s'), $datos['ip'] ?? '0.0.0.0',
-            ]
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         );
+        $stmt->bind_param("ssssssss", $d['name'], $d['phone'], $d['email'], $hash, $direccion, $d['birthday'], $fechaAceptacion, $ip);
+        $stmt->execute();
         $stmt->close();
 
         return $this->conn->insert_id;
     }
 
-    public function actualizarContrasena($id, $hash) {
-        $stmt = $this->consulta('UPDATE CLIENTE SET contrasena = ? WHERE id_cliente = ?', [$hash, $id]);
+    public function actualizarContrasena($id, $hash)
+    {
+        $stmt = $this->conn->prepare("UPDATE CLIENTE SET contrasena = ? WHERE id_cliente = ?");
+        $stmt->bind_param("ss", $hash, $id);
+        $stmt->execute();
         $stmt->close();
     }
 }

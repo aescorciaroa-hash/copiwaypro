@@ -1,65 +1,62 @@
 <?php
-// Pasarela de pagos de prueba (ver PagoService para el flujo completo). El
-// total lo calcula PedidoService::cotizar() en el servidor, nunca el navegador.
+/**
+ * Controlador de Pagos (pasarela de prueba, ver PagoService).
+ * El total siempre lo calcula el servidor con PedidoService::cotizar().
+ */
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Core/helpers.php';
+require_once __DIR__ . '/../Core/Session.php';
+require_once __DIR__ . '/../Core/Auth.php';
+require_once __DIR__ . '/../Services/PedidoService.php';
+require_once __DIR__ . '/../Services/PagoService.php';
 
-class PaymentController {
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-    private function entrada() {
-        $cuerpo = json_decode(file_get_contents('php://input') ?: '[]', true);
-        return is_array($cuerpo) ? $cuerpo : [];
+$pedidoService = new PedidoService();
+$pagoService   = new PagoService();
+$datos         = entrada();
+
+if ($action === 'prepare') {
+    // Paso 1: recalcula el total del carrito y entrega referencia + firma.
+    if (empty($datos['items'])) {
+        responderError('Datos inválidos.', 422, ['items' => ['El campo items es obligatorio.']]);
     }
 
-    /** Paso 1: recalcula el total del carrito y emite referencia + firma. */
-    public function prepare() {
-        global $conn;
-        $auth = new Autenticacion($conn);
-        $datos = $this->entrada();
-
-        if (empty($datos['items'])) {
-            responderError('Datos inválidos.', 422, ['items' => ['El campo items es obligatorio.']]);
-        }
-
-        try {
-            $total = (new PedidoService($conn))->cotizar($auth->idActual(), $datos);
-            responderJson((new PagoService($conn))->prepararCheckout($total, $auth->idActual()) + ['total' => $total]);
-        } catch (InvalidArgumentException $e) {
-            responderError($e->getMessage(), 422);
-        } catch (Exception $e) {
-            $mensaje = $e->getMessage();
-            $codigo = (stripos($mensaje, 'cerrada') !== false || stripos($mensaje, 'pausada') !== false) ? 403 : 409;
-            responderError($mensaje, $codigo);
-        }
+    try {
+        $total = $pedidoService->cotizar(Auth::id(), $datos);
+        responderJson($pagoService->prepararCheckout($total, Auth::id()) + ['total' => $total]);
+    } catch (InvalidArgumentException $e) {
+        responderError($e->getMessage(), 422);
+    } catch (Exception $e) {
+        $mensaje = $e->getMessage();
+        $codigo  = (stripos($mensaje, 'cerrada') !== false || stripos($mensaje, 'pausada') !== false) ? 403 : 409;
+        responderError($mensaje, $codigo);
     }
+}
+elseif ($action === 'createTransaction') {
+    // Paso 2: crea la transaccion (nace PENDING).
+    $referencia = (string) ($datos['reference'] ?? '');
+    $centavos   = (int) ($datos['amountInCents'] ?? 0);
+    $firma      = (string) ($datos['signature'] ?? '');
+    $metodo     = (string) ($datos['method'] ?? '');
+    $telefono   = (string) ($datos['phone'] ?? '');
 
-    /** Paso 2: el checkout crea la transaccion (nace PENDING). */
-    public function createTransaction() {
-        global $conn;
-        $auth = new Autenticacion($conn);
-        $d = $this->entrada();
-
-        try {
-            $tx = (new PagoService($conn))->crearTransaccion(
-                $auth->idActual(),
-                (string) ($d['reference'] ?? ''),
-                (int) ($d['amountInCents'] ?? 0),
-                (string) ($d['signature'] ?? ''),
-                (string) ($d['method'] ?? ''),
-                (string) ($d['phone'] ?? '')
-            );
-            responderJson($tx, 201);
-        } catch (InvalidArgumentException $e) {
-            responderError($e->getMessage(), 422);
-        }
+    try {
+        $tx = $pagoService->crearTransaccion(Auth::id(), $referencia, $centavos, $firma, $metodo, $telefono);
+        responderJson($tx, 201);
+    } catch (InvalidArgumentException $e) {
+        responderError($e->getMessage(), 422);
     }
-
-    /** Paso 3: consulta el estado hasta que deje de estar PENDING. */
-    public function showTransaction($id) {
-        global $conn;
-        $auth = new Autenticacion($conn);
-        $tx = (new PagoService($conn))->obtenerTransaccion($id, $auth->idActual());
-        if (!$tx) {
-            responderError('Transacción no encontrada.', 404);
-        }
-        responderJson($tx);
+}
+elseif ($action === 'showTransaction') {
+    // Paso 3: consulta el estado hasta que deje de estar PENDING.
+    $id = $_GET['id'] ?? $_POST['id'] ?? '';
+    $tx = $pagoService->obtenerTransaccion($id, Auth::id());
+    if (!$tx) {
+        responderError('Transacción no encontrada.', 404);
     }
+    responderJson($tx);
+}
+else {
+    responderError('Ruta no encontrada.', 404);
 }

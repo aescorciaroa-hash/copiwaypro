@@ -1,216 +1,161 @@
 <?php
-// Autenticacion de los 4 roles con sesion web (admin, kitchen, delivery, client).
-// El rate-limit de login (antes RateLimitMiddleware) vive aqui al inicio de
-// login(), ya que no hay capa de Middleware en este proyecto.
+/**
+ * Controlador de Autenticacion (login, registro, sesion y recuperar contrasena).
+ */
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Core/helpers.php';
+require_once __DIR__ . '/../Core/Session.php';
+require_once __DIR__ . '/../Core/Auth.php';
+require_once __DIR__ . '/../Models/Cliente.php';
+require_once __DIR__ . '/../Models/CodigoVerificacion.php';
+require_once __DIR__ . '/../Models/IntentoLogin.php';
+require_once __DIR__ . '/../Services/CorreoService.php';
 
-class AuthController {
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-    private function entrada() {
-        $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $cuerpo = [];
-        if (!in_array($metodo, ['GET', 'HEAD'])) {
-            $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-            if (stripos($contentType, 'application/json') !== false) {
-                $decodificado = json_decode(file_get_contents('php://input') ?: '[]', true);
-                $cuerpo = is_array($decodificado) ? $decodificado : [];
-            } else {
-                $cuerpo = $_POST;
-            }
-        }
-        return array_merge($_GET, $cuerpo);
+$clienteModel = new Cliente();
+$codigoModel  = new CodigoVerificacion();
+$intentoModel = new IntentoLogin();
+$datos        = entrada();
+
+if ($action === 'register') {
+    $nombre    = $datos['name'] ?? '';
+    $telefono  = trim((string) ($datos['phone'] ?? ''));
+    $email     = trim((string) ($datos['email'] ?? ''));
+    $birthday  = $datos['birthday'] ?? '';
+    $password  = (string) ($datos['password'] ?? '');
+    $confirmar = (string) ($datos['confirmPassword'] ?? '');
+
+    $errores = [];
+    if (empty($datos['name'])) $errores['name'] = ['El campo name es obligatorio.'];
+    if (empty($datos['phone']) || strlen((string) $datos['phone']) < 10) $errores['phone'] = ['El campo phone debe tener al menos 10 caracteres.'];
+    if (empty($datos['email']) || !filter_var($datos['email'], FILTER_VALIDATE_EMAIL)) $errores['email'] = ['El campo email debe ser un correo válido.'];
+    if (empty($datos['birthday'])) $errores['birthday'] = ['El campo birthday es obligatorio.'];
+    if (empty($datos['password']) || strlen($password) < 8) $errores['password'] = ['El campo password debe tener al menos 8 caracteres.'];
+    if ($errores) {
+        responderError('Datos inválidos.', 422, $errores);
+    }
+    if (empty($datos['terms'])) {
+        responderError('Debes aceptar los términos y la política de tratamiento de datos (Habeas Data).', 422);
+    }
+    if ($password !== $confirmar) {
+        responderError('Las contraseñas no coinciden.', 422);
+    }
+    if ($clienteModel->correoOTelefonoExiste($email, $telefono) || correoUsadoEnCualquierTabla($email)) {
+        responderError('Ya existe una cuenta con ese correo o teléfono.', 409);
     }
 
-    /** Registro de cliente (Habeas Data obligatorio, con fecha+IP). */
-    public function register() {
-        global $conn;
-        $datos = $this->entrada();
+    $idCliente = $clienteModel->crear([
+        'name'     => $nombre,
+        'phone'    => $telefono,
+        'email'    => $email,
+        'birthday' => $birthday,
+        'password' => $password,
+        'ip'       => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
+    ]);
 
-        $errores = [];
-        if (empty($datos['name'])) $errores['name'] = ['El campo name es obligatorio.'];
-        if (empty($datos['phone']) || strlen((string) $datos['phone']) < 10) $errores['phone'] = ['El campo phone debe tener al menos 10 caracteres.'];
-        if (empty($datos['email']) || !filter_var($datos['email'], FILTER_VALIDATE_EMAIL)) $errores['email'] = ['El campo email debe ser un correo válido.'];
-        if (empty($datos['birthday'])) $errores['birthday'] = ['El campo birthday es obligatorio.'];
-        if (empty($datos['password']) || strlen((string) $datos['password']) < 8) $errores['password'] = ['El campo password debe tener al menos 8 caracteres.'];
+    $usuario = Auth::login('client', $clienteModel->buscarCrudo($idCliente));
+    responderJson(['user' => $usuario, 'csrfToken' => Session::csrf()], 201);
+}
+elseif ($action === 'forgotPasswordRequest') {
+    $email     = trim((string) ($datos['email'] ?? ''));
+    $idCliente = $clienteModel->buscarIdPorCorreo($email);
 
-        if (!empty($errores)) {
-            responderError('Datos inválidos.', 422, $errores);
+    // Se responde igual exista o no la cuenta, para no revelar que correos estan registrados.
+    if ($idCliente) {
+        $codigo = (string) random_int(100000, 999999);
+        $codigoModel->crearParaCliente($idCliente, $codigo);
+        $enviado = CorreoService::enviarCodigoRecuperacion($email, $codigo);
+
+        // Solo en local y si el correo no salio: se devuelve el codigo para poder probar.
+        if (!$enviado && env('APP_ENV', 'production') === 'local') {
+            responderJson(['ok' => true, 'debugCode' => $codigo]);
         }
-
-        if (empty($datos['terms'])) {
-            responderError('Debes aceptar los términos y la política de tratamiento de datos (Habeas Data).', 422);
-        }
-
-        $password = (string) $datos['password'];
-        if ($password !== (string) ($datos['confirmPassword'] ?? '')) {
-            responderError('Las contraseñas no coinciden.', 422);
-        }
-
-        $email = trim((string) $datos['email']);
-        $telefono = trim((string) $datos['phone']);
-
-        $clienteModelo = new Cliente($conn);
-        if ($clienteModelo->correoOTelefonoExiste($email, $telefono) || correoUsadoEnCualquierTabla($conn, $email)) {
-            responderError('Ya existe una cuenta con ese correo o teléfono.', 409);
-        }
-
-        $idCliente = $clienteModelo->crear([
-            'name' => $datos['name'],
-            'phone' => $telefono,
-            'email' => $email,
-            'birthday' => $datos['birthday'],
-            'password' => $password,
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
-        ]);
-
-        $filaCruda = $clienteModelo->buscarCrudo($idCliente);
-
-        $auth = new Autenticacion($conn);
-        $usuario = $auth->iniciarSesionUsuario('client', $filaCruda);
-
-        responderJson(['user' => $usuario, 'csrfToken' => csrfToken()], 201);
+    }
+    responderJson(['ok' => true]);
+}
+elseif ($action === 'forgotPasswordReset') {
+    $errores = [];
+    if (empty($datos['email'])) $errores['email'] = ['El campo email es obligatorio.'];
+    if (empty($datos['code'])) $errores['code'] = ['El campo code es obligatorio.'];
+    if (empty($datos['newPassword']) || strlen((string) $datos['newPassword']) < 8) $errores['newPassword'] = ['El campo newPassword debe tener al menos 8 caracteres.'];
+    if ($errores) {
+        responderError('Datos inválidos.', 422, $errores);
     }
 
-    /** Paso 1 de recuperacion: genera un codigo de un solo uso. */
-    public function forgotPasswordRequest() {
-        global $conn;
-        $datos = $this->entrada();
-        $email = trim((string) ($datos['email'] ?? ''));
+    $email       = trim((string) $datos['email']);
+    $codigo      = (string) $datos['code'];
+    $nuevaClave  = (string) $datos['newPassword'];
 
-        $clienteModelo = new Cliente($conn);
-        $idCliente = $clienteModelo->buscarIdPorCorreo($email);
-
-        // Respuesta identica exista o no la cuenta, para no filtrar que correos estan registrados.
-        if ($idCliente) {
-            $codigo = (string) random_int(100000, 999999);
-            (new CodigoVerificacion($conn))->crearParaCliente($idCliente, $codigo);
-
-            // El codigo se manda por correo (SMTP, ver CorreoService / MAIL_* en .env).
-            $enviado = CorreoService::enviarCodigoRecuperacion($email, $codigo);
-
-            // Solo en entorno local y SOLO si el correo no pudo salir (SMTP sin
-            // configurar o caido): se devuelve el codigo para poder probar.
-            // Nunca en staging/produccion, ni siquiera con APP_DEBUG mal puesto.
-            if (!$enviado && env('APP_ENV', 'production') === 'local') {
-                responderJson(['ok' => true, 'debugCode' => $codigo]);
-            }
-        }
-
-        responderJson(['ok' => true]);
+    $registro = $codigoModel->buscarValidoPorCorreo($email);
+    if (!$registro) {
+        responderError('Código inválido o expirado.', 422);
+    }
+    if (!password_verify($codigo, $registro['codigo_hash'])) {
+        $codigoModel->incrementarIntentos($registro['id_codigo']);
+        responderError('Código inválido o expirado.', 422);
     }
 
-    /** Paso 2: valida el codigo y establece la nueva contrasena. */
-    public function forgotPasswordReset() {
-        global $conn;
-        $datos = $this->entrada();
+    $codigoModel->marcarUsado($registro['id_codigo']);
+    $clienteModel->actualizarContrasena($registro['id_cliente'], password_hash($nuevaClave, PASSWORD_DEFAULT));
+    responderJson(['ok' => true]);
+}
+elseif ($action === 'login') {
+    // Cocina y Domiciliario entran con 'pin'; admin y cliente con 'password'.
+    $usaPin = !empty($datos['pin']);
 
-        $errores = [];
-        if (empty($datos['email'])) $errores['email'] = ['El campo email es obligatorio.'];
-        if (empty($datos['code'])) $errores['code'] = ['El campo code es obligatorio.'];
-        if (empty($datos['newPassword']) || strlen((string) $datos['newPassword']) < 8) $errores['newPassword'] = ['El campo newPassword debe tener al menos 8 caracteres.'];
-        if (!empty($errores)) {
-            responderError('Datos inválidos.', 422, $errores);
-        }
-
-        $email = trim((string) $datos['email']);
-        $codigo = (string) $datos['code'];
-
-        $codigoModelo = new CodigoVerificacion($conn);
-        $coincidencia = $codigoModelo->buscarValidoPorCorreo($email);
-        if (!$coincidencia) {
-            responderError('Código inválido o expirado.', 422);
-        }
-        if (!password_verify($codigo, $coincidencia['codigo_hash'])) {
-            $codigoModelo->incrementarIntentos($coincidencia['id_codigo']);
-            responderError('Código inválido o expirado.', 422);
-        }
-
-        $codigoModelo->marcarUsado($coincidencia['id_codigo']);
-        (new Cliente($conn))->actualizarContrasena($coincidencia['id_cliente'], password_hash((string) $datos['newPassword'], PASSWORD_DEFAULT));
-
-        responderJson(['ok' => true]);
+    $errores = [];
+    // Con PIN tambien se acepta solo el usuario, sin "@dominio".
+    $usuarioValido = $usaPin && !empty($datos['email']) && preg_match('/^[A-Za-z0-9._+-]{2,64}$/', (string) $datos['email']);
+    if (empty($datos['email']) || (!$usuarioValido && !filter_var($datos['email'], FILTER_VALIDATE_EMAIL))) {
+        $errores['email'] = [$usaPin ? 'Ingresa tu usuario (lo que va antes del @) o tu correo.' : 'El campo email debe ser un correo válido.'];
+    }
+    if ($usaPin) {
+        if (!preg_match('/^\d{4}$/', (string) $datos['pin'])) $errores['pin'] = ['El PIN debe tener 4 dígitos.'];
+    } else {
+        if (empty($datos['password'])) $errores['password'] = ['El campo password es obligatorio.'];
+    }
+    if ($errores) {
+        responderError('Datos inválidos.', 422, $errores);
     }
 
-    public function login() {
-        global $conn;
-        $datos = $this->entrada();
+    $email = trim((string) $datos['email']);
+    $ip    = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-        // Los paneles de Cocina y Domiciliario mandan 'pin' en vez de
-        // 'password' (ver Auth::intentarLoginConPin) -- admin/client siempre
-        // usan contrasena.
-        $usaPin = !empty($datos['pin']);
-
-        $errores = [];
-        // Con PIN (paneles de Cocina/Domicilio) tambien se acepta solo el usuario, sin "@dominio".
-        $usuarioValido = $usaPin && !empty($datos['email']) && preg_match('/^[A-Za-z0-9._+-]{2,64}$/', (string) $datos['email']);
-        if (empty($datos['email']) || (!$usuarioValido && !filter_var($datos['email'], FILTER_VALIDATE_EMAIL))) {
-            $errores['email'] = [$usaPin ? 'Ingresa tu usuario (lo que va antes del @) o tu correo.' : 'El campo email debe ser un correo válido.'];
-        }
-        if ($usaPin) {
-            if (!preg_match('/^\d{4}$/', (string) $datos['pin'])) $errores['pin'] = ['El PIN debe tener 4 dígitos.'];
-        } else {
-            if (empty($datos['password'])) $errores['password'] = ['El campo password es obligatorio.'];
-        }
-        if (!empty($errores)) {
-            responderError('Datos inválidos.', 422, $errores);
-        }
-
-        $email = trim((string) $datos['email']);
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-
-        $intentoModelo = new IntentoLogin($conn);
-        if ($intentoModelo->excedeLimite($email, $ip)) {
-            responderError('Demasiados intentos fallidos. Intenta de nuevo en unos minutos.', 429);
-        }
-
-        $auth = new Autenticacion($conn);
-        $usuario = $usaPin
-            ? $auth->intentarLoginConPin($email, (string) $datos['pin'])
-            : $auth->intentarLogin($email, (string) $datos['password']);
-
-        $intentoModelo->registrar($email, $ip, (bool) $usuario);
-
-        if (!$usuario) {
-            responderError($usaPin ? 'Usuario o PIN incorrectos.' : 'Correo o contraseña incorrectos.', 401);
-        }
-
-        responderJson(['user' => $usuario, 'csrfToken' => csrfToken()]);
+    if ($intentoModel->excedeLimite($email, $ip)) {
+        responderError('Demasiados intentos fallidos. Intenta de nuevo en unos minutos.', 429);
     }
 
-    public function logout() {
-        global $conn;
-        (new Autenticacion($conn))->cerrarSesion();
-        responderJson(['ok' => true]);
+    if ($usaPin) {
+        $usuario = Auth::intentarLoginConPin($email, (string) $datos['pin']);
+    } else {
+        $usuario = Auth::intentarLogin($email, (string) $datos['password']);
     }
+    $intentoModel->registrar($email, $ip, (bool) $usuario);
 
-    public function me() {
-        global $conn;
-        $auth = new Autenticacion($conn);
-
-        if (!$auth->haySesion()) {
-            responderError('No autenticado.', 401);
-        }
-
-        $usuario = $auth->usuarioActual();
-        if ($usuario === null) {
-            responderError('Sesión inválida.', 401);
-        }
-
-        responderJson([
-            'user' => $usuario,
-            'role' => $auth->rolActual(),
-            'csrfToken' => csrfToken(),
-        ]);
+    if (!$usuario) {
+        responderError($usaPin ? 'Usuario o PIN incorrectos.' : 'Correo o contraseña incorrectos.', 401);
     }
-
-    /**
-     * A diferencia de me(), no exige sesion: es lo que usa cualquier
-     * visitante sin cuenta (pantalla de login/registro) para conseguir su
-     * primer token CSRF antes de enviar ese mismo formulario. Sin esto, en
-     * "npm run dev" (sin window.__DATOS__ del layout PHP) el primer POST de
-     * un invitado siempre fallaba con 419 porque nunca habia un token que
-     * enviar.
-     */
-    public function csrf() {
-        responderJson(['csrfToken' => csrfToken()]);
+    responderJson(['user' => $usuario, 'csrfToken' => Session::csrf()]);
+}
+elseif ($action === 'logout') {
+    Auth::logout();
+    responderJson(['ok' => true]);
+}
+elseif ($action === 'me') {
+    if (!Auth::check()) {
+        responderError('No autenticado.', 401);
     }
+    $usuario = Auth::usuarioActual();
+    if ($usuario === null) {
+        responderError('Sesión inválida.', 401);
+    }
+    responderJson(['user' => $usuario, 'role' => Auth::rol(), 'csrfToken' => Session::csrf()]);
+}
+elseif ($action === 'csrf') {
+    // No exige sesion: lo usa el visitante para tener su primer token CSRF.
+    responderJson(['csrfToken' => Session::csrf()]);
+}
+else {
+    responderError('Ruta no encontrada.', 404);
 }

@@ -1,7 +1,10 @@
 <?php
-// Shapes puros (sin SQL) de AYUDANTE_COCINA / DOMICILIARIO -> JSON de Staff.
+/**
+ * Convierte filas de AYUDANTE_COCINA y DOMICILIARIO al JSON del personal.
+ */
 
-function personal_cocina_a_json($fila) {
+function personal_cocina_a_json($fila)
+{
     return [
         'id' => (string) $fila['id_ayudante'],
         'name' => $fila['nombre'],
@@ -15,7 +18,8 @@ function personal_cocina_a_json($fila) {
 }
 
 /** $currentOrderId ya viene resuelto por el modelo (SELECT PEDIDO en_camino). */
-function personal_domicilio_a_json($fila, $currentOrderId) {
+function personal_domicilio_a_json($fila, $currentOrderId)
+{
     $ubicacion = null;
     if ($fila['ubicacion_lat'] !== null && $fila['ubicacion_lng'] !== null) {
         $ubicacion = [(float) $fila['ubicacion_lat'], (float) $fila['ubicacion_lng']];

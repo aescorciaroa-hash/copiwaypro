@@ -1,57 +1,43 @@
 <?php
-// Modelo del panel/dashboard de administrador: resumen del dia (ventas, pedidos
-// por estado, stock bajo, productos top).
+/**
+ * Modelo Panel (resumen del dia para el dashboard del administrador).
+ */
+class Panel
+{
+    private $conn;
 
-class Panel {
-
-    public $conn;
-
-    public function __construct($conn) {
+    public function __construct()
+    {
+        global $conn;
         $this->conn = $conn;
     }
 
-    private function consulta($sql, $parametros = []) {
-        $stmt = $this->conn->prepare($sql);
-        if (!empty($parametros)) {
-            $tipos = '';
-            foreach ($parametros as $p) {
-                if (is_int($p)) {
-                    $tipos .= 'i';
-                } elseif (is_float($p)) {
-                    $tipos .= 'd';
-                } else {
-                    $tipos .= 's';
-                }
-            }
-            $stmt->bind_param($tipos, ...$parametros);
-        }
-        $stmt->execute();
-        return $stmt;
-    }
-
-    public function resumenDeHoy() {
+    public function resumenDeHoy()
+    {
         $hoy = date('Y-m-d');
-
-        $stmtVentas = $this->consulta(
+        $stmtV = $this->conn->prepare(
             "SELECT COALESCE(SUM(total),0) AS total, COUNT(*) AS cantidad
-             FROM PEDIDO WHERE DATE(fecha_hora) = ? AND estado != 'cancelado'",
-            [$hoy]
+             FROM PEDIDO WHERE DATE(fecha_hora) = ? AND estado != 'cancelado'"
         );
-        $filaVentas = $stmtVentas->get_result()->fetch_assoc();
-        $stmtVentas->close();
+        $stmtV->bind_param("s", $hoy);
+        $stmtV->execute();
+        $ventas = $stmtV->get_result()->fetch_assoc();
+        $stmtV->close();
 
-        $stmtEstados = $this->consulta('SELECT estado, COUNT(*) AS cantidad FROM PEDIDO GROUP BY estado');
-        $porEstado = $stmtEstados->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmtEstados->close();
+        $stmtE = $this->conn->prepare("SELECT estado, COUNT(*) AS cantidad FROM PEDIDO GROUP BY estado");
+        $stmtE->execute();
+        $porEstado = $stmtE->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtE->close();
 
-        $stmtStockBajo = $this->consulta(
-            'SELECT id_ingrediente AS id, nombre AS name, cantidad_stock AS stock, umbral_minimo AS threshold
-             FROM INGREDIENTE WHERE cantidad_stock <= umbral_minimo ORDER BY cantidad_stock ASC'
+        $stmtS = $this->conn->prepare(
+            "SELECT id_ingrediente AS id, nombre AS name, cantidad_stock AS stock, umbral_minimo AS threshold
+             FROM INGREDIENTE WHERE cantidad_stock <= umbral_minimo ORDER BY cantidad_stock ASC"
         );
-        $stockBajo = $stmtStockBajo->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmtStockBajo->close();
+        $stmtS->execute();
+        $stockBajo = $stmtS->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtS->close();
 
-        $stmtTop = $this->consulta(
+        $stmtT = $this->conn->prepare(
             "SELECT dp.nombre_producto AS name, SUM(dp.cantidad) AS quantity, SUM(dp.cantidad * dp.precio_unitario) AS revenue
              FROM DETALLE_PEDIDO dp
              JOIN PEDIDO p ON p.id_pedido = dp.id_pedido
@@ -60,15 +46,16 @@ class Panel {
              ORDER BY quantity DESC
              LIMIT 5"
         );
-        $topProductos = $stmtTop->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmtTop->close();
+        $stmtT->execute();
+        $topProductos = $stmtT->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtT->close();
 
         return [
-            'salesToday' => (float) $filaVentas['total'],
-            'ordersToday' => (int) $filaVentas['cantidad'],
+            'salesToday'     => (float) $ventas['total'],
+            'ordersToday'    => (int) $ventas['cantidad'],
             'ordersByStatus' => array_column($porEstado, 'cantidad', 'estado'),
-            'lowStockItems' => $stockBajo,
-            'topProducts' => $topProductos,
+            'lowStockItems'  => $stockBajo,
+            'topProducts'    => $topProductos,
         ];
     }
 }

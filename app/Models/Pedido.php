@@ -1,137 +1,101 @@
 <?php
-// Modelo de PEDIDO (+ DETALLE_PEDIDO, PERSONALIZACION). Solo acceso a datos:
-// listar/buscar pedidos y armar su JSON. Las reglas de negocio (checkout,
-// transiciones de estado, resena) viven en app/Services/PedidoService.php.
+/**
+ * Modelo Pedido (PEDIDO, DETALLE_PEDIDO y PERSONALIZACION).
+ * Solo consultas; las reglas del pedido estan en PedidoService.
+ */
+class Pedido
+{
+    private $conn;
 
-class Pedido {
+    private const BASE = "SELECT p.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono,
+                                 d.nombre AS domiciliario_nombre, d.telefono AS domiciliario_telefono,
+                                 d.placa AS domiciliario_placa, d.tipo_vehiculo AS domiciliario_vehiculo,
+                                 a.nombre AS ayudante_nombre
+                          FROM PEDIDO p
+                          JOIN CLIENTE c ON c.id_cliente = p.id_cliente
+                          LEFT JOIN DOMICILIARIO d ON d.id_domiciliario = p.id_domiciliario
+                          LEFT JOIN AYUDANTE_COCINA a ON a.id_ayudante = p.id_ayudante";
 
-    public $conn;
-
-    public function __construct($conn) {
+    public function __construct()
+    {
+        global $conn;
         $this->conn = $conn;
     }
 
     /**
-     * Ejecuta una consulta preparada. El tipo de cada parametro (i/d/s) se
-     * infiere solo del valor PHP, asi que nunca hay que contar caracteres a mano.
-     */
-    private function consulta($sql, $parametros = []) {
-        $stmt = $this->conn->prepare($sql);
-        if (!empty($parametros)) {
-            $tipos = '';
-            foreach ($parametros as $p) {
-                if (is_int($p)) {
-                    $tipos .= 'i';
-                } elseif (is_float($p)) {
-                    $tipos .= 'd';
-                } else {
-                    $tipos .= 's';
-                }
-            }
-            $stmt->bind_param($tipos, ...$parametros);
-        }
-        $stmt->execute();
-        return $stmt;
-    }
-
-    // ---------------------------------------------------------------
-    // Lectura
-    // ---------------------------------------------------------------
-
-    /**
-     * Pedidos segun el rol de quien pregunta:
+     * Pedidos segun el rol:
      *  - admin/cocina: todos
-     *  - domiciliario: los suyos + los 'listo' sin domiciliario asignado todavia
+     *  - domiciliario: los suyos + los 'listo' sin domiciliario
      *  - cliente: solo los propios
      */
-    public function porRol($rol, $usuarioId) {
-        $sql = "SELECT p.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono,
-                       d.nombre AS domiciliario_nombre, d.telefono AS domiciliario_telefono,
-                       d.placa AS domiciliario_placa, d.tipo_vehiculo AS domiciliario_vehiculo,
-                       a.nombre AS ayudante_nombre
-                FROM PEDIDO p
-                JOIN CLIENTE c ON c.id_cliente = p.id_cliente
-                LEFT JOIN DOMICILIARIO d ON d.id_domiciliario = p.id_domiciliario
-                LEFT JOIN AYUDANTE_COCINA a ON a.id_ayudante = p.id_ayudante";
-
+    public function porRol($rol, $usuarioId)
+    {
         if ($rol === 'client') {
-            $sql .= ' WHERE p.id_cliente = ? ORDER BY p.fecha_hora DESC';
-            $stmt = $this->consulta($sql, [$usuarioId]);
+            $stmt = $this->conn->prepare(self::BASE . " WHERE p.id_cliente = ? ORDER BY p.fecha_hora DESC");
+            $stmt->bind_param("s", $usuarioId);
         } elseif ($rol === 'delivery') {
-            $sql .= " WHERE p.id_domiciliario = ? OR (p.estado = 'listo' AND p.id_domiciliario IS NULL) ORDER BY p.fecha_hora DESC";
-            $stmt = $this->consulta($sql, [$usuarioId]);
+            $stmt = $this->conn->prepare(self::BASE . " WHERE p.id_domiciliario = ? OR (p.estado = 'listo' AND p.id_domiciliario IS NULL) ORDER BY p.fecha_hora DESC");
+            $stmt->bind_param("s", $usuarioId);
         } else {
-            $sql .= ' ORDER BY p.fecha_hora DESC';
-            $stmt = $this->consulta($sql);
+            $stmt = $this->conn->prepare(self::BASE . " ORDER BY p.fecha_hora DESC");
         }
-
-        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
         $pedidos = [];
-        foreach ($filas as $fila) {
-            $pedidos[] = $this->formar($fila, $rol, $usuarioId);
+        foreach ($rows as $row) {
+            $pedidos[] = $this->formar($row, $rol, $usuarioId);
         }
         return $pedidos;
     }
 
     /**
-     * Busca por id interno o por numero visible (#ORD-123).
-     * $rolQueVe/$idQueVe son opcionales (compatibilidad con las llamadas
-     * internas tras una transicion, donde el actor ya esta autorizado por la
-     * accion misma); cuando se pasan, se aplica la MISMA visibilidad que
-     * porRol(): un cliente solo puede ver sus propios pedidos, un domiciliario
-     * solo los suyos (o uno sin asignar y ya 'listo'). admin/kitchen ven
-     * cualquiera, igual que en el listado. Si no pasa el filtro, devuelve null
-     * (el controlador responde 404, no 403, para no confirmar que el id existe).
+     * Busca por id o por numero visible (#ORD-123).
+     * Si se pasa el rol de quien pregunta, aplica la misma visibilidad que porRol()
+     * y devuelve null si no le corresponde verlo.
      */
-    public function buscar($id, $rolQueVe = null, $idQueVe = null) {
+    public function buscar($id, $rolQueVe = null, $idQueVe = null)
+    {
         $numero = $this->numeroDesdeId($id);
-        $sql = "SELECT p.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono,
-                       d.nombre AS domiciliario_nombre, d.telefono AS domiciliario_telefono,
-                       d.placa AS domiciliario_placa, d.tipo_vehiculo AS domiciliario_vehiculo,
-                       a.nombre AS ayudante_nombre
-                FROM PEDIDO p
-                JOIN CLIENTE c ON c.id_cliente = p.id_cliente
-                LEFT JOIN DOMICILIARIO d ON d.id_domiciliario = p.id_domiciliario
-                LEFT JOIN AYUDANTE_COCINA a ON a.id_ayudante = p.id_ayudante
-                WHERE p.id_pedido = ?";
-        $stmt = $this->consulta($sql, [$numero]);
-        $fila = $stmt->get_result()->fetch_assoc();
+        $stmt = $this->conn->prepare(self::BASE . " WHERE p.id_pedido = ?");
+        $stmt->bind_param("i", $numero);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        if (!$fila) {
+        if (!$row) {
             return null;
         }
 
-        if ($rolQueVe === 'client' && $fila['id_cliente'] !== $idQueVe) {
+        if ($rolQueVe === 'client' && $row['id_cliente'] !== $idQueVe) {
             return null;
         }
         if ($rolQueVe === 'delivery') {
-            $esSuyo = $fila['id_domiciliario'] === $idQueVe;
-            $esDisponible = $fila['estado'] === 'listo' && $fila['id_domiciliario'] === null;
+            $esSuyo = $row['id_domiciliario'] === $idQueVe;
+            $esDisponible = $row['estado'] === 'listo' && $row['id_domiciliario'] === null;
             if (!$esSuyo && !$esDisponible) {
                 return null;
             }
         }
 
-        return $this->formar($fila, $rolQueVe, $idQueVe);
+        return $this->formar($row, $rolQueVe, $idQueVe);
     }
 
-    /** Version cruda (sin formar el JSON) por id interno o numero visible. */
-    public function buscarCrudo($id) {
+    /** Fila tal cual viene de la base de datos, por id o numero visible. */
+    public function buscarCrudo($id)
+    {
         $numero = $this->numeroDesdeId($id);
-        $stmt = $this->consulta('SELECT * FROM PEDIDO WHERE id_pedido = ? LIMIT 1', [$numero]);
-        $fila = $stmt->get_result()->fetch_assoc();
+        $stmt = $this->conn->prepare("SELECT * FROM PEDIDO WHERE id_pedido = ? LIMIT 1");
+        $stmt->bind_param("i", $numero);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        return $fila ?: null;
+        return $row ?: null;
     }
 
-    /**
-     * id_pedido ES el numero visible del pedido ('#ORD-<id_pedido>'): acepta
-     * tanto ese formato con prefijo como el numero plano (rutas internas que
-     * ya traen solo el id).
-     */
-    private function numeroDesdeId($idVisible) {
+    /** Acepta '#ORD-123' o '123' y devuelve el numero. */
+    private function numeroDesdeId($idVisible)
+    {
         if (preg_match('/^#ORD-(\d+)$/', (string) $idVisible, $m)) {
             return (int) $m[1];
         }
@@ -141,14 +105,19 @@ class Pedido {
         return 0;
     }
 
-    public function itemsDe($idPedido) {
-        $stmt = $this->consulta('SELECT * FROM DETALLE_PEDIDO WHERE id_pedido = ?', [$idPedido]);
+    public function itemsDe($idPedido)
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM DETALLE_PEDIDO WHERE id_pedido = ?");
+        $stmt->bind_param("i", $idPedido);
+        $stmt->execute();
         $detalles = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
         $items = [];
         foreach ($detalles as $detalle) {
-            $stmtP = $this->consulta('SELECT * FROM PERSONALIZACION WHERE id_detalle = ?', [$detalle['id_detalle']]);
+            $stmtP = $this->conn->prepare("SELECT * FROM PERSONALIZACION WHERE id_detalle = ?");
+            $stmtP->bind_param("i", $detalle['id_detalle']);
+            $stmtP->execute();
             $personalizaciones = $stmtP->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmtP->close();
 
@@ -164,22 +133,22 @@ class Pedido {
             }
 
             $items[] = [
-                'id' => (string) $detalle['id_detalle'],
-                'productId' => (string) $detalle['id_producto'],
-                'name' => $detalle['nombre_producto'],
-                'quantity' => (int) $detalle['cantidad'],
-                'price' => (float) $detalle['precio_unitario'],
+                'id'         => (string) $detalle['id_detalle'],
+                'productId'  => (string) $detalle['id_producto'],
+                'name'       => $detalle['nombre_producto'],
+                'quantity'   => (int) $detalle['cantidad'],
+                'price'      => (float) $detalle['precio_unitario'],
                 'finalPrice' => (float) $detalle['precio_unitario'],
-                'isCustom' => (bool) $detalle['es_personalizado'],
-                'extras' => $extras,
-                'removed' => $removidos,
+                'isCustom'   => (bool) $detalle['es_personalizado'],
+                'extras'     => $extras,
+                'removed'    => $removidos,
             ];
         }
         return $items;
     }
 
-    private function formar($fila, $rolQueVe, $idQueVe) {
-        $items = $this->itemsDe($fila['id_pedido']);
-        return pedido_a_json($fila, $items, $rolQueVe, $idQueVe);
+    private function formar($row, $rolQueVe, $idQueVe)
+    {
+        return pedido_a_json($row, $this->itemsDe($row['id_pedido']), $rolQueVe, $idQueVe);
     }
 }

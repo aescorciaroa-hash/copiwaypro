@@ -1,68 +1,78 @@
 <?php
-// Sustituye los onSnapshot de Firestore por polling corto con ETag: el
-// frontend hace fetch cada 2-3s con If-None-Match; si nada cambio se responde
-// 304 (sin payload). El alcance de datos se filtra por rol.
+/**
+ * Controlador de Sincronizacion: el frontend pregunta cada pocos segundos
+ * con If-None-Match; si nada cambio se responde 304 sin datos.
+ * Lo que se envia depende del rol.
+ */
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Core/helpers.php';
+require_once __DIR__ . '/../Core/Session.php';
+require_once __DIR__ . '/../Core/Auth.php';
+require_once __DIR__ . '/../Models/Producto.php';
+require_once __DIR__ . '/../Models/Configuracion.php';
+require_once __DIR__ . '/../Models/Ingrediente.php';
+require_once __DIR__ . '/../Models/Personal.php';
+require_once __DIR__ . '/../Models/Pedido.php';
+require_once __DIR__ . '/../Models/Cliente.php';
 
-class SyncController {
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-    public function index() {
-        global $conn;
-        $auth = new Autenticacion($conn);
-        $rol = $auth->haySesion() ? $auth->rolActual() : 'guest';
-        $idUsuario = $auth->haySesion() ? $auth->idActual() : null;
+if ($action === 'index') {
+    $rol       = Auth::check() ? Auth::rol() : 'guest';
+    $idUsuario = Auth::check() ? Auth::id() : null;
 
-        // Este endpoint solo LEE la sesion. Soltarla ya evita que el polling
-        // (una peticion cada pocos segundos por pestana) bloquee las demas
-        // peticiones del mismo usuario mientras se arma el payload.
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            session_write_close();
-        }
-
-        $payload = [
-            'products' => (new Producto($conn))->listar($rol !== 'admin', $rol === 'admin'),
-            'settings' => (new Configuracion($conn))->obtener(),
-        ];
-
-        if (in_array($rol, ['admin', 'kitchen'])) {
-            $ingredienteModelo = new Ingrediente($conn);
-            $payload['inventory'] = $ingredienteModelo->listarInventario();
-            $payload['ingredients'] = $ingredienteModelo->listarIngredientes();
-            $payload['inventoryLogs'] = $ingredienteModelo->registrosDeMovimientos();
-            $payload['staff'] = (new Personal($conn))->listar();
-            $payload['orders'] = (new Pedido($conn))->porRol($rol, $idUsuario);
-        }
-
-        if ($rol === 'admin') {
-            $payload['clients'] = (new Cliente($conn))->listar();
-        }
-
-        if ($rol === 'delivery') {
-            $payload['orders'] = (new Pedido($conn))->porRol($rol, $idUsuario);
-        }
-
-        if ($rol === 'client') {
-            $payload['orders'] = (new Pedido($conn))->porRol($rol, $idUsuario);
-            $payload['ingredients'] = (new Ingrediente($conn))->listarIngredientes();
-            // El cliente necesita ver su propio registro en "Mi Perfil" (nombre,
-            // correo, telefono, etc.). Antes 'clients' solo se enviaba para admin,
-            // asi que el perfil del cliente se quedaba con los datos de ejemplo
-            // hardcodeados en ClientDashboard.tsx y nunca los reales.
-            $cliente = (new Cliente($conn))->buscar($idUsuario);
-            if ($cliente) {
-                $payload['clients'] = [$cliente];
-            }
-        }
-
-        $etag = '"' . md5(json_encode($payload)) . '"';
-        $etagCliente = $_SERVER['HTTP_IF_NONE_MATCH'] ?? null;
-
-        if ($etagCliente === $etag) {
-            header("ETag: $etag");
-            http_response_code(304);
-            exit;
-        }
-
-        header("ETag: $etag");
-        responderJson($payload, 200);
+    // Solo se lee la sesion: se libera ya para no bloquear las demas peticiones del usuario.
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
     }
+
+    $productoModel    = new Producto();
+    $configModel      = new Configuracion();
+    $ingredienteModel = new Ingrediente();
+    $personalModel    = new Personal();
+    $pedidoModel      = new Pedido();
+    $clienteModel     = new Cliente();
+
+    $payload = [
+        'products' => $productoModel->listar($rol !== 'admin', $rol === 'admin'),
+        'settings' => $configModel->obtener(),
+    ];
+
+    if (in_array($rol, ['admin', 'kitchen'])) {
+        $payload['inventory']     = $ingredienteModel->listarInventario();
+        $payload['ingredients']   = $ingredienteModel->listarIngredientes();
+        $payload['inventoryLogs'] = $ingredienteModel->registrosDeMovimientos();
+        $payload['staff']         = $personalModel->listar();
+        $payload['orders']        = $pedidoModel->porRol($rol, $idUsuario);
+    }
+
+    if ($rol === 'admin') {
+        $payload['clients'] = $clienteModel->listar();
+    }
+
+    if ($rol === 'delivery') {
+        $payload['orders'] = $pedidoModel->porRol($rol, $idUsuario);
+    }
+
+    if ($rol === 'client') {
+        $payload['orders']      = $pedidoModel->porRol($rol, $idUsuario);
+        $payload['ingredients'] = $ingredienteModel->listarIngredientes();
+        // El cliente necesita sus propios datos para "Mi Perfil".
+        $cliente = $clienteModel->buscar($idUsuario);
+        if ($cliente) {
+            $payload['clients'] = [$cliente];
+        }
+    }
+
+    $etag = '"' . md5(json_encode($payload)) . '"';
+    header("ETag: $etag");
+
+    if (($_SERVER['HTTP_IF_NONE_MATCH'] ?? null) === $etag) {
+        http_response_code(304);
+        exit;
+    }
+    responderJson($payload, 200);
+}
+else {
+    responderError('Ruta no encontrada.', 404);
 }

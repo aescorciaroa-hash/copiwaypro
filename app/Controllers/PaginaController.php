@@ -1,54 +1,40 @@
 <?php
-// Controlador de paginas (SPA): comprueba sesion/rol (ya lo hizo despacharPagina
-// para las rutas protegidas), prepara los datos iniciales de la pagina y monta
-// el mismo componente React de siempre. Nunca genera HTML/CSS aqui.
+/**
+ * Controlador de Paginas: prepara los datos iniciales y monta la app de React.
+ * El control de sesion/rol ya lo hizo despacharPagina().
+ */
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Core/helpers.php';
+require_once __DIR__ . '/../Core/Session.php';
+require_once __DIR__ . '/../Core/Auth.php';
+require_once __DIR__ . '/../Models/Configuracion.php';
 
-class PaginaController {
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-    public function landing() {
-        $this->render('landing');
-    }
+$configModel = new Configuracion();
 
-    public function login() {
-        $this->render('login');
-    }
+// $action => vista de app/Views/paginas
+$vistas = [
+    'landing'        => 'landing',
+    'login'          => 'login',
+    'register'       => 'registro',
+    'forgotPassword' => 'recuperar',
+    'admin'          => 'admin',
+    'client'         => 'cliente',
+    'kitchen'        => 'cocina',
+    'delivery'       => 'domiciliario',
+];
 
-    public function register() {
-        $this->render('registro');
-    }
-
-    public function forgotPassword() {
-        $this->render('recuperar');
-    }
-
-    public function admin() {
-        $this->render('admin');
-    }
-
-    public function client() {
-        $this->render('cliente');
-    }
-
-    public function kitchen() {
-        $this->render('cocina');
-    }
-
-    public function delivery() {
-        $this->render('domiciliario');
-    }
-
-    private function render($vista) {
-        global $conn;
-        $auth = new Autenticacion($conn);
-        $haySesion = $auth->haySesion();
-
-        $datos = [
-            'usuario' => $haySesion ? $auth->usuarioActual() : null,
-            'rol' => $haySesion ? $auth->rolActual() : null,
-            'csrfToken' => csrfToken(),
-            'settings' => (new Configuracion($conn))->obtener(),
-        ];
-
-        mostrarVista($vista, ['datos' => $datos]);
-    }
+if (isset($vistas[$action])) {
+    $datos = [
+        'usuario'   => Auth::check() ? Auth::usuarioActual() : null,
+        'rol'       => Auth::check() ? Auth::rol() : null,
+        'csrfToken' => Session::csrf(),
+        'settings'  => $configModel->obtener(),
+    ];
+    mostrarVista($vistas[$action], ['datos' => $datos]);
+}
+else {
+    http_response_code(404);
+    echo 'Pagina no encontrada.';
 }

@@ -1,144 +1,106 @@
 <?php
+/**
+ * Controlador de Clientes (perfil, contrasena y notificaciones).
+ */
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Core/helpers.php';
+require_once __DIR__ . '/../Core/Session.php';
+require_once __DIR__ . '/../Core/Auth.php';
+require_once __DIR__ . '/../Models/Cliente.php';
 
-class ClientController {
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-    private function entrada() {
-        $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $cuerpo = [];
-        if (!in_array($metodo, ['GET', 'HEAD'])) {
-            $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-            if (stripos($contentType, 'application/json') !== false) {
-                $decodificado = json_decode(file_get_contents('php://input') ?: '[]', true);
-                $cuerpo = is_array($decodificado) ? $decodificado : [];
-            } else {
-                $cuerpo = $_POST;
-            }
-        }
-        return array_merge($_GET, $cuerpo);
+$clienteModel = new Cliente();
+$datos        = entrada();
+
+/** Solo el propio cliente o un admin pueden ver/editar este cliente. */
+function autorizarPropioOAdmin($id)
+{
+    if (!Auth::check()) {
+        responderError('No autenticado.', 401);
+    }
+    $esPropio = Auth::rol() === 'client' && (string) Auth::id() === (string) $id;
+    $esAdmin  = Auth::rol() === 'admin';
+    if (!$esPropio && !$esAdmin) {
+        responderError('No autorizado para este recurso.', 403);
+    }
+}
+
+if ($action === 'index') {
+    responderJson($clienteModel->listar());
+}
+elseif ($action === 'show') {
+    $id = $_GET['id'] ?? $_POST['id'] ?? '';
+    autorizarPropioOAdmin($id);
+    $cliente = $clienteModel->buscar($id);
+    if (!$cliente) {
+        responderError('Cliente no encontrado.', 404);
+    }
+    responderJson($cliente);
+}
+elseif ($action === 'update') {
+    $id = $_GET['id'] ?? $_POST['id'] ?? '';
+    autorizarPropioOAdmin($id);
+    if (!$clienteModel->buscar($id)) {
+        responderError('Cliente no encontrado.', 404);
     }
 
-    public function index() {
-        global $conn;
-        responderJson((new Cliente($conn))->listar());
+    // El cliente solo puede cambiar estos campos; puntos y total gastado son solo del admin.
+    if (Auth::rol() !== 'admin') {
+        $permitidos = ['name', 'email', 'phone', 'address', 'birthday', 'cart', 'preferences'];
+        $datos = array_intersect_key($datos, array_flip($permitidos));
     }
 
-    public function show($id) {
-        global $conn;
-        $this->autorizarPropioOAdmin($id);
-
-        $cliente = (new Cliente($conn))->buscar($id);
-        if (!$cliente) {
-            responderError('Cliente no encontrado.', 404);
-        }
-        responderJson($cliente);
+    if (!empty($datos['email']) && correoUsadoEnCualquierTabla($datos['email'], $id)) {
+        responderError('Ya existe una cuenta con ese correo.', 409);
     }
 
-    public function update($id) {
-        global $conn;
-        $this->autorizarPropioOAdmin($id);
+    $clienteModel->actualizar($id, $datos);
+    responderJson($clienteModel->buscar($id));
+}
+elseif ($action === 'changePassword') {
+    $id = $_GET['id'] ?? $_POST['id'] ?? '';
 
-        $clienteModelo = new Cliente($conn);
-        if (!$clienteModelo->buscar($id)) {
-            responderError('Cliente no encontrado.', 404);
-        }
-
-        $datos = $this->entrada();
-
-        $auth = new Autenticacion($conn);
-        if ($auth->rolActual() !== 'admin') {
-            // cart/preferences son autoservicio (el propio cliente guarda su
-            // carrito y su tema preferido en cada cambio); points/totalSpent
-            // siguen solo para admin. email SÍ es autoservicio: el cliente
-            // puede editar el suyo (se valida duplicado más abajo).
-            $permitidos = ['name', 'email', 'phone', 'address', 'birthday', 'cart', 'preferences'];
-            $datos = array_intersect_key($datos, array_flip($permitidos));
-        }
-
-        if (!empty($datos['email']) && correoUsadoEnCualquierTabla($conn, $datos['email'], $id)) {
-            responderError('Ya existe una cuenta con ese correo.', 409);
-        }
-
-        $clienteModelo->actualizar($id, $datos);
-        responderJson($clienteModelo->buscar($id));
+    // Solo el propio cliente (el admin no conoce la contrasena actual).
+    if (!Auth::check() || Auth::rol() !== 'client' || (string) Auth::id() !== (string) $id) {
+        responderError('No autorizado para este recurso.', 403);
     }
 
-    /**
-     * Cambio de contraseña autenticado (distinto del flujo de "olvidé mi
-     * contraseña", que es para cuando NO tienes sesión). Antes el modal de
-     * "Cambiar Contraseña" en Mi Perfil no llamaba a ningún endpoint real --
-     * los campos ni siquiera estaban conectados a un estado, así que el botón
-     * "Actualizar" solo mostraba un mensaje de éxito falso.
-     */
-    public function changePassword($id) {
-        global $conn;
-        $auth = new Autenticacion($conn);
-
-        // Solo el propio cliente puede cambiar su contraseña (nunca el admin
-        // por esta vía: no conoce la contraseña actual del cliente).
-        if (!$auth->haySesion() || $auth->rolActual() !== 'client' || (string) $auth->idActual() !== (string) $id) {
-            responderError('No autorizado para este recurso.', 403);
-        }
-
-        $datos = $this->entrada();
-        $errores = [];
-        if (empty($datos['currentPassword'])) $errores['currentPassword'] = ['La contraseña actual es obligatoria.'];
-        if (empty($datos['newPassword']) || strlen((string) $datos['newPassword']) < 8) {
-            $errores['newPassword'] = ['La nueva contraseña debe tener al menos 8 caracteres.'];
-        }
-        if (!empty($errores)) {
-            responderError('Datos inválidos.', 422, $errores);
-        }
-
-        $clienteModelo = new Cliente($conn);
-        $filaCruda = $clienteModelo->buscarCrudo($id);
-        if (!$filaCruda) {
-            responderError('Cliente no encontrado.', 404);
-        }
-        if (!password_verify((string) $datos['currentPassword'], $filaCruda['contrasena'])) {
-            responderError('La contraseña actual no es correcta.', 422, ['currentPassword' => ['La contraseña actual no es correcta.']]);
-        }
-
-        $clienteModelo->actualizarContrasena($id, password_hash((string) $datos['newPassword'], PASSWORD_DEFAULT));
-        responderJson(['ok' => true]);
+    $errores = [];
+    if (empty($datos['currentPassword'])) $errores['currentPassword'] = ['La contraseña actual es obligatoria.'];
+    if (empty($datos['newPassword']) || strlen((string) $datos['newPassword']) < 8) $errores['newPassword'] = ['La nueva contraseña debe tener al menos 8 caracteres.'];
+    if ($errores) {
+        responderError('Datos inválidos.', 422, $errores);
     }
 
-    public function notifications($id) {
-        global $conn;
-        $this->autorizarPropioOAdmin($id);
-
-        $clienteModelo = new Cliente($conn);
-        if (!$clienteModelo->buscar($id)) {
-            responderError('Cliente no encontrado.', 404);
-        }
-
-        responderJson($clienteModelo->notificacionesDe($id));
+    $fila = $clienteModel->buscarCrudo($id);
+    if (!$fila) {
+        responderError('Cliente no encontrado.', 404);
+    }
+    if (!password_verify((string) $datos['currentPassword'], $fila['contrasena'])) {
+        responderError('La contraseña actual no es correcta.', 422, ['currentPassword' => ['La contraseña actual no es correcta.']]);
     }
 
-    public function markNotificationRead($id, $notifId) {
-        global $conn;
-        $this->autorizarPropioOAdmin($id);
-
-        $ok = (new Cliente($conn))->marcarNotificacionLeida($id, $notifId);
-        if (!$ok) {
-            responderError('Notificación no encontrada.', 404);
-        }
-
-        responderJson(['ok' => true]);
+    $clienteModel->actualizarContrasena($id, password_hash((string) $datos['newPassword'], PASSWORD_DEFAULT));
+    responderJson(['ok' => true]);
+}
+elseif ($action === 'notifications') {
+    $id = $_GET['id'] ?? $_POST['id'] ?? '';
+    autorizarPropioOAdmin($id);
+    if (!$clienteModel->buscar($id)) {
+        responderError('Cliente no encontrado.', 404);
     }
-
-    private function autorizarPropioOAdmin($id) {
-        global $conn;
-        $auth = new Autenticacion($conn);
-
-        if (!$auth->haySesion()) {
-            responderError('No autenticado.', 401);
-        }
-
-        $esPropio = $auth->rolActual() === 'client' && (string) $auth->idActual() === (string) $id;
-        $esAdmin = $auth->rolActual() === 'admin';
-
-        if (!$esPropio && !$esAdmin) {
-            responderError('No autorizado para este recurso.', 403);
-        }
+    responderJson($clienteModel->notificacionesDe($id));
+}
+elseif ($action === 'markNotificationRead') {
+    $id      = $_GET['id'] ?? $_POST['id'] ?? '';
+    $notifId = $_GET['notifId'] ?? $_POST['notifId'] ?? '';
+    autorizarPropioOAdmin($id);
+    if (!$clienteModel->marcarNotificacionLeida($id, $notifId)) {
+        responderError('Notificación no encontrada.', 404);
     }
+    responderJson(['ok' => true]);
+}
+else {
+    responderError('Ruta no encontrada.', 404);
 }

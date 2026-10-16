@@ -1,9 +1,7 @@
 <?php
-
 /**
- * CLI para que el rol Programador cree el primer Administrador (y, de paso,
- * a si mismo si aun no existe). Nunca se hace desde la web ni hay credenciales
- * hardcodeadas en el codigo — este script es la unica puerta de entrada inicial.
+ * Consola para que el Programador cree el primer Administrador
+ * (y a si mismo, si todavia no existe). Es la unica forma de crear el primer admin.
  *
  * Uso (desde la raiz del proyecto):
  *   php bin/create-admin.php
@@ -13,7 +11,9 @@ require __DIR__ . '/../config/database.php';
 require __DIR__ . '/../app/Core/helpers.php';
 require __DIR__ . '/../app/Models/Usuario.php';
 
-function prompt($etiqueta, $oculto = false) {
+/** Pide un dato por consola ($oculto = no muestra lo que se escribe, salvo en Windows). */
+function prompt($etiqueta, $oculto = false)
+{
     echo $etiqueta;
     if ($oculto && PHP_OS_FAMILY !== 'Windows') {
         system('stty -echo');
@@ -26,63 +26,64 @@ function prompt($etiqueta, $oculto = false) {
     return $valor;
 }
 
+/** Muestra el error y termina. */
+function fallar($mensaje)
+{
+    fwrite(STDERR, $mensaje . "\n");
+    exit(1);
+}
+
 echo "=== CopiwayPRO — Creación del primer Administrador (rol Programador) ===\n\n";
 
-$usuarioModelo = new Usuario($conn);
+$usuarioModel = new Usuario();
 
 $correoProgramador = prompt('Correo del Programador (quien crea la cuenta): ');
-$programador = $usuarioModelo->buscarPorCorreo($correoProgramador);
+$programador = $usuarioModel->buscarPorCorreo($correoProgramador);
 
 if (!$programador) {
     echo "No existe un Programador con ese correo. Vamos a crearlo primero.\n";
-    $nombre = prompt('Nombre del Programador: ');
+    $nombre   = prompt('Nombre del Programador: ');
     $telefono = prompt('Teléfono del Programador: ');
     $password = prompt('Contraseña del Programador (mínimo 8 caracteres): ', true);
 
     if (strlen($password) < 8) {
-        fwrite(STDERR, "La contraseña debe tener al menos 8 caracteres.\n");
-        exit(1);
+        fallar('La contraseña debe tener al menos 8 caracteres.');
+    }
+    if (correoUsadoEnCualquierTabla($correoProgramador)) {
+        fallar('Ya existe una cuenta con ese correo.');
     }
 
-    if (correoUsadoEnCualquierTabla($conn, $correoProgramador)) {
-        fwrite(STDERR, "Ya existe una cuenta con ese correo.\n");
-        exit(1);
-    }
-
-    $programador = $usuarioModelo->crear([
-        'nombre' => $nombre,
-        'correo' => $correoProgramador,
-        'telefono' => $telefono,
-        'password' => $password,
+    $programador = $usuarioModel->crear([
+        'nombre'       => $nombre,
+        'correo'       => $correoProgramador,
+        'telefono'     => $telefono,
+        'password'     => $password,
         'nivel_acceso' => 'programador',
-        'creado_por' => null,
+        'creado_por'   => null,
     ]);
     echo "Programador creado.\n\n";
 }
 
 echo "Ahora, datos del Administrador (rol 'maestro') que usará el panel /admin:\n";
-$nombreAdmin = prompt('Nombre del Administrador: ');
-$correoAdmin = prompt('Correo del Administrador: ');
+$nombreAdmin   = prompt('Nombre del Administrador: ');
+$correoAdmin   = prompt('Correo del Administrador: ');
 $telefonoAdmin = prompt('Teléfono del Administrador: ');
 $passwordAdmin = prompt('Contraseña del Administrador (mínimo 8 caracteres): ', true);
 
 if (strlen($passwordAdmin) < 8) {
-    fwrite(STDERR, "La contraseña debe tener al menos 8 caracteres.\n");
-    exit(1);
+    fallar('La contraseña debe tener al menos 8 caracteres.');
+}
+if ($usuarioModel->esUsado($correoAdmin, $telefonoAdmin) || correoUsadoEnCualquierTabla($correoAdmin)) {
+    fallar('Ya existe una cuenta con ese correo o teléfono.');
 }
 
-if ($usuarioModelo->esUsado($correoAdmin, $telefonoAdmin) || correoUsadoEnCualquierTabla($conn, $correoAdmin)) {
-    fwrite(STDERR, "Ya existe una cuenta con ese correo o teléfono.\n");
-    exit(1);
-}
-
-$usuarioModelo->crear([
-    'nombre' => $nombreAdmin,
-    'correo' => $correoAdmin,
-    'telefono' => $telefonoAdmin,
-    'password' => $passwordAdmin,
+$usuarioModel->crear([
+    'nombre'       => $nombreAdmin,
+    'correo'       => $correoAdmin,
+    'telefono'     => $telefonoAdmin,
+    'password'     => $passwordAdmin,
     'nivel_acceso' => 'maestro',
-    'creado_por' => $programador['id_admin'],
+    'creado_por'   => $programador['id_admin'],
 ]);
 
 echo "\nAdministrador '{$nombreAdmin}' creado correctamente. Ya puede iniciar sesión en /login.\n";

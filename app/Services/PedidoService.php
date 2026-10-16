@@ -1,41 +1,24 @@
 <?php
-// Servicio de PEDIDO: orquesta las reglas de negocio del ciclo de vida del
-// pedido (checkout, transiciones de estado, resena). El Model (Pedido.php)
-// solo hace acceso a datos (SELECT/armar el JSON); aqui vive todo lo que
-// decide "que hacer" -- horario, precios, pago simulado, descuento de
-// inventario, transiciones validas por rol, PIN de entrega.
+/**
+ * Servicio de Pedidos: reglas del ciclo de vida del pedido
+ * (checkout, cambios de estado, entrega con PIN y resena).
+ */
+require_once __DIR__ . '/../Models/Pedido.php';
+require_once __DIR__ . '/../Models/Configuracion.php';
+require_once __DIR__ . '/../Models/Ingrediente.php';
+require_once __DIR__ . '/PagoService.php';
+require_once __DIR__ . '/PushNotificationService.php';
 
-class PedidoService {
+class PedidoService
+{
+    private $conn;
+    private $pedidoModel;
 
-    public $conn;
-    private $pedidoModelo;
-
-    public function __construct($conn) {
+    public function __construct()
+    {
+        global $conn;
         $this->conn = $conn;
-        $this->pedidoModelo = new Pedido($conn);
-    }
-
-    /**
-     * Ejecuta una consulta preparada. El tipo de cada parametro (i/d/s) se
-     * infiere solo del valor PHP, asi que nunca hay que contar caracteres a mano.
-     */
-    private function consulta($sql, $parametros = []) {
-        $stmt = $this->conn->prepare($sql);
-        if (!empty($parametros)) {
-            $tipos = '';
-            foreach ($parametros as $p) {
-                if (is_int($p)) {
-                    $tipos .= 'i';
-                } elseif (is_float($p)) {
-                    $tipos .= 'd';
-                } else {
-                    $tipos .= 's';
-                }
-            }
-            $stmt->bind_param($tipos, ...$parametros);
-        }
-        $stmt->execute();
-        return $stmt;
+        $this->pedidoModel = new Pedido();
     }
 
     // ---------------------------------------------------------------
@@ -43,35 +26,26 @@ class PedidoService {
     // ---------------------------------------------------------------
 
     /**
-     * Crea un pedido nuevo. Recalcula precios/total en el servidor (nunca
-     * confia en el cliente), valida horario, cobra (simulado) si es pago
-     * digital, y dentro de una transaccion inserta el pedido + descuenta
-     * inventario por receta. Lanza Exception con un mensaje claro si algo
-     * falla (tienda cerrada, pago rechazado, sin stock, etc).
+     * Crea un pedido. Recalcula precios en el servidor, valida horario y pago,
+     * y en una transaccion guarda el pedido y descuenta el inventario.
      */
-    public function crear($idCliente, $payload) {
-        $configuracion = new Configuracion($this->conn);
-        if (!$configuracion->tiendaAbiertaAhora()) {
+    public function crear($idCliente, $payload)
+    {
+        $configModel = new Configuracion();
+        if (!$configModel->tiendaAbiertaAhora()) {
             throw new Exception('La tienda está cerrada o pausada en este momento. No se pueden procesar pagos.');
         }
 
-        $items = $payload['items'] ?? [];
-        if (empty($items)) {
+        if (empty($payload['items'])) {
             throw new InvalidArgumentException('El pedido no tiene ítems.');
         }
 
-        $stmtCliente = $this->consulta('SELECT * FROM CLIENTE WHERE id_cliente = ? LIMIT 1', [$idCliente]);
-        $cliente = $stmtCliente->get_result()->fetch_assoc();
-        $stmtCliente->close();
+        $cliente = $this->buscarCliente($idCliente);
         if (!$cliente) {
             throw new InvalidArgumentException('Cliente no encontrado.');
         }
 
-        $calculo = $this->calcular($cliente, $payload, $configuracion);
-        $itemsResueltos = $calculo['items'];
-        $subtotal = $calculo['subtotal'];
-        $envio = $calculo['envio'];
-        $descuento = $calculo['descuento'];
+        $calculo = $this->calcular($cliente, $payload, $configModel);
         $total = $calculo['total'];
         $puntos = (int) floor($total / 1000);
 
@@ -83,16 +57,17 @@ class PedidoService {
         $fechaPago = null;
         $comprobante = null;
 
+        // Pago digital: se verifica la transaccion antes de crear nada.
+        // En efectivo el pago queda 'pendiente' hasta la entrega.
         if (!$esEfectivo) {
-            // El pago ya ocurrio en el checkout de la pasarela; aqui se VERIFICA la
-            // transaccion (estado, monto, cliente y que no se haya usado antes)
-            // antes de crear nada. Un pago que no se pueda comprobar NUNCA crea un pedido.
-            $pago = (new PagoService($this->conn))->verificarTransaccion(
-                (string) ($payload['paymentTransactionId'] ?? ''), $total, $idCliente
-            );
-            $stmtDup = $this->consulta('SELECT id_pedido FROM PEDIDO WHERE comprobante_pago = ? LIMIT 1', [$pago['id']]);
-            $yaUsada = $stmtDup->get_result()->fetch_assoc();
-            $stmtDup->close();
+            $pagoService = new PagoService();
+            $pago = $pagoService->verificarTransaccion((string) ($payload['paymentTransactionId'] ?? ''), $total, $idCliente);
+
+            $stmt = $this->conn->prepare("SELECT id_pedido FROM PEDIDO WHERE comprobante_pago = ? LIMIT 1");
+            $stmt->bind_param("s", $pago['id']);
+            $stmt->execute();
+            $yaUsada = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
             if ($yaUsada) {
                 throw new Exception('Este pago ya fue usado en otro pedido.');
             }
@@ -100,70 +75,78 @@ class PedidoService {
             $estadoPago = 'aprobado';
             $fechaPago = date('Y-m-d H:i:s');
         }
-        // Si es efectivo: el pedido SI pasa a cocina, pero el pago queda 'pendiente'
-        // hasta que el domiciliario liquide el efectivo en el cierre de caja.
 
         $this->conn->begin_transaction();
         try {
-            $insertar = $this->consulta(
+            $values = [
+                $idCliente, $payload['address'] ?? $cliente['direccion'],
+                $payload['lat'] ?? null, $payload['lng'] ?? null,
+                $metodoPago, $bancoDigital, $estadoPago, $fechaPago, $comprobante,
+                $calculo['subtotal'], $calculo['envio'], $calculo['descuento'], $puntos, $total,
+            ];
+            $stmtP = $this->conn->prepare(
                 "INSERT INTO PEDIDO
                     (id_cliente, direccion_entrega, destino_lat, destino_lng, estado,
                      canal_origen, metodo_pago, banco_digital, estado_pago, fecha_pago, comprobante_pago,
                      subtotal, costo_domicilio, descuento_cumpleanos, puntos_ganados, total)
-                 VALUES (?, ?, ?, ?, 'pendiente', 'web', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                [
-                    $idCliente, $payload['address'] ?? $cliente['direccion'],
-                    $payload['lat'] ?? null, $payload['lng'] ?? null,
-                    $metodoPago, $bancoDigital, $estadoPago, $fechaPago, $comprobante,
-                    $subtotal, $envio, $descuento, $puntos, $total,
-                ]
+                 VALUES (?, ?, ?, ?, 'pendiente', 'web', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
-            $insertar->close();
+            $stmtP->bind_param(tiposDe($values), ...$values);
+            $stmtP->execute();
+            $stmtP->close();
             $idPedido = $this->conn->insert_id;
 
             $lineasDescuento = [];
 
-            foreach ($itemsResueltos as $resuelto) {
-                $producto = $resuelto['producto'];
-                $esPersonalizado = (!empty($resuelto['extras']) || !empty($resuelto['removidos'])) ? 1 : 0;
+            foreach ($calculo['items'] as $item) {
+                $producto = $item['producto'];
+                $esPersonalizado = (!empty($item['extras']) || !empty($item['removidos'])) ? 1 : 0;
 
-                $stmtDetalle = $this->consulta(
-                    'INSERT INTO DETALLE_PEDIDO (id_pedido, id_producto, nombre_producto, cantidad, precio_unitario, es_personalizado)
-                     VALUES (?, ?, ?, ?, ?, ?)',
-                    [$idPedido, $producto['id_producto'], $producto['nombre'], $resuelto['cantidad'], $resuelto['precioUnitario'], $esPersonalizado]
+                $values = [$idPedido, $producto['id_producto'], $producto['nombre'], $item['cantidad'], $item['precioUnitario'], $esPersonalizado];
+                $stmtD = $this->conn->prepare(
+                    "INSERT INTO DETALLE_PEDIDO (id_pedido, id_producto, nombre_producto, cantidad, precio_unitario, es_personalizado)
+                     VALUES (?, ?, ?, ?, ?, ?)"
                 );
-                $stmtDetalle->close();
+                $stmtD->bind_param(tiposDe($values), ...$values);
+                $stmtD->execute();
+                $stmtD->close();
                 $idDetalle = $this->conn->insert_id;
 
-                foreach ($resuelto['extras'] as $extra) {
-                    $stmtExtra = $this->consulta(
+                foreach ($item['extras'] as $extra) {
+                    $values = [$idDetalle, $extra['id_ingrediente'], $extra['nombre'], $extra['precio_extra']];
+                    $stmtE = $this->conn->prepare(
                         "INSERT INTO PERSONALIZACION (id_detalle, id_ingrediente, nombre_ingrediente, accion_modificacion, cantidad, costo_aplicado)
-                         VALUES (?, ?, ?, 'agregar', 1, ?)",
-                        [$idDetalle, $extra['id_ingrediente'], $extra['nombre'], $extra['precio_extra']]
+                         VALUES (?, ?, ?, 'agregar', 1, ?)"
                     );
-                    $stmtExtra->close();
+                    $stmtE->bind_param(tiposDe($values), ...$values);
+                    $stmtE->execute();
+                    $stmtE->close();
 
                     $lineasDescuento[] = [
                         'id_ingrediente' => $extra['id_ingrediente'],
-                        'cantidad' => $resuelto['cantidad'],
-                        'motivo' => 'Extra pedido #ORD-' . $idPedido,
+                        'cantidad'       => $item['cantidad'],
+                        'motivo'         => 'Extra pedido #ORD-' . $idPedido,
                     ];
                 }
 
-                foreach ($resuelto['removidos'] as $removido) {
-                    $stmtQuitar = $this->consulta(
+                foreach ($item['removidos'] as $removido) {
+                    $values = [$idDetalle, $removido['id_ingrediente'], $removido['nombre']];
+                    $stmtQ = $this->conn->prepare(
                         "INSERT INTO PERSONALIZACION (id_detalle, id_ingrediente, nombre_ingrediente, accion_modificacion, cantidad, costo_aplicado)
-                         VALUES (?, ?, ?, 'quitar', 1, 0)",
-                        [$idDetalle, $removido['id_ingrediente'], $removido['nombre']]
+                         VALUES (?, ?, ?, 'quitar', 1, 0)"
                     );
-                    $stmtQuitar->close();
+                    $stmtQ->bind_param(tiposDe($values), ...$values);
+                    $stmtQ->execute();
+                    $stmtQ->close();
                 }
 
-                // Receta base del producto (ingredientes + empaques), menos lo removido, por la cantidad pedida.
-                $idsRemovidos = array_column($resuelto['removidos'], 'id_ingrediente');
-                $stmtReceta = $this->consulta('SELECT id_ingrediente, cantidad_necesaria FROM RECETA WHERE id_producto = ?', [$producto['id_producto']]);
-                $receta = $stmtReceta->get_result()->fetch_all(MYSQLI_ASSOC);
-                $stmtReceta->close();
+                // Receta base del producto (menos lo que se quito) por la cantidad pedida.
+                $idsRemovidos = array_column($item['removidos'], 'id_ingrediente');
+                $stmtR = $this->conn->prepare("SELECT id_ingrediente, cantidad_necesaria FROM RECETA WHERE id_producto = ?");
+                $stmtR->bind_param("i", $producto['id_producto']);
+                $stmtR->execute();
+                $receta = $stmtR->get_result()->fetch_all(MYSQLI_ASSOC);
+                $stmtR->close();
 
                 foreach ($receta as $linea) {
                     if (in_array($linea['id_ingrediente'], $idsRemovidos, true)) {
@@ -171,79 +154,86 @@ class PedidoService {
                     }
                     $lineasDescuento[] = [
                         'id_ingrediente' => $linea['id_ingrediente'],
-                        'cantidad' => (float) $linea['cantidad_necesaria'] * $resuelto['cantidad'],
-                        'motivo' => 'Venta pedido',
+                        'cantidad'       => (float) $linea['cantidad_necesaria'] * $item['cantidad'],
+                        'motivo'         => 'Venta pedido',
                     ];
                 }
             }
 
-            // Bolsa de empaque global (1 por pedido, configurable por el admin).
-            $idBolsa = $configuracion->idIngredienteBolsaGlobal();
+            // Bolsa de empaque global (1 por pedido).
+            $idBolsa = $configModel->idIngredienteBolsaGlobal();
             if ($idBolsa) {
                 $lineasDescuento[] = ['id_ingrediente' => $idBolsa, 'cantidad' => 1, 'motivo' => 'Empaque global pedido'];
             }
 
             if (!empty($lineasDescuento)) {
-                $ingredienteModelo = new Ingrediente($this->conn);
-                $ingredienteModelo->descontarPorReceta($lineasDescuento, $idPedido);
+                $ingredienteModel = new Ingrediente();
+                $ingredienteModel->descontarPorReceta($lineasDescuento, $idPedido);
             }
 
-            // Los puntos y el total gastado se acreditan al ENTREGAR el pedido
-            // (confirmarEntrega), no aqui: un pedido que no llega no suma nada.
+            // Los puntos y el total gastado se suman al ENTREGAR (confirmarEntrega).
             $this->conn->commit();
         } catch (Exception $e) {
             $this->conn->rollback();
             throw $e;
         }
 
-        return $this->pedidoModelo->buscar($idPedido, 'client', $idCliente);
+        return $this->pedidoModel->buscar($idPedido, 'client', $idCliente);
+    }
+
+    private function buscarCliente($idCliente)
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM CLIENTE WHERE id_cliente = ? LIMIT 1");
+        $stmt->bind_param("s", $idCliente);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $row ?: null;
     }
 
     /**
-     * Recalcula en el servidor items, precios, descuento y total (nunca confia
-     * en lo que manda el cliente). Lo usan crear() y cotizar().
-     * @return array{items: array, subtotal: float, envio: float, descuento: float, total: float}
+     * Recalcula en el servidor items, precios, descuento y total.
+     * El precio de cada insumo extra = costo unitario + margen de ganancia de Ajustes.
      */
-    private function calcular($cliente, $payload, $configuracion) {
+    private function calcular($cliente, $payload, $configModel)
+    {
         $items = $payload['items'] ?? [];
         if (empty($items)) {
             throw new InvalidArgumentException('El pedido no tiene ítems.');
         }
 
-        // ---- Recalcula todo en el servidor; nunca confia en precios/totales del cliente ----
-        // El PVP de cada insumo no se guarda manualmente: se deriva del costo unitario
-        // (Inventario Express) + el margen de ganancia que el admin configura en Ajustes,
-        // igual que lo previsualiza el Creador Interactivo del lado del cliente.
-        $margen = $configuracion->margenGanancia();
-        $itemsResueltos = [];
+        $margen = $configModel->margenGanancia();
+        $resueltos = [];
         $subtotal = 0.0;
 
         foreach ($items as $item) {
             $cantidad = max(1, (int) ($item['quantity'] ?? 1));
 
+            // Creador interactivo: hamburguesa armada capa por capa, sin producto base.
             if (empty($item['productId']) && !empty($item['stack'])) {
-                // "Creador interactivo": hamburguesa armada capa por capa, sin producto base.
                 $pila = $this->resolverIngredientes($item['stack'], $margen);
                 if (empty($pila)) {
                     throw new InvalidArgumentException('La hamburguesa personalizada no tiene ingredientes válidos.');
                 }
-                $producto = $this->productoPersonalizadoOculto();
-                $precioUnitario = array_sum(array_map(function ($e) { return (float) $e['precio_extra']; }, $pila));
+                $precioUnitario = $this->sumarPrecios($pila);
                 $subtotal += $precioUnitario * $cantidad;
 
-                $itemsResueltos[] = [
-                    'producto' => $producto,
-                    'cantidad' => $cantidad,
+                $resueltos[] = [
+                    'producto'       => $this->productoPersonalizadoOculto(),
+                    'cantidad'       => $cantidad,
                     'precioUnitario' => $precioUnitario,
-                    'extras' => $pila,
-                    'removidos' => [],
+                    'extras'         => $pila,
+                    'removidos'      => [],
                 ];
                 continue;
             }
 
-            $stmtProd = $this->consulta("SELECT * FROM PRODUCTO WHERE id_producto = ? AND estado = 'activo' LIMIT 1", [$item['productId'] ?? '']);
-            $producto = $stmtProd->get_result()->fetch_assoc();
-            $stmtProd->close();
+            $idProducto = $item['productId'] ?? '';
+            $stmt = $this->conn->prepare("SELECT * FROM PRODUCTO WHERE id_producto = ? AND estado = 'activo' LIMIT 1");
+            $stmt->bind_param("s", $idProducto);
+            $stmt->execute();
+            $producto = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
             if (!$producto) {
                 throw new InvalidArgumentException('Uno de los productos del carrito ya no está disponible.');
             }
@@ -251,172 +241,202 @@ class PedidoService {
             $extras = $this->resolverIngredientes($item['extras'] ?? [], $margen);
             $removidos = $this->resolverIngredientes($item['removed'] ?? [], $margen);
 
-            $costoExtras = array_sum(array_map(function ($e) { return (float) $e['precio_extra']; }, $extras));
-            $precioUnitario = (float) $producto['precio'] + $costoExtras;
+            $precioUnitario = (float) $producto['precio'] + $this->sumarPrecios($extras);
             $subtotal += $precioUnitario * $cantidad;
 
-            $itemsResueltos[] = [
-                'producto' => $producto,
-                'cantidad' => $cantidad,
+            $resueltos[] = [
+                'producto'       => $producto,
+                'cantidad'       => $cantidad,
                 'precioUnitario' => $precioUnitario,
-                'extras' => $extras,
-                'removidos' => $removidos,
+                'extras'         => $extras,
+                'removidos'      => $removidos,
             ];
         }
 
-        $envio = (float) $configuracion->tarifaDomicilio();
+        $envio = (float) $configModel->tarifaDomicilio();
         $descuento = $this->descuentoCumpleanos($cliente, $subtotal);
-        $total = round($subtotal - $descuento + $envio, 2);
 
         return [
-            'items' => $itemsResueltos,
-            'subtotal' => $subtotal,
-            'envio' => $envio,
+            'items'     => $resueltos,
+            'subtotal'  => $subtotal,
+            'envio'     => $envio,
             'descuento' => $descuento,
-            'total' => $total,
+            'total'     => round($subtotal - $descuento + $envio, 2),
         ];
     }
 
-    /**
-     * Total que el servidor cobraria por este carrito (para abrir la pasarela de
-     * pago con el monto correcto, y para verificar despues que lo pagado coincide).
-     */
-    public function cotizar($idCliente, $payload) {
-        $configuracion = new Configuracion($this->conn);
-        if (!$configuracion->tiendaAbiertaAhora()) {
+    private function sumarPrecios($ingredientes)
+    {
+        $suma = 0;
+        foreach ($ingredientes as $ing) {
+            $suma += (float) $ing['precio_extra'];
+        }
+        return $suma;
+    }
+
+    /** Total que se cobraria por este carrito (para abrir la pasarela de pago). */
+    public function cotizar($idCliente, $payload)
+    {
+        $configModel = new Configuracion();
+        if (!$configModel->tiendaAbiertaAhora()) {
             throw new Exception('La tienda está cerrada o pausada en este momento. No se pueden procesar pagos.');
         }
-        $stmt = $this->consulta('SELECT * FROM CLIENTE WHERE id_cliente = ? LIMIT 1', [$idCliente]);
-        $cliente = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
+        $cliente = $this->buscarCliente($idCliente);
         if (!$cliente) {
             throw new InvalidArgumentException('Cliente no encontrado.');
         }
-        return $this->calcular($cliente, $payload, $configuracion)['total'];
+        return $this->calcular($cliente, $payload, $configModel)['total'];
     }
 
-    /**
-     * Producto "sombra" (oculto del catalogo) usado como ancla de FK para los
-     * items 100% personalizados del creador interactivo. Se crea una sola vez.
-     */
-    private function productoPersonalizadoOculto() {
-        $stmt = $this->consulta("SELECT * FROM PRODUCTO WHERE nombre = 'Hamburguesa Personalizada' AND estado = 'oculto' LIMIT 1");
+    /** Producto oculto que sirve de base para las hamburguesas del creador interactivo. Se crea una sola vez. */
+    private function productoPersonalizadoOculto()
+    {
+        $sql = "SELECT * FROM PRODUCTO WHERE nombre = 'Hamburguesa Personalizada' AND estado = 'oculto' LIMIT 1";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute();
         $producto = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         if ($producto) {
             return $producto;
         }
 
-        $stmtBuscarCat = $this->consulta("SELECT id_categoria FROM CATEGORIA WHERE nombre = 'Personalizado' AND ambito = 'menu' LIMIT 1");
-        $filaCategoria = $stmtBuscarCat->get_result()->fetch_assoc();
-        $stmtBuscarCat->close();
+        $stmtC = $this->conn->prepare("SELECT id_categoria FROM CATEGORIA WHERE nombre = 'Personalizado' AND ambito = 'menu' LIMIT 1");
+        $stmtC->execute();
+        $categoria = $stmtC->get_result()->fetch_assoc();
+        $stmtC->close();
 
-        if (!$filaCategoria) {
-            $stmtCrearCat = $this->consulta("INSERT INTO CATEGORIA (nombre, ambito) VALUES ('Personalizado', 'menu')");
-            $stmtCrearCat->close();
-            $idCategoriaPersonalizado = $this->conn->insert_id;
+        if ($categoria) {
+            $idCategoria = $categoria['id_categoria'];
         } else {
-            $idCategoriaPersonalizado = $filaCategoria['id_categoria'];
+            $stmtN = $this->conn->prepare("INSERT INTO CATEGORIA (nombre, ambito) VALUES ('Personalizado', 'menu')");
+            $stmtN->execute();
+            $stmtN->close();
+            $idCategoria = $this->conn->insert_id;
         }
 
-        $stmtCrearProd = $this->consulta(
+        $stmtI = $this->conn->prepare(
             "INSERT INTO PRODUCTO (id_categoria, nombre, precio, estado)
-             VALUES (?, 'Hamburguesa Personalizada', 0, 'oculto')",
-            [$idCategoriaPersonalizado]
+             VALUES (?, 'Hamburguesa Personalizada', 0, 'oculto')"
         );
-        $stmtCrearProd->close();
+        $stmtI->bind_param("i", $idCategoria);
+        $stmtI->execute();
+        $stmtI->close();
 
-        $stmtFinal = $this->consulta("SELECT * FROM PRODUCTO WHERE nombre = 'Hamburguesa Personalizada' AND estado = 'oculto' LIMIT 1");
-        $producto = $stmtFinal->get_result()->fetch_assoc();
-        $stmtFinal->close();
+        $stmtF = $this->conn->prepare($sql);
+        $stmtF->execute();
+        $producto = $stmtF->get_result()->fetch_assoc();
+        $stmtF->close();
         return $producto;
     }
 
     /**
-     * @param float $margen Porcentaje de ganancia (Ajustes) a aplicar sobre el costo_unitario
-     *   del insumo. INGREDIENTE.precio_extra no se usa como precio de venta: es el mismo
-     *   insumo de Inventario Express, y ahi solo se captura su costo, nunca un precio manual.
-     * @return array de {id_ingrediente, nombre, precio_extra}
+     * Busca cada ingrediente por id (o por nombre) y calcula su precio de venta:
+     * costo unitario + margen, redondeado a la centena (igual que en el frontend).
+     * Los ingredientes que no existen se ignoran.
      */
-    private function resolverIngredientes($referencias, $margen = 0.0) {
+    private function resolverIngredientes($referencias, $margen = 0.0)
+    {
         $resueltos = [];
         foreach ($referencias as $ref) {
-            $fila = null;
+            $row = null;
             if (!empty($ref['id'])) {
-                $stmt = $this->consulta('SELECT * FROM INGREDIENTE WHERE id_ingrediente = ? LIMIT 1', [$ref['id']]);
-                $fila = $stmt->get_result()->fetch_assoc();
+                $stmt = $this->conn->prepare("SELECT * FROM INGREDIENTE WHERE id_ingrediente = ? LIMIT 1");
+                $stmt->bind_param("s", $ref['id']);
+                $stmt->execute();
+                $row = $stmt->get_result()->fetch_assoc();
                 $stmt->close();
             }
-            if (!$fila && !empty($ref['name'])) {
-                $stmt = $this->consulta('SELECT * FROM INGREDIENTE WHERE LOWER(nombre) = LOWER(?) LIMIT 1', [$ref['name']]);
-                $fila = $stmt->get_result()->fetch_assoc();
+            if (!$row && !empty($ref['name'])) {
+                $stmt = $this->conn->prepare("SELECT * FROM INGREDIENTE WHERE LOWER(nombre) = LOWER(?) LIMIT 1");
+                $stmt->bind_param("s", $ref['name']);
+                $stmt->execute();
+                $row = $stmt->get_result()->fetch_assoc();
                 $stmt->close();
             }
-            if (!$fila) {
-                continue; // ingrediente desconocido: se ignora en vez de romper el pedido
+            if (!$row) {
+                continue;
             }
-            // Igual al redondeo que ya preveia el Creador Interactivo en el cliente
-            // (ClientDashboard.tsx: Math.round((baseCost * (1 + margin/100)) / 100) * 100).
-            $costo = (float) $fila['costo_unitario'];
-            $pvp = round(($costo * (1 + $margen / 100)) / 100) * 100;
+            $costo = (float) $row['costo_unitario'];
             $resueltos[] = [
-                'id_ingrediente' => $fila['id_ingrediente'],
-                'nombre' => $fila['nombre'],
-                'precio_extra' => $pvp,
+                'id_ingrediente' => $row['id_ingrediente'],
+                'nombre'         => $row['nombre'],
+                'precio_extra'   => round(($costo * (1 + $margen / 100)) / 100) * 100,
             ];
         }
         return $resueltos;
     }
 
-    private function descuentoCumpleanos($cliente, $subtotal) {
+    /** 15% de descuento si hoy es el cumpleanos del cliente. */
+    private function descuentoCumpleanos($cliente, $subtotal)
+    {
         if (empty($cliente['fecha_nacimiento'])) {
             return 0.0;
         }
-        $hoy = date('m-d');
         $cumple = date('m-d', strtotime($cliente['fecha_nacimiento']));
-        return $cumple === $hoy ? round($subtotal * 0.15, 2) : 0.0;
+        return $cumple === date('m-d') ? round($subtotal * 0.15, 2) : 0.0;
     }
 
     // ---------------------------------------------------------------
-    // Transiciones de estado
+    // Cambios de estado
     // ---------------------------------------------------------------
 
-    public function marcarPreparando($idPedido, $idAyudante = null) {
+    public function marcarPreparando($idPedido, $idAyudante = null)
+    {
         $this->transicion($idPedido, ['pendiente'], 'en_preparacion');
         $this->registrarAyudante($idPedido, $idAyudante);
     }
 
-    public function marcarListo($idPedido, $idAyudante = null) {
+    public function marcarListo($idPedido, $idAyudante = null)
+    {
         $this->transicion($idPedido, ['pendiente', 'en_preparacion'], 'listo');
-        $stmt = $this->consulta('UPDATE PEDIDO SET fecha_listo = NOW() WHERE id_pedido = ?', [$idPedido]);
+
+        $stmt = $this->conn->prepare("UPDATE PEDIDO SET fecha_listo = NOW() WHERE id_pedido = ?");
+        $stmt->bind_param("i", $idPedido);
+        $stmt->execute();
         $stmt->close();
+
         $this->registrarAyudante($idPedido, $idAyudante);
     }
 
-    /** Guarda quien de cocina preparo el pedido (el primero que lo toca; no se pisa). */
-    private function registrarAyudante($idPedido, $idAyudante) {
+    /** Guarda quien de cocina preparo el pedido (solo el primero). */
+    private function registrarAyudante($idPedido, $idAyudante)
+    {
         if (!$idAyudante) {
             return;
         }
-        $stmt = $this->consulta('UPDATE PEDIDO SET id_ayudante = ? WHERE id_pedido = ? AND id_ayudante IS NULL', [$idAyudante, $idPedido]);
+        $stmt = $this->conn->prepare("UPDATE PEDIDO SET id_ayudante = ? WHERE id_pedido = ? AND id_ayudante IS NULL");
+        $stmt->bind_param("si", $idAyudante, $idPedido);
+        $stmt->execute();
         $stmt->close();
     }
 
-    /** El domiciliario toma un pedido 'listo': queda asignado a el, sin iniciar la ruta. */
-    public function tomarPedido($idPedido, $idDomiciliario) {
+    /** Lee estado y domiciliario del pedido bloqueando la fila (FOR UPDATE). */
+    private function bloquearPedido($idPedido)
+    {
+        $stmt = $this->conn->prepare("SELECT estado, id_domiciliario FROM PEDIDO WHERE id_pedido = ? FOR UPDATE");
+        $stmt->bind_param("i", $idPedido);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $row ?: null;
+    }
+
+    /** El domiciliario toma un pedido 'listo' (queda asignado, sin salir todavia). */
+    public function tomarPedido($idPedido, $idDomiciliario)
+    {
         $this->conn->begin_transaction();
         try {
-            $stmt = $this->consulta('SELECT estado, id_domiciliario FROM PEDIDO WHERE id_pedido = ? FOR UPDATE', [$idPedido]);
-            $fila = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-
-            if (!$fila || $fila['estado'] !== 'listo'
-                || ($fila['id_domiciliario'] !== null && $fila['id_domiciliario'] !== $idDomiciliario)) {
+            $row = $this->bloquearPedido($idPedido);
+            if (!$row || $row['estado'] !== 'listo'
+                || ($row['id_domiciliario'] !== null && $row['id_domiciliario'] !== $idDomiciliario)) {
                 throw new Exception('Este pedido ya no está disponible para reparto.');
             }
 
-            $stmtUpd = $this->consulta("UPDATE PEDIDO SET id_domiciliario = ? WHERE id_pedido = ?", [$idDomiciliario, $idPedido]);
-            $stmtUpd->close();
+            $stmt = $this->conn->prepare("UPDATE PEDIDO SET id_domiciliario = ? WHERE id_pedido = ?");
+            $stmt->bind_param("si", $idDomiciliario, $idPedido);
+            $stmt->execute();
+            $stmt->close();
 
             $this->conn->commit();
         } catch (Exception $e) {
@@ -426,30 +446,29 @@ class PedidoService {
     }
 
     /**
-     * Suelta un pedido para que otro domiciliario pueda tomarlo. El domiciliario
-     * solo suelta los suyos que aun no salieron (estado 'listo'); el admin puede
-     * soltar cualquiera, incluso uno 'en_camino' (domiciliario desconectado).
+     * Suelta un pedido para que otro domiciliario lo tome. El domiciliario solo
+     * suelta los suyos en 'listo'; el admin puede soltar uno 'listo' o 'en_camino'.
      */
-    public function liberarPedido($idPedido, $rol, $idActor) {
+    public function liberarPedido($idPedido, $rol, $idActor)
+    {
         $this->conn->begin_transaction();
         try {
-            $stmt = $this->consulta('SELECT estado, id_domiciliario FROM PEDIDO WHERE id_pedido = ? FOR UPDATE', [$idPedido]);
-            $fila = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-
-            if (!$fila || $fila['id_domiciliario'] === null) {
+            $row = $this->bloquearPedido($idPedido);
+            if (!$row || $row['id_domiciliario'] === null) {
                 throw new Exception('Este pedido no tiene domiciliario asignado.');
             }
             if ($rol === 'delivery') {
-                if ($fila['id_domiciliario'] !== $idActor || $fila['estado'] !== 'listo') {
+                if ($row['id_domiciliario'] !== $idActor || $row['estado'] !== 'listo') {
                     throw new Exception('Solo puedes soltar un pedido tuyo que aún no has iniciado.');
                 }
-            } elseif (!in_array($fila['estado'], ['listo', 'en_camino'], true)) {
+            } elseif (!in_array($row['estado'], ['listo', 'en_camino'], true)) {
                 throw new Exception('Este pedido ya no se puede reasignar.');
             }
 
-            $stmtUpd = $this->consulta("UPDATE PEDIDO SET estado = 'listo', id_domiciliario = NULL WHERE id_pedido = ?", [$idPedido]);
-            $stmtUpd->close();
+            $stmt = $this->conn->prepare("UPDATE PEDIDO SET estado = 'listo', id_domiciliario = NULL WHERE id_pedido = ?");
+            $stmt->bind_param("i", $idPedido);
+            $stmt->execute();
+            $stmt->close();
 
             $this->conn->commit();
         } catch (Exception $e) {
@@ -458,20 +477,20 @@ class PedidoService {
         }
     }
 
-    public function aceptarEntrega($idPedido, $idDomiciliario) {
+    public function aceptarEntrega($idPedido, $idDomiciliario)
+    {
         $this->conn->begin_transaction();
         try {
-            $stmt = $this->consulta('SELECT estado, id_domiciliario FROM PEDIDO WHERE id_pedido = ? FOR UPDATE', [$idPedido]);
-            $fila = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-
-            if (!$fila || $fila['estado'] !== 'listo'
-                || ($fila['id_domiciliario'] !== null && $fila['id_domiciliario'] !== $idDomiciliario)) {
+            $row = $this->bloquearPedido($idPedido);
+            if (!$row || $row['estado'] !== 'listo'
+                || ($row['id_domiciliario'] !== null && $row['id_domiciliario'] !== $idDomiciliario)) {
                 throw new Exception('Este pedido ya no está disponible para reparto.');
             }
 
-            $stmtUpd = $this->consulta("UPDATE PEDIDO SET estado = 'en_camino', id_domiciliario = ? WHERE id_pedido = ?", [$idDomiciliario, $idPedido]);
-            $stmtUpd->close();
+            $stmt = $this->conn->prepare("UPDATE PEDIDO SET estado = 'en_camino', id_domiciliario = ? WHERE id_pedido = ?");
+            $stmt->bind_param("si", $idDomiciliario, $idPedido);
+            $stmt->execute();
+            $stmt->close();
 
             $this->conn->commit();
         } catch (Exception $e) {
@@ -480,38 +499,46 @@ class PedidoService {
         }
     }
 
-    /** Entrega solo con PIN de 4 digitos verificado en el servidor. */
-    public function confirmarEntrega($idPedido, $idDomiciliario, $pin) {
-        $stmt = $this->consulta('SELECT pin_entrega, estado, id_domiciliario, id_cliente, puntos_ganados, total FROM PEDIDO WHERE id_pedido = ?', [$idPedido]);
-        $fila = $stmt->get_result()->fetch_assoc();
+    /** Entrega: solo con el PIN de 4 digitos correcto. */
+    public function confirmarEntrega($idPedido, $idDomiciliario, $pin)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT pin_entrega, estado, id_domiciliario, id_cliente, puntos_ganados, total FROM PEDIDO WHERE id_pedido = ?"
+        );
+        $stmt->bind_param("i", $idPedido);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        if (!$fila || $fila['estado'] !== 'en_camino' || $fila['id_domiciliario'] !== $idDomiciliario) {
+        if (!$row || $row['estado'] !== 'en_camino' || $row['id_domiciliario'] !== $idDomiciliario) {
             throw new Exception('No puedes confirmar la entrega de este pedido.');
         }
-        if (!hash_equals($fila['pin_entrega'], $pin)) {
+        if (!hash_equals($row['pin_entrega'], $pin)) {
             throw new Exception('PIN incorrecto.');
         }
 
         $this->conn->begin_transaction();
         try {
-            // Al entregar, el efectivo ya fue cobrado en la puerta: el pago pasa a
-            // 'aprobado' (en digital ya lo estaba, por eso solo se toca si seguia pendiente).
-            $stmtUpd = $this->consulta(
+            // Al entregar, el pago queda aprobado (en efectivo se cobro en la puerta).
+            $stmtU = $this->conn->prepare(
                 "UPDATE PEDIDO SET estado = 'entregado',
                         estado_pago = 'aprobado',
                         fecha_pago = COALESCE(fecha_pago, NOW())
-                 WHERE id_pedido = ?",
-                [$idPedido]
+                 WHERE id_pedido = ?"
             );
-            $stmtUpd->close();
+            $stmtU->bind_param("i", $idPedido);
+            $stmtU->execute();
+            $stmtU->close();
 
-            // Los puntos de fidelidad y el total gastado se acreditan solo al entregar.
-            $stmtPuntos = $this->consulta(
-                'UPDATE CLIENTE SET puntos_fidelidad = puntos_fidelidad + ?, total_gastado = total_gastado + ? WHERE id_cliente = ?',
-                [(int) $fila['puntos_ganados'], (float) $fila['total'], $fila['id_cliente']]
+            // Puntos de fidelidad y total gastado del cliente.
+            $puntos = (int) $row['puntos_ganados'];
+            $total = (float) $row['total'];
+            $stmtC = $this->conn->prepare(
+                "UPDATE CLIENTE SET puntos_fidelidad = puntos_fidelidad + ?, total_gastado = total_gastado + ? WHERE id_cliente = ?"
             );
-            $stmtPuntos->close();
+            $stmtC->bind_param("idi", $puntos, $total, $row['id_cliente']);
+            $stmtC->execute();
+            $stmtC->close();
 
             $this->conn->commit();
         } catch (Exception $e) {
@@ -519,40 +546,46 @@ class PedidoService {
             throw $e;
         }
 
-        // Notificacion real del sistema operativo (Web Push), no un aviso
-        // dentro de la app: si falla (VAPID sin configurar, sin conexion,
-        // sin suscripcion), la entrega ya quedo confirmada de todas formas.
+        // Notificacion push al cliente; si falla, la entrega ya quedo confirmada.
         try {
-            (new PushNotificationService($this->conn))->notificarPedidoEntregado($idPedido, (int) $fila['id_cliente']);
+            $pushService = new PushNotificationService();
+            $pushService->notificarPedidoEntregado($idPedido, (int) $row['id_cliente']);
         } catch (Throwable $e) {
             error_log('No se pudo enviar la notificacion push de entrega: ' . $e->getMessage());
         }
     }
 
-    private function transicion($idPedido, $desdeValidos, $hacia) {
-        $stmt = $this->consulta('SELECT estado FROM PEDIDO WHERE id_pedido = ?', [$idPedido]);
-        $fila = $stmt->get_result()->fetch_assoc();
+    private function transicion($idPedido, $desdeValidos, $hacia)
+    {
+        $stmt = $this->conn->prepare("SELECT estado FROM PEDIDO WHERE id_pedido = ?");
+        $stmt->bind_param("i", $idPedido);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        if (!$fila || !in_array($fila['estado'], $desdeValidos, true)) {
+        if (!$row || !in_array($row['estado'], $desdeValidos, true)) {
             throw new Exception('Transición de estado no permitida.');
         }
 
-        $stmtUpd = $this->consulta('UPDATE PEDIDO SET estado = ? WHERE id_pedido = ?', [$hacia, $idPedido]);
-        $stmtUpd->close();
+        $stmtU = $this->conn->prepare("UPDATE PEDIDO SET estado = ? WHERE id_pedido = ?");
+        $stmtU->bind_param("si", $hacia, $idPedido);
+        $stmtU->execute();
+        $stmtU->close();
     }
 
     // ---------------------------------------------------------------
     // Resena
     // ---------------------------------------------------------------
 
-    public function calificar($idPedido, $puntaje, $comentario) {
-        $stmt = $this->consulta(
-            'INSERT INTO RESENA (id_pedido, puntaje, comentario)
+    public function calificar($idPedido, $puntaje, $comentario)
+    {
+        $stmt = $this->conn->prepare(
+            "INSERT INTO RESENA (id_pedido, puntaje, comentario)
              VALUES (?, ?, ?)
-             ON DUPLICATE KEY UPDATE puntaje = VALUES(puntaje), comentario = VALUES(comentario)',
-            [$idPedido, $puntaje, $comentario]
+             ON DUPLICATE KEY UPDATE puntaje = VALUES(puntaje), comentario = VALUES(comentario)"
         );
+        $stmt->bind_param("iis", $idPedido, $puntaje, $comentario);
+        $stmt->execute();
         $stmt->close();
     }
 }

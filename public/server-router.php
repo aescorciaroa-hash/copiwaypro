@@ -1,9 +1,7 @@
 <?php
-
 /**
- * Router para el servidor embebido de PHP (php -S localhost:8000 -t public public/server-router.php).
- * Sirve archivos estaticos que existan tal cual; todo lo demas (API y
- * paginas) va al front controller unico, igual que hace el .htaccess.
+ * Router para el servidor de PHP (php -S localhost:8000 -t public public/server-router.php).
+ * Los archivos que existen se sirven tal cual; todo lo demas va a index.php.
  */
 
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';

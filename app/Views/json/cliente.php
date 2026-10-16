@@ -1,11 +1,11 @@
 <?php
-// Shapes puros (sin SQL) de CLIENTE / CLIENTE_NOTIFICACION -> JSON del frontend.
-
 /**
- * $datosCrudos = ['fila' => ..., 'ordersCount' => int, 'lastOrderDate' => ?string,
- *                 'notifications' => array ya formada]
+ * Convierte filas de CLIENTE y CLIENTE_NOTIFICACION al JSON del frontend.
  */
-function cliente_a_json($datosCrudos) {
+
+/** $datosCrudos = ['fila', 'ordersCount', 'lastOrderDate', 'notifications'] */
+function cliente_a_json($datosCrudos)
+{
     $fila = $datosCrudos['fila'];
     return [
         'id' => (string) $fila['id_cliente'],
@@ -24,7 +24,8 @@ function cliente_a_json($datosCrudos) {
     ];
 }
 
-function notificacion_a_json($fila) {
+function notificacion_a_json($fila)
+{
     return [
         'id' => (string) $fila['id_notificacion_cliente'],
         'title' => $fila['titulo'],

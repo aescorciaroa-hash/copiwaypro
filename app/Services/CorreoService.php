@@ -1,41 +1,44 @@
 <?php
-// Envio de correo transaccional por SMTP (PHPMailer, via Composer).
-// Se configura con MAIL_* en .env. Si no esta configurado, enviar() devuelve
-// false (sin lanzar) y el llamador decide que hacer: la app nunca se cae por
-// no poder mandar un correo.
+/**
+ * Envio de correos por SMTP (PHPMailer). Se configura con MAIL_* en el .env.
+ * Si no esta configurado, enviar() devuelve false y la app sigue funcionando.
+ */
 
-class CorreoService {
+use PHPMailer\PHPMailer\PHPMailer;
 
-    /** true si hay un servidor SMTP configurado y la libreria esta instalada. */
-    public static function configurado() {
+class CorreoService
+{
+    /** true si hay SMTP configurado y la libreria esta instalada. */
+    public static function configurado()
+    {
         return class_exists('PHPMailer\\PHPMailer\\PHPMailer')
             && env('MAIL_HOST', '') !== ''
             && env('MAIL_FROM', '') !== '';
     }
 
-    /**
-     * Envia un correo HTML. Devuelve true si el servidor SMTP lo acepto.
-     * Los errores se registran en el log (nunca se muestran al usuario).
-     */
-    public static function enviar($para, $asunto, $html, $textoPlano = '') {
+    /** Envia un correo HTML. Devuelve true si el servidor SMTP lo acepto. */
+    public static function enviar($para, $asunto, $html, $textoPlano = '')
+    {
         if (!self::configurado()) {
             return false;
         }
 
         try {
-            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            $mail = new PHPMailer(true);
             $mail->isSMTP();
             $mail->Host = env('MAIL_HOST');
             $mail->Port = (int) env('MAIL_PORT', 587);
+
             $cifrado = strtolower((string) env('MAIL_ENCRYPTION', 'tls'));
             if ($cifrado === 'ssl') {
-                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
             } elseif ($cifrado === 'tls') {
-                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             } else {
                 $mail->SMTPSecure = '';
                 $mail->SMTPAutoTLS = false;
             }
+
             if (env('MAIL_USER', '') !== '') {
                 $mail->SMTPAuth = true;
                 $mail->Username = env('MAIL_USER');
@@ -58,8 +61,9 @@ class CorreoService {
         }
     }
 
-    /** Correo con el codigo de recuperacion de contrasena (valido 15 min, ver CodigoVerificacion). */
-    public static function enviarCodigoRecuperacion($para, $codigo) {
+    /** Correo con el codigo para recuperar la contrasena (vence en 15 min). */
+    public static function enviarCodigoRecuperacion($para, $codigo)
+    {
         $codigoSeguro = htmlspecialchars($codigo, ENT_QUOTES, 'UTF-8');
         $html = '<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;color:#1c1917">'
             . '<h2 style="margin:0 0 4px">Copiway<span style="color:#ea580c">PRO</span></h2>'

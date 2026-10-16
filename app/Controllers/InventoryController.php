@@ -1,90 +1,67 @@
 <?php
+/**
+ * Controlador de Inventario (insumos, ajustes de stock y movimientos).
+ */
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Core/helpers.php';
+require_once __DIR__ . '/../Core/Session.php';
+require_once __DIR__ . '/../Core/Auth.php';
+require_once __DIR__ . '/../Models/Ingrediente.php';
 
-class InventoryController {
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-    private function entrada() {
-        $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $cuerpo = [];
-        if (!in_array($metodo, ['GET', 'HEAD'])) {
-            $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-            if (stripos($contentType, 'application/json') !== false) {
-                $decodificado = json_decode(file_get_contents('php://input') ?: '[]', true);
-                $cuerpo = is_array($decodificado) ? $decodificado : [];
-            } else {
-                $cuerpo = $_POST;
-            }
-        }
-        return array_merge($_GET, $cuerpo);
+$ingredienteModel = new Ingrediente();
+$datos            = entrada();
+
+if ($action === 'index') {
+    responderJson($ingredienteModel->listarInventario());
+}
+elseif ($action === 'store') {
+    $errores = [];
+    if (empty($datos['name'])) $errores['name'] = ['El campo name es obligatorio.'];
+    if (empty($datos['category'])) $errores['category'] = ['El campo category es obligatorio.'];
+    if ($errores) {
+        responderError('Datos inválidos.', 422, $errores);
     }
 
-    public function index() {
-        global $conn;
-        responderJson((new Ingrediente($conn))->listarInventario());
+    $id = $ingredienteModel->crearConStockInicial($datos, Auth::id());
+    responderJson($ingredienteModel->comoInventario($ingredienteModel->buscar($id)), 201);
+}
+elseif ($action === 'update') {
+    $id = $_GET['id'] ?? $_POST['id'] ?? '';
+    if (!$ingredienteModel->buscar($id)) {
+        responderError('Insumo no encontrado.', 404);
+    }
+    $ingredienteModel->actualizar($id, $datos);
+    responderJson($ingredienteModel->comoInventario($ingredienteModel->buscar($id)));
+}
+elseif ($action === 'destroy') {
+    $id = $_GET['id'] ?? $_POST['id'] ?? '';
+    if (!$ingredienteModel->buscar($id)) {
+        responderError('Insumo no encontrado.', 404);
+    }
+    $ingredienteModel->eliminar($id);
+    responderJson(['ok' => true]);
+}
+elseif ($action === 'adjustStock') {
+    $id = $_GET['id'] ?? $_POST['id'] ?? '';
+    if (!$ingredienteModel->buscar($id)) {
+        responderError('Insumo no encontrado.', 404);
+    }
+    if (!isset($datos['amount']) || !is_numeric($datos['amount'])) {
+        responderError('Datos inválidos.', 422, ['amount' => ['El campo amount debe ser numérico.']]);
     }
 
-    public function store() {
-        global $conn;
-        $datos = $this->entrada();
-
-        $errores = [];
-        if (empty($datos['name'])) $errores['name'] = ['El campo name es obligatorio.'];
-        if (empty($datos['category'])) $errores['category'] = ['El campo category es obligatorio.'];
-        if (!empty($errores)) {
-            responderError('Datos inválidos.', 422, $errores);
-        }
-
-        $auth = new Autenticacion($conn);
-        $ingredienteModelo = new Ingrediente($conn);
-        $id = $ingredienteModelo->crearConStockInicial($datos, $auth->idActual());
-        responderJson($ingredienteModelo->comoInventario($ingredienteModelo->buscar($id)), 201);
+    try {
+        $ingredienteModel->ajustarStock($id, (float) $datos['amount'], Auth::id());
+    } catch (Exception $e) {
+        responderError($e->getMessage(), 422);
     }
-
-    public function update($id) {
-        global $conn;
-        $ingredienteModelo = new Ingrediente($conn);
-        if (!$ingredienteModelo->buscar($id)) {
-            responderError('Insumo no encontrado.', 404);
-        }
-
-        $ingredienteModelo->actualizar($id, $this->entrada());
-        responderJson($ingredienteModelo->comoInventario($ingredienteModelo->buscar($id)));
-    }
-
-    public function destroy($id) {
-        global $conn;
-        $ingredienteModelo = new Ingrediente($conn);
-        if (!$ingredienteModelo->buscar($id)) {
-            responderError('Insumo no encontrado.', 404);
-        }
-
-        $ingredienteModelo->eliminar($id);
-        responderJson(['ok' => true]);
-    }
-
-    public function adjustStock($id) {
-        global $conn;
-        $ingredienteModelo = new Ingrediente($conn);
-        if (!$ingredienteModelo->buscar($id)) {
-            responderError('Insumo no encontrado.', 404);
-        }
-
-        $datos = $this->entrada();
-        if (!isset($datos['amount']) || !is_numeric($datos['amount'])) {
-            responderError('Datos inválidos.', 422, ['amount' => ['El campo amount debe ser numérico.']]);
-        }
-
-        $auth = new Autenticacion($conn);
-        try {
-            $ingredienteModelo->ajustarStock($id, (float) $datos['amount'], $auth->idActual());
-        } catch (Exception $e) {
-            responderError($e->getMessage(), 422);
-        }
-
-        responderJson($ingredienteModelo->comoInventario($ingredienteModelo->buscar($id)));
-    }
-
-    public function logs() {
-        global $conn;
-        responderJson((new Ingrediente($conn))->registrosDeMovimientos());
-    }
+    responderJson($ingredienteModel->comoInventario($ingredienteModel->buscar($id)));
+}
+elseif ($action === 'logs') {
+    responderJson($ingredienteModel->registrosDeMovimientos());
+}
+else {
+    responderError('Ruta no encontrada.', 404);
 }

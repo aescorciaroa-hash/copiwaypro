@@ -1,56 +1,41 @@
 <?php
+/**
+ * Controlador de Ajustes de la tienda (horario, tarifas y categorias del menu).
+ */
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Core/helpers.php';
+require_once __DIR__ . '/../Core/Session.php';
+require_once __DIR__ . '/../Models/Configuracion.php';
 
-class SettingController {
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-    private function entrada() {
-        $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $cuerpo = [];
-        if (!in_array($metodo, ['GET', 'HEAD'])) {
-            $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-            if (stripos($contentType, 'application/json') !== false) {
-                $decodificado = json_decode(file_get_contents('php://input') ?: '[]', true);
-                $cuerpo = is_array($decodificado) ? $decodificado : [];
-            } else {
-                $cuerpo = $_POST;
-            }
-        }
-        return array_merge($_GET, $cuerpo);
+$configModel = new Configuracion();
+$datos       = entrada();
+
+if ($action === 'show') {
+    responderJson($configModel->obtener());
+}
+elseif ($action === 'update') {
+    $configModel->actualizar($datos);
+    responderJson($configModel->obtener());
+}
+elseif ($action === 'addCategory') {
+    $categoria = trim((string) ($datos['category'] ?? ''));
+    if ($categoria === '') {
+        responderError('Datos inválidos.', 422, ['category' => ['El campo category es obligatorio.']]);
     }
-
-    public function show() {
-        global $conn;
-        responderJson((new Configuracion($conn))->obtener());
+    $configModel->agregarCategoria($categoria);
+    responderJson($configModel->obtener());
+}
+elseif ($action === 'removeCategory') {
+    $categoria = $_GET['category'] ?? $_POST['category'] ?? '';
+    try {
+        $configModel->eliminarCategoria(urldecode($categoria));
+    } catch (Exception $e) {
+        responderError($e->getMessage(), 409);
     }
-
-    public function update() {
-        global $conn;
-        $configuracionModelo = new Configuracion($conn);
-        $configuracionModelo->actualizar($this->entrada());
-        responderJson($configuracionModelo->obtener());
-    }
-
-    public function addCategory() {
-        global $conn;
-        $datos = $this->entrada();
-        $categoria = trim((string) ($datos['category'] ?? ''));
-        if ($categoria === '') {
-            responderError('Datos inválidos.', 422, ['category' => ['El campo category es obligatorio.']]);
-        }
-
-        $configuracionModelo = new Configuracion($conn);
-        $configuracionModelo->agregarCategoria($categoria);
-        responderJson($configuracionModelo->obtener());
-    }
-
-    public function removeCategory($category) {
-        global $conn;
-        $configuracionModelo = new Configuracion($conn);
-        try {
-            $configuracionModelo->eliminarCategoria(urldecode($category));
-        } catch (Exception $e) {
-            responderError($e->getMessage(), 409);
-        }
-
-        responderJson($configuracionModelo->obtener());
-    }
+    responderJson($configModel->obtener());
+}
+else {
+    responderError('Ruta no encontrada.', 404);
 }

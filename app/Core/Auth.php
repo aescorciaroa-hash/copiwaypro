@@ -1,185 +1,159 @@
 <?php
-// Autenticacion para los 4 roles que inician sesion en la SPA (admin, kitchen,
-// delivery, client). El rol Programador no tiene login web: solo existe para
-// crear al primer Administrador via bin/create-admin.php.
+/**
+ * Autenticacion y control de acceso por rol.
+ * Roles: admin, kitchen (cocina), delivery (domiciliario) y client (cliente).
+ */
+class Auth
+{
+    /** Tabla y llave primaria de cada rol. */
+    private const TABLAS = [
+        'admin'    => ['ADMINISTRADOR',   'id_admin'],
+        'kitchen'  => ['AYUDANTE_COCINA', 'id_ayudante'],
+        'delivery' => ['DOMICILIARIO',    'id_domiciliario'],
+        'client'   => ['CLIENTE',         'id_cliente'],
+    ];
 
-class Autenticacion {
-
-    public $conn;
-
-    public function __construct($conn) {
-        $this->conn = $conn;
+    public static function check()
+    {
+        return isset($_SESSION['usuario_id'], $_SESSION['usuario_rol']);
     }
 
-    /** Tabla, llave primaria y columna de estado para cada rol que inicia sesion. */
-    private function tablasPorRol() {
-        return [
-            'admin' => ['tabla' => 'ADMINISTRADOR', 'pk' => 'id_admin'],
-            'kitchen' => ['tabla' => 'AYUDANTE_COCINA', 'pk' => 'id_ayudante'],
-            'delivery' => ['tabla' => 'DOMICILIARIO', 'pk' => 'id_domiciliario'],
-            'client' => ['tabla' => 'CLIENTE', 'pk' => 'id_cliente'],
-        ];
+    public static function rol()
+    {
+        return $_SESSION['usuario_rol'] ?? null;
     }
 
-    /** Intenta iniciar sesion probando las 4 tablas de cuentas. Devuelve el usuario o null. */
-    public function intentarLogin($correo, $clave) {
-        foreach ($this->tablasPorRol() as $rol => $info) {
-            $sql = "SELECT * FROM {$info['tabla']} WHERE correo = ? LIMIT 1";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param('s', $correo);
-            $stmt->execute();
-            $fila = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
+    public static function id()
+    {
+        return $_SESSION['usuario_id'] ?? null;
+    }
 
+    /** Busca una cuenta por correo dentro de una tabla. */
+    private static function buscarPorCorreo($tabla, $correo)
+    {
+        global $conn;
+        $correo = (string) $correo;
+        $stmt = $conn->prepare("SELECT * FROM {$tabla} WHERE correo = ? LIMIT 1");
+        $stmt->bind_param("s", $correo);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $row ?: null;
+    }
+
+    /** Login con correo y contrasena probando las 4 tablas. Devuelve el usuario o null. */
+    public static function intentarLogin($correo, $clave)
+    {
+        foreach (self::TABLAS as $rol => [$tabla]) {
+            $fila = self::buscarPorCorreo($tabla, $correo);
             if (!$fila) {
                 continue;
             }
-
-            if (!password_verify($clave, $fila['contrasena'])) {
+            if (!password_verify($clave, $fila['contrasena']) || !$fila['activo']) {
                 return null;
             }
-            if (!$fila['activo']) {
-                return null;
-            }
-
-            return $this->iniciarSesionUsuario($rol, $fila);
+            return self::login($rol, $fila);
         }
         return null;
     }
 
     /**
-     * Login alterno solo para personal operativo (kitchen/delivery): el PIN
-     * de 4 digitos reemplaza la contrasena en los paneles de Cocina y
-     * Domiciliario (pensado para terminales compartidas del local, donde
-     * teclear una contrasena larga cada turno es mas friccion que seguridad).
-     * No aplica a admin ni client -- esos roles siguen solo con contrasena.
+     * Login con PIN de 4 digitos, solo para cocina y domiciliario.
+     * Se puede escribir solo el usuario (lo que va antes del @).
      */
-    public function intentarLoginConPin($correo, $pin) {
-        $tablas = [
-            'kitchen' => ['tabla' => 'AYUDANTE_COCINA', 'pk' => 'id_ayudante'],
-            'delivery' => ['tabla' => 'DOMICILIARIO', 'pk' => 'id_domiciliario'],
-        ];
+    public static function intentarLoginConPin($correo, $pin)
+    {
+        $roles = ['kitchen', 'delivery'];
 
-        // En los paneles de Cocina/Domicilio basta escribir lo que va antes del
-        // "@" (ej. "santiago" para santiago@gmail.com). Si ese usuario existe con
-        // mas de un dominio, es ambiguo y se exige el correo completo.
         if (strpos($correo, '@') === false) {
-            $correo = $this->resolverUsuarioSinDominio($correo, $tablas);
+            $correo = self::usuarioSinDominio($correo, $roles);
             if ($correo === null) {
                 return null;
             }
         }
 
-        foreach ($tablas as $rol => $info) {
-            $sql = "SELECT * FROM {$info['tabla']} WHERE correo = ? LIMIT 1";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param('s', $correo);
-            $stmt->execute();
-            $fila = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-
+        foreach ($roles as $rol) {
+            $fila = self::buscarPorCorreo(self::TABLAS[$rol][0], $correo);
             if (!$fila) {
                 continue;
             }
-
-            if (empty($fila['pin']) || !password_verify($pin, $fila['pin'])) {
+            if (empty($fila['pin']) || !password_verify($pin, $fila['pin']) || !$fila['activo']) {
                 return null;
             }
-            if (!$fila['activo']) {
-                return null;
-            }
-
-            return $this->iniciarSesionUsuario($rol, $fila);
+            return self::login($rol, $fila);
         }
         return null;
     }
 
-    /** Devuelve el correo completo cuyo "usuario" (antes del @) coincide, o null si no existe o es ambiguo. */
-    private function resolverUsuarioSinDominio($usuario, $tablas) {
-        // Los comodines de LIKE escritos por el usuario se escapan: solo cuenta el texto literal.
+    /** Correo completo cuyo usuario (antes del @) coincide; null si no existe o hay mas de uno. */
+    private static function usuarioSinDominio($usuario, $roles)
+    {
+        global $conn;
+        // Se escapan los comodines de LIKE que escriba el usuario.
         $patron = addcslashes($usuario, '%_\\') . '@%';
         $encontrados = [];
-        foreach ($tablas as $info) {
-            $stmt = $this->conn->prepare("SELECT correo FROM {$info['tabla']} WHERE correo LIKE ? AND activo = 1");
-            $stmt->bind_param('s', $patron);
+        foreach ($roles as $rol) {
+            $tabla = self::TABLAS[$rol][0];
+            $stmt = $conn->prepare("SELECT correo FROM {$tabla} WHERE correo LIKE ? AND activo = 1");
+            $stmt->bind_param("s", $patron);
             $stmt->execute();
-            foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $fila) {
-                $encontrados[strtolower($fila['correo'])] = $fila['correo'];
-            }
+            $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
+            foreach ($rows as $row) {
+                $encontrados[strtolower($row['correo'])] = $row['correo'];
+            }
         }
         return count($encontrados) === 1 ? array_values($encontrados)[0] : null;
     }
 
-    /** Guarda al usuario en sesion (con regeneracion de ID contra fijacion de sesion). */
-    public function iniciarSesionUsuario($rol, $fila) {
-        $info = $this->tablasPorRol()[$rol];
+    /** Inicia sesion guardando el usuario y su rol (regenerando el id de sesion). */
+    public static function login($rol, $fila)
+    {
+        $idCol = self::TABLAS[$rol][1];
         session_regenerate_id(true);
-        $_SESSION['usuario_id'] = $fila[$info['pk']];
+        $_SESSION['usuario_id'] = $fila[$idCol];
         $_SESSION['usuario_rol'] = $rol;
 
         return [
-            'id' => (string) $fila[$info['pk']],
-            'role' => $rol,
-            'name' => $fila['nombre'],
+            'id'    => (string) $fila[$idCol],
+            'role'  => $rol,
+            'name'  => $fila['nombre'],
             'email' => $fila['correo'],
         ];
     }
 
-    public function haySesion() {
-        return isset($_SESSION['usuario_id'], $_SESSION['usuario_rol']);
-    }
-
-    public function rolActual() {
-        return $_SESSION['usuario_rol'] ?? null;
-    }
-
-    public function idActual() {
-        return $_SESSION['usuario_id'] ?? null;
-    }
-
     /**
-     * Vuelve a leer al usuario desde la base de datos (no solo de sesion), para
-     * que una cuenta desactivada pierda el acceso de inmediato aunque ya tenga
-     * sesion abierta. Si ya no existe o esta inactiva, cierra la sesion.
+     * Vuelve a leer al usuario de la base de datos, para que una cuenta desactivada
+     * pierda el acceso de inmediato. Si ya no existe o esta inactiva, cierra la sesion.
      */
-    public function usuarioActual() {
-        if (!$this->haySesion()) {
+    public static function usuarioActual()
+    {
+        global $conn;
+        if (!self::check()) {
             return null;
         }
 
-        $info = $this->tablasPorRol()[$this->rolActual()];
-        $sql = "SELECT * FROM {$info['tabla']} WHERE {$info['pk']} = ? LIMIT 1";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bind_param('s', $_SESSION['usuario_id']);
+        [$tabla, $idCol] = self::TABLAS[self::rol()];
+        $id = (string) self::id();
+        $stmt = $conn->prepare("SELECT * FROM {$tabla} WHERE {$idCol} = ? LIMIT 1");
+        $stmt->bind_param("s", $id);
         $stmt->execute();
         $fila = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
         if (!$fila || !$fila['activo']) {
-            $this->cerrarSesion();
+            self::logout();
             return null;
         }
 
         unset($fila['contrasena'], $fila['pin']);
-        $fila['role'] = $this->rolActual();
+        $fila['role'] = self::rol();
         return $fila;
     }
 
-    public function esAdminMaestro() {
-        if ($this->rolActual() !== 'admin') {
-            return false;
-        }
-        $stmt = $this->conn->prepare('SELECT nivel_acceso FROM ADMINISTRADOR WHERE id_admin = ?');
-        $stmt->bind_param('s', $_SESSION['usuario_id']);
-        $stmt->execute();
-        $fila = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        return $fila && $fila['nivel_acceso'] === 'maestro';
-    }
-
-    public function cerrarSesion() {
+    public static function logout()
+    {
         unset($_SESSION['usuario_id'], $_SESSION['usuario_rol']);
-        cerrarSesionCompleta();
+        Session::destroy();
     }
 }

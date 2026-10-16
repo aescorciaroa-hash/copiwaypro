@@ -1,110 +1,93 @@
 <?php
-// Modelo de INGREDIENTE (+ CATEGORIA, MOVIMIENTO_INVENTARIO). Sirve dos formas
-// del frontend: InventoryItem (gestion de stock, /api/inventory) e Ingredient
-// (catalogo de extras de personalizacion, /api/ingredients).
+/**
+ * Modelo Ingrediente (INGREDIENTE, CATEGORIA y MOVIMIENTO_INVENTARIO).
+ * Se usa en dos formas: inventario (/api/inventory) y catalogo de extras (/api/ingredients).
+ */
+class Ingrediente
+{
+    private $conn;
 
-class Ingrediente {
+    private const BASE = "SELECT i.*, c.nombre AS categoria_nombre
+                          FROM INGREDIENTE i
+                          JOIN CATEGORIA c ON c.id_categoria = i.id_categoria";
 
-    public $conn;
-
-    public function __construct($conn) {
+    public function __construct()
+    {
+        global $conn;
         $this->conn = $conn;
     }
 
-    /**
-     * Ejecuta una consulta preparada. El tipo de cada parametro (i/d/s) se
-     * infiere solo del valor PHP, asi que nunca hay que contar caracteres a mano.
-     */
-    private function consulta($sql, $parametros = []) {
-        $stmt = $this->conn->prepare($sql);
-        if (!empty($parametros)) {
-            $tipos = '';
-            foreach ($parametros as $p) {
-                if (is_int($p)) {
-                    $tipos .= 'i';
-                } elseif (is_float($p)) {
-                    $tipos .= 'd';
-                } else {
-                    $tipos .= 's';
-                }
-            }
-            $stmt->bind_param($tipos, ...$parametros);
-        }
+    public function listarInventario()
+    {
+        $stmt = $this->conn->prepare(self::BASE . " WHERE i.activo = 1 ORDER BY i.nombre ASC");
         $stmt->execute();
-        return $stmt;
-    }
-
-    private function base() {
-        return 'SELECT i.*, c.nombre AS categoria_nombre
-                 FROM INGREDIENTE i
-                 JOIN CATEGORIA c ON c.id_categoria = i.id_categoria';
-    }
-
-    public function listarInventario() {
-        $stmt = $this->consulta($this->base() . ' WHERE i.activo = 1 ORDER BY i.nombre ASC');
-        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        return array_map('ingrediente_a_inventario', $filas);
+        return array_map('ingrediente_a_inventario', $rows);
     }
 
-    /**
-     * Catalogo de ingredientes para el customizer del cliente ("sin X"/"extra
-     * X" y el armador interactivo). Excluye ambito='empaque_desechable': los
-     * empaques/desechables son insumos de gestion interna (se descuentan solos
-     * por receta), nunca algo que el cliente pueda "agregar" a su hamburguesa.
-     */
-    public function listarIngredientes() {
-        $stmt = $this->consulta($this->base() . " WHERE i.activo = 1 AND c.ambito != 'empaque_desechable' ORDER BY i.nombre ASC");
-        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    /** Catalogo para personalizar hamburguesas (sin empaques ni desechables). */
+    public function listarIngredientes()
+    {
+        $stmt = $this->conn->prepare(self::BASE . " WHERE i.activo = 1 AND c.ambito != 'empaque_desechable' ORDER BY i.nombre ASC");
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        return array_map('ingrediente_a_catalogo', $filas);
+        return array_map('ingrediente_a_catalogo', $rows);
     }
 
-    public function buscar($id) {
-        $stmt = $this->consulta($this->base() . ' WHERE i.id_ingrediente = ? LIMIT 1', [$id]);
-        $fila = $stmt->get_result()->fetch_assoc();
+    public function buscar($id)
+    {
+        $stmt = $this->conn->prepare(self::BASE . " WHERE i.id_ingrediente = ? LIMIT 1");
+        $stmt->bind_param("s", $id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        return $fila ?: null;
+        return $row ?: null;
     }
 
-    /** Usado directamente por InventoryController. */
-    public function comoInventario($fila) {
-        return ingrediente_a_inventario($fila);
+    public function comoInventario($row)
+    {
+        return ingrediente_a_inventario($row);
     }
 
-    /** Usado directamente por IngredientController. */
-    public function comoIngrediente($fila) {
-        return ingrediente_a_catalogo($fila);
+    public function comoIngrediente($row)
+    {
+        return ingrediente_a_catalogo($row);
     }
 
-    /** Crea el insumo y, si trae stock inicial, registra el movimiento 'entrada'. */
-    public function crearConStockInicial($datos, $idAdmin) {
+    /** Crea el insumo y, si trae stock inicial, registra el movimiento de entrada. */
+    public function crearConStockInicial($d, $idAdmin)
+    {
         $this->conn->begin_transaction();
         try {
-            $idCategoria = $this->resolverCategoria($datos['category'] ?? null);
+            $idCategoria = $this->resolverCategoria($d['category'] ?? null);
+            $values = [
+                $idCategoria, $d['name'], $d['unit'] ?? 'unidad', $d['stock'] ?? 0,
+                $d['unitCost'] ?? 0, $d['totalCost'] ?? null, $d['price'] ?? 0,
+                $d['supplier'] ?? null, $d['notes'] ?? null, $d['image'] ?? null,
+            ];
 
-            $stmt = $this->consulta(
-                'INSERT INTO INGREDIENTE
+            $stmt = $this->conn->prepare(
+                "INSERT INTO INGREDIENTE
                     (id_categoria, nombre, unidad_medida, cantidad_stock,
                      costo_unitario, costo_total, precio_extra, proveedor, notas, imagen)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [
-                    $idCategoria, $datos['name'], $datos['unit'] ?? 'unidad', $datos['stock'] ?? 0,
-                    $datos['unitCost'] ?? 0, $datos['totalCost'] ?? null, $datos['price'] ?? 0,
-                    $datos['supplier'] ?? null, $datos['notes'] ?? null, $datos['image'] ?? null,
-                ]
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
+            $stmt->bind_param(tiposDe($values), ...$values);
+            $stmt->execute();
             $stmt->close();
             $id = $this->conn->insert_id;
 
-            $stock = (float) ($datos['stock'] ?? 0);
+            $stock = (float) ($d['stock'] ?? 0);
             if ($stock > 0) {
-                $stmtMov = $this->consulta(
+                $stmtM = $this->conn->prepare(
                     "INSERT INTO MOVIMIENTO_INVENTARIO (id_ingrediente, id_admin, tipo_movimiento, cantidad, motivo)
-                     VALUES (?, ?, 'entrada', ?, 'Stock inicial')",
-                    [$id, $idAdmin, $stock]
+                     VALUES (?, ?, 'entrada', ?, 'Stock inicial')"
                 );
-                $stmtMov->close();
+                $stmtM->bind_param("isd", $id, $idAdmin, $stock);
+                $stmtM->execute();
+                $stmtM->close();
             }
 
             $this->conn->commit();
@@ -115,69 +98,78 @@ class Ingrediente {
         }
     }
 
-    public function actualizar($id, $datos) {
+    public function actualizar($id, $d)
+    {
         $mapa = [
             'name' => 'nombre', 'unit' => 'unidad_medida', 'stock' => 'cantidad_stock',
             'unitCost' => 'costo_unitario', 'totalCost' => 'costo_total', 'price' => 'precio_extra',
             'supplier' => 'proveedor', 'notes' => 'notas', 'image' => 'imagen',
         ];
 
-        $campos = [];
-        $valores = [];
-        foreach ($mapa as $claveJson => $columna) {
-            if (array_key_exists($claveJson, $datos)) {
-                $campos[] = "$columna = ?";
-                $valores[] = $datos[$claveJson];
+        $sets = [];
+        $values = [];
+        foreach ($mapa as $clave => $columna) {
+            if (array_key_exists($clave, $d)) {
+                $sets[] = "{$columna} = ?";
+                $values[] = $d[$clave];
             }
         }
-        if (array_key_exists('category', $datos)) {
-            $campos[] = 'id_categoria = ?';
-            $valores[] = $this->resolverCategoria($datos['category']);
+        if (array_key_exists('category', $d)) {
+            $sets[] = "id_categoria = ?";
+            $values[] = $this->resolverCategoria($d['category']);
         }
-        if (empty($campos)) {
+        if (empty($sets)) {
             return;
         }
+        $values[] = $id;
 
-        $valores[] = $id;
-        $stmt = $this->consulta('UPDATE INGREDIENTE SET ' . implode(', ', $campos) . ' WHERE id_ingrediente = ?', $valores);
+        $sql = "UPDATE INGREDIENTE SET " . implode(", ", $sets) . " WHERE id_ingrediente = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param(tiposDe($values), ...$values);
+        $stmt->execute();
         $stmt->close();
     }
 
-    /**
-     * Baja logica (activo = 0), nunca DELETE fisico: un insumo con movimientos
-     * de inventario (que se crean automaticamente desde su alta, ver
-     * crearConStockInicial) o usado en alguna RECETA siempre tiene filas que
-     * lo referencian por llave foranea sin ON DELETE CASCADE -- un DELETE
-     * real fallaba con error 1451 en casi cualquier insumo, silenciosamente
-     * para el usuario porque el frontend no mostraba ese error.
-     */
-    public function eliminar($id) {
-        $stmt = $this->consulta('UPDATE INGREDIENTE SET activo = 0 WHERE id_ingrediente = ?', [$id]);
+    /** Baja logica (activo = 0): el insumo tiene movimientos y recetas que lo referencian. */
+    public function eliminar($id)
+    {
+        $stmt = $this->conn->prepare("UPDATE INGREDIENTE SET activo = 0 WHERE id_ingrediente = ?");
+        $stmt->bind_param("s", $id);
+        $stmt->execute();
         $stmt->close();
     }
 
-    /** Ajuste manual (entrada/salida) desde el panel de inventario. Devuelve el nuevo stock. */
-    public function ajustarStock($id, $cantidad, $idAdmin) {
+    /** Ajuste manual de stock (entrada o salida). Devuelve el nuevo stock. */
+    public function ajustarStock($id, $cantidad, $idAdmin)
+    {
         $this->conn->begin_transaction();
         try {
-            $stmt = $this->consulta('SELECT cantidad_stock FROM INGREDIENTE WHERE id_ingrediente = ? FOR UPDATE', [$id]);
-            $fila = $stmt->get_result()->fetch_assoc();
+            $stmt = $this->conn->prepare("SELECT cantidad_stock FROM INGREDIENTE WHERE id_ingrediente = ? FOR UPDATE");
+            $stmt->bind_param("s", $id);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
             $stmt->close();
 
-            if (!$fila) {
+            if (!$row) {
                 throw new Exception('Insumo no encontrado.');
             }
 
-            $nuevoStock = max(0, (float) $fila['cantidad_stock'] + $cantidad);
-            $stmtUpd = $this->consulta('UPDATE INGREDIENTE SET cantidad_stock = ? WHERE id_ingrediente = ?', [$nuevoStock, $id]);
-            $stmtUpd->close();
+            $nuevoStock = max(0, (float) $row['cantidad_stock'] + $cantidad);
+            $stmtU = $this->conn->prepare("UPDATE INGREDIENTE SET cantidad_stock = ? WHERE id_ingrediente = ?");
+            $stmtU->bind_param("ds", $nuevoStock, $id);
+            $stmtU->execute();
+            $stmtU->close();
 
-            $stmtMov = $this->consulta(
-                'INSERT INTO MOVIMIENTO_INVENTARIO (id_ingrediente, id_admin, tipo_movimiento, cantidad, motivo)
-                 VALUES (?, ?, ?, ?, ?)',
-                [$id, $idAdmin, $cantidad > 0 ? 'entrada' : 'salida', abs($cantidad), 'Ajuste manual']
+            $tipo = $cantidad > 0 ? 'entrada' : 'salida';
+            $absoluta = abs($cantidad);
+            $motivo = 'Ajuste manual';
+            $stmtM = $this->conn->prepare(
+                "INSERT INTO MOVIMIENTO_INVENTARIO (id_ingrediente, id_admin, tipo_movimiento, cantidad, motivo)
+                 VALUES (?, ?, ?, ?, ?)"
             );
-            $stmtMov->close();
+            $stmtM->bind_param("sssds", $id, $idAdmin, $tipo, $absoluta, $motivo);
+            $stmtM->execute();
+            $stmtM->close();
 
             $this->conn->commit();
             return $nuevoStock;
@@ -188,13 +180,12 @@ class Ingrediente {
     }
 
     /**
-     * Descuenta stock por receta dentro de la transaccion ya abierta por quien
-     * llama (Pedido::crear). Bloquea cada insumo con FOR UPDATE en orden
-     * deterministico por id (evita interbloqueos entre pedidos simultaneos),
-     * valida que haya stock suficiente para TODO antes de descontar nada, y
-     * lanza Exception con mensaje claro si falta stock de algun insumo.
+     * Descuenta stock por receta (dentro de la transaccion del pedido).
+     * Bloquea los insumos en orden por id, revisa que alcance TODO y despues descuenta.
      */
-    public function descontarPorReceta($lineas, $idPedido, $idAdmin = null) {
+    public function descontarPorReceta($lineas, $idPedido, $idAdmin = null)
+    {
+        // Junta las cantidades por insumo.
         $consolidado = [];
         foreach ($lineas as $linea) {
             $id = $linea['id_ingrediente'];
@@ -208,136 +199,154 @@ class Ingrediente {
         $ids = array_keys($consolidado);
         sort($ids);
 
-        $stockBloqueado = [];
-        $nombreBloqueado = [];
+        // Bloquea cada insumo y guarda su stock.
+        $stock = [];
+        $nombre = [];
         foreach ($ids as $id) {
-            $stmt = $this->consulta('SELECT id_ingrediente, nombre, cantidad_stock FROM INGREDIENTE WHERE id_ingrediente = ? FOR UPDATE', [$id]);
-            $fila = $stmt->get_result()->fetch_assoc();
+            $stmt = $this->conn->prepare("SELECT id_ingrediente, nombre, cantidad_stock FROM INGREDIENTE WHERE id_ingrediente = ? FOR UPDATE");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
             $stmt->close();
-            if (!$fila) {
+            if (!$row) {
                 throw new Exception("Insumo no encontrado (id $id).");
             }
-            $stockBloqueado[$id] = (float) $fila['cantidad_stock'];
-            $nombreBloqueado[$id] = $fila['nombre'];
+            $stock[$id] = (float) $row['cantidad_stock'];
+            $nombre[$id] = $row['nombre'];
         }
 
+        // Revisa que haya stock suficiente de todo.
         foreach ($ids as $id) {
             $necesario = (float) $consolidado[$id]['cantidad'];
-            if ($stockBloqueado[$id] < $necesario) {
-                throw new Exception("Sin stock suficiente de \"{$nombreBloqueado[$id]}\" (disponible: {$stockBloqueado[$id]}, requerido: $necesario).");
+            if ($stock[$id] < $necesario) {
+                throw new Exception("Sin stock suficiente de \"{$nombre[$id]}\" (disponible: {$stock[$id]}, requerido: $necesario).");
             }
         }
 
+        // Descuenta y registra la salida.
         foreach ($ids as $id) {
             $necesario = (float) $consolidado[$id]['cantidad'];
-            $stmtUpd = $this->consulta('UPDATE INGREDIENTE SET cantidad_stock = cantidad_stock - ? WHERE id_ingrediente = ?', [$necesario, $id]);
-            $stmtUpd->close();
+            $stmtU = $this->conn->prepare("UPDATE INGREDIENTE SET cantidad_stock = cantidad_stock - ? WHERE id_ingrediente = ?");
+            $stmtU->bind_param("di", $necesario, $id);
+            $stmtU->execute();
+            $stmtU->close();
 
             $motivo = implode(' + ', array_unique($consolidado[$id]['motivos']));
-            $stmtMov = $this->consulta(
+            $stmtM = $this->conn->prepare(
                 "INSERT INTO MOVIMIENTO_INVENTARIO (id_ingrediente, id_admin, id_pedido, tipo_movimiento, cantidad, motivo)
-                 VALUES (?, ?, ?, 'salida', ?, ?)",
-                [$id, $idAdmin, $idPedido, $necesario, $motivo]
+                 VALUES (?, ?, ?, 'salida', ?, ?)"
             );
-            $stmtMov->close();
+            $stmtM->bind_param("isids", $id, $idAdmin, $idPedido, $necesario, $motivo);
+            $stmtM->execute();
+            $stmtM->close();
         }
     }
 
     /**
-     * Busca un insumo activo por nombre (sin distinguir mayusculas); si no
-     * existe lo crea con stock 0 en una categoria "General" del ambito dado.
-     * Usado por Producto::sincronizarReceta() cuando el admin escribe un
-     * insumo nuevo directo en la receta (en vez de elegirlo del inventario):
-     * antes se mandaba un id inventado por el navegador (ej. 'im1g01') que
-     * nunca existia en INGREDIENTE, y el INSERT en RECETA fallaba con
-     * "Incorrect integer value" (o antes, violacion de llave foranea).
+     * Busca un insumo activo por nombre; si no existe lo crea con stock 0
+     * en la categoria "General" del ambito dado. Lo usa la receta del producto.
      */
-    public function resolverOCrear($nombre, $ambito) {
+    public function resolverOCrear($nombre, $ambito)
+    {
         $nombre = trim((string) $nombre);
         if ($nombre === '') {
             return null;
         }
 
-        $stmt = $this->consulta('SELECT id_ingrediente FROM INGREDIENTE WHERE activo = 1 AND LOWER(nombre) = LOWER(?) LIMIT 1', [$nombre]);
-        $fila = $stmt->get_result()->fetch_assoc();
+        $stmt = $this->conn->prepare("SELECT id_ingrediente FROM INGREDIENTE WHERE activo = 1 AND LOWER(nombre) = LOWER(?) LIMIT 1");
+        $stmt->bind_param("s", $nombre);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        if ($fila) {
-            return (int) $fila['id_ingrediente'];
+        if ($row) {
+            return (int) $row['id_ingrediente'];
         }
 
-        $stmt = $this->consulta('SELECT id_categoria FROM CATEGORIA WHERE ambito = ? AND nombre = ? LIMIT 1', [$ambito, 'General']);
-        $categoria = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
+        $stmtC = $this->conn->prepare("SELECT id_categoria FROM CATEGORIA WHERE ambito = ? AND nombre = 'General' LIMIT 1");
+        $stmtC->bind_param("s", $ambito);
+        $stmtC->execute();
+        $categoria = $stmtC->get_result()->fetch_assoc();
+        $stmtC->close();
+
         if ($categoria) {
             $idCategoria = $categoria['id_categoria'];
         } else {
-            $stmtCat = $this->consulta('INSERT INTO CATEGORIA (nombre, ambito) VALUES (?, ?)', ['General', $ambito]);
-            $stmtCat->close();
+            $stmtN = $this->conn->prepare("INSERT INTO CATEGORIA (nombre, ambito) VALUES ('General', ?)");
+            $stmtN->bind_param("s", $ambito);
+            $stmtN->execute();
+            $stmtN->close();
             $idCategoria = $this->conn->insert_id;
         }
 
-        $stmtIns = $this->consulta(
-            'INSERT INTO INGREDIENTE (id_categoria, nombre, unidad_medida, cantidad_stock, costo_unitario, precio_extra) VALUES (?, ?, ?, ?, ?, ?)',
-            [$idCategoria, $nombre, 'unidad', 0, 0, 0]
+        $stmtI = $this->conn->prepare(
+            "INSERT INTO INGREDIENTE (id_categoria, nombre, unidad_medida, cantidad_stock, costo_unitario, precio_extra)
+             VALUES (?, ?, 'unidad', 0, 0, 0)"
         );
-        $stmtIns->close();
+        $stmtI->bind_param("is", $idCategoria, $nombre);
+        $stmtI->execute();
+        $stmtI->close();
         return $this->conn->insert_id;
     }
 
     /**
-     * Resuelve un nombre de categoria de INVENTARIO a id_categoria; la crea si no
-     * existe. El dropdown de Inventario (InventorySection.tsx) usa el nombre
-     * exacto "Empaques & Desechables" para agrupar empaques/desechables -- esa
-     * categoria debe nacer con ambito 'empaque_desechable', porque
-     * Producto::recetaDe() clasifica cada linea de RECETA como ingrediente o
-     * empaque leyendo el ambito de la categoria del insumo (no el nombre).
-     * Antes siempre se creaba como 'insumo_alimenticio': el empaque quedaba
-     * mezclado con los insumos de comida y el modulo de "Desechables y
-     * Empaques" del producto se veia vacio cada vez que se volvia a editar.
+     * Devuelve el id de una categoria de inventario por nombre; si no existe la crea.
+     * "Empaques & Desechables" se crea con ambito 'empaque_desechable', las demas como 'insumo_alimenticio'.
      */
-    private function resolverCategoria($nombreCategoria) {
+    private function resolverCategoria($nombreCategoria)
+    {
         $nombreCategoria = trim((string) $nombreCategoria);
         if ($nombreCategoria === '') {
             $nombreCategoria = 'Sin categoría';
         }
 
-        $stmt = $this->consulta('SELECT id_categoria FROM CATEGORIA WHERE nombre = ? AND ambito IN (?, ?) LIMIT 1', [$nombreCategoria, 'insumo_alimenticio', 'empaque_desechable']);
-        $fila = $stmt->get_result()->fetch_assoc();
+        $stmt = $this->conn->prepare(
+            "SELECT id_categoria FROM CATEGORIA
+             WHERE nombre = ? AND ambito IN ('insumo_alimenticio', 'empaque_desechable') LIMIT 1"
+        );
+        $stmt->bind_param("s", $nombreCategoria);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        if ($fila) {
-            return $fila['id_categoria'];
+        if ($row) {
+            return $row['id_categoria'];
         }
 
         $ambito = $nombreCategoria === 'Empaques & Desechables' ? 'empaque_desechable' : 'insumo_alimenticio';
-        $stmtIns = $this->consulta('INSERT INTO CATEGORIA (nombre, ambito) VALUES (?, ?)', [$nombreCategoria, $ambito]);
-        $stmtIns->close();
+        $stmtI = $this->conn->prepare("INSERT INTO CATEGORIA (nombre, ambito) VALUES (?, ?)");
+        $stmtI->bind_param("ss", $nombreCategoria, $ambito);
+        $stmtI->execute();
+        $stmtI->close();
         return $this->conn->insert_id;
     }
 
-    public function registrosDeMovimientos() {
-        $stmt = $this->consulta(
+    public function registrosDeMovimientos()
+    {
+        $stmt = $this->conn->prepare(
             "SELECT m.*, i.nombre AS item_nombre
              FROM MOVIMIENTO_INVENTARIO m
              JOIN INGREDIENTE i ON i.id_ingrediente = m.id_ingrediente
              ORDER BY m.fecha_hora DESC"
         );
-        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
-        return array_map(function ($fila) {
-            $cantidad = abs((float) $fila['cantidad']);
-            if ($fila['tipo_movimiento'] === 'salida') {
+        $registros = [];
+        foreach ($rows as $row) {
+            $cantidad = abs((float) $row['cantidad']);
+            if ($row['tipo_movimiento'] === 'salida') {
                 $cantidad = -$cantidad;
             }
-            return [
-                'id' => (string) $fila['id_movimiento'],
-                'date' => $fila['fecha_hora'],
-                'itemId' => (string) $fila['id_ingrediente'],
-                'itemName' => $fila['item_nombre'],
-                'amount' => $cantidad,
-                'type' => $fila['tipo_movimiento'] === 'salida' ? 'Salida' : 'Entrada',
-                'reason' => $fila['motivo'],
+            $registros[] = [
+                'id'       => (string) $row['id_movimiento'],
+                'date'     => $row['fecha_hora'],
+                'itemId'   => (string) $row['id_ingrediente'],
+                'itemName' => $row['item_nombre'],
+                'amount'   => $cantidad,
+                'type'     => $row['tipo_movimiento'] === 'salida' ? 'Salida' : 'Entrada',
+                'reason'   => $row['motivo'],
             ];
-        }, $filas);
+        }
+        return $registros;
     }
 }

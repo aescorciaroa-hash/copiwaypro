@@ -1,7 +1,9 @@
 <?php
-// Tabla de rutas: 'METODO /ruta' => [Controlador, accion, roles].
-// roles = [] significa publica (sin sesion). Los {parametros} se pasan a la
-// accion del controlador en el mismo orden en que aparecen en la ruta.
+/**
+ * Rutas de la API: 'METODO /ruta' => [Controlador, accion, roles].
+ * roles = [] significa publica (sin sesion).
+ * La accion y los {parametros} llegan al controlador en $_GET (ej. $_GET['id']).
+ */
 
 $TODOS_LOS_ROLES = ['admin', 'kitchen', 'delivery', 'client'];
 

@@ -1,188 +1,196 @@
 <?php
-// Modelo de cierre de caja (REPORTE_CAJA + LIQUIDACION_DOMICILIARIO +
-// DETALLE_AUDITORIA). Solo acceso a datos: consultas de lectura y el shape
-// final del reporte ya persistido. La orquestacion (calcular totales, decidir
-// si ya se genero hoy, archivar pedidos, liquidar domiciliarios) vive en
-// app/Services/CajaService.php.
+/**
+ * Modelo Caja (REPORTE_CAJA, LIQUIDACION_DOMICILIARIO y DETALLE_AUDITORIA).
+ * Solo consultas; los calculos del cierre estan en CajaService.
+ */
+class Caja
+{
+    private $conn;
 
-class Caja {
-
-    public $conn;
-
-    public function __construct($conn) {
+    public function __construct()
+    {
+        global $conn;
         $this->conn = $conn;
     }
 
-    private function consulta($sql, $parametros = []) {
-        $stmt = $this->conn->prepare($sql);
-        if (!empty($parametros)) {
-            $tipos = '';
-            foreach ($parametros as $p) {
-                if (is_int($p)) {
-                    $tipos .= 'i';
-                } elseif (is_float($p)) {
-                    $tipos .= 'd';
-                } else {
-                    $tipos .= 's';
-                }
-            }
-            $stmt->bind_param($tipos, ...$parametros);
-        }
+    /** true si este admin ya genero un cierre en esa fecha. */
+    public function yaGeneradoHoy($idAdmin, $fecha)
+    {
+        $stmt = $this->conn->prepare("SELECT id_reporte FROM REPORTE_CAJA WHERE id_admin = ? AND fecha = ?");
+        $stmt->bind_param("ss", $idAdmin, $fecha);
         $stmt->execute();
-        return $stmt;
-    }
-
-    /** true si este admin ya genero un cierre en esa fecha (evita duplicar/pisar). */
-    public function yaGeneradoHoy($idAdmin, $fecha) {
-        $stmt = $this->consulta('SELECT id_reporte FROM REPORTE_CAJA WHERE id_admin = ? AND fecha = ?', [$idAdmin, $fecha]);
-        $existe = $stmt->get_result()->fetch_assoc();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        return (bool) $existe;
+        return (bool) $row;
     }
 
-    /** Pedidos 'entregado' que todavia no pertenecen a ningun reporte (turno actual). */
-    public function pedidosDelTurno() {
-        $stmt = $this->consulta(
+    /** Pedidos entregados que aun no pertenecen a ningun reporte (turno actual). */
+    public function pedidosDelTurno()
+    {
+        $stmt = $this->conn->prepare(
             "SELECT p.*, c.nombre AS cliente_nombre FROM PEDIDO p
              JOIN CLIENTE c ON c.id_cliente = p.id_cliente
              WHERE p.estado = 'entregado' AND p.id_reporte IS NULL"
         );
-        $pedidos = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->execute();
+        $data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        return $pedidos;
+        return $data;
     }
 
-    /**
-     * Consumo real de insumos de los pedidos dados: suma de los movimientos de
-     * salida que el propio pedido genero al crearse (receta base, extras, bolsa
-     * de empaque y hamburguesas personalizadas; ya excluye lo que el cliente
-     * quito). Antes se recalculaba solo desde RECETA y se perdia todo lo demas.
-     */
-    public function consumoTeorico($idsPedidos) {
+    /** Consumo real de insumos: suma de las salidas de inventario que genero cada pedido. */
+    public function consumoTeorico($idsPedidos)
+    {
         if (empty($idsPedidos)) {
             return [];
         }
 
-        $placeholders = implode(',', array_fill(0, count($idsPedidos), '?'));
-        $stmt = $this->consulta(
+        $marcas = implode(',', array_fill(0, count($idsPedidos), '?'));
+        $stmt = $this->conn->prepare(
             "SELECT i.id_ingrediente, i.nombre, i.unidad_medida, i.costo_unitario,
                     SUM(m.cantidad) AS consumido
              FROM MOVIMIENTO_INVENTARIO m
              JOIN INGREDIENTE i ON i.id_ingrediente = m.id_ingrediente
-             WHERE m.tipo_movimiento = 'salida' AND m.id_pedido IN ($placeholders)
-             GROUP BY i.id_ingrediente, i.nombre, i.unidad_medida, i.costo_unitario",
-            $idsPedidos
+             WHERE m.tipo_movimiento = 'salida' AND m.id_pedido IN ({$marcas})
+             GROUP BY i.id_ingrediente, i.nombre, i.unidad_medida, i.costo_unitario"
         );
-        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->bind_param(str_repeat("i", count($idsPedidos)), ...$idsPedidos);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
         $resultado = [];
-        foreach ($filas as $fila) {
-            $resultado[$fila['id_ingrediente']] = [
-                'nombre' => $fila['nombre'],
-                'consumido' => (float) $fila['consumido'],
-                'unidad' => $fila['unidad_medida'],
-                'costoUnitario' => (float) $fila['costo_unitario'],
+        foreach ($rows as $row) {
+            $resultado[$row['id_ingrediente']] = [
+                'nombre'        => $row['nombre'],
+                'consumido'     => (float) $row['consumido'],
+                'unidad'        => $row['unidad_medida'],
+                'costoUnitario' => (float) $row['costo_unitario'],
             ];
         }
         return $resultado;
     }
 
-    /** Domiciliarios activos, para calcular su liquidacion del turno. */
-    public function domiciliariosActivos() {
-        $stmt = $this->consulta("SELECT id_domiciliario, nombre, base_efectivo_asignada FROM DOMICILIARIO WHERE activo = 1");
-        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    public function domiciliariosActivos()
+    {
+        $stmt = $this->conn->prepare("SELECT id_domiciliario, nombre, base_efectivo_asignada FROM DOMICILIARIO WHERE activo = 1");
+        $stmt->execute();
+        $data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        return $filas;
+        return $data;
     }
 
-    public function stockActual($idIngrediente) {
-        $stmt = $this->consulta('SELECT cantidad_stock FROM INGREDIENTE WHERE id_ingrediente = ?', [$idIngrediente]);
-        $fila = $stmt->get_result()->fetch_assoc();
+    public function stockActual($idIngrediente)
+    {
+        $stmt = $this->conn->prepare("SELECT cantidad_stock FROM INGREDIENTE WHERE id_ingrediente = ?");
+        $stmt->bind_param("i", $idIngrediente);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        return (float) $fila['cantidad_stock'];
+        return (float) $row['cantidad_stock'];
     }
 
-    public function pedidosActivosCount() {
-        $stmt = $this->consulta("SELECT COUNT(*) AS total FROM PEDIDO WHERE estado NOT IN ('entregado', 'cancelado')");
-        $total = (int) $stmt->get_result()->fetch_assoc()['total'];
+    public function pedidosActivosCount()
+    {
+        $stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM PEDIDO WHERE estado NOT IN ('entregado', 'cancelado')");
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        return $total;
+        return (int) $row['total'];
     }
 
-    public function reporte($idReporte) {
-        $stmt = $this->consulta('SELECT * FROM REPORTE_CAJA WHERE id_reporte = ?', [$idReporte]);
+    public function reporte($idReporte)
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM REPORTE_CAJA WHERE id_reporte = ?");
+        $stmt->bind_param("s", $idReporte);
+        $stmt->execute();
         $reporte = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        $stmtLiq = $this->consulta(
-            'SELECT l.*, d.nombre AS driver_nombre FROM LIQUIDACION_DOMICILIARIO l
+        $stmtL = $this->conn->prepare(
+            "SELECT l.*, d.nombre AS driver_nombre FROM LIQUIDACION_DOMICILIARIO l
              JOIN DOMICILIARIO d ON d.id_domiciliario = l.id_domiciliario
-             WHERE l.id_reporte = ?',
-            [$idReporte]
+             WHERE l.id_reporte = ?"
         );
-        $liquidaciones = $stmtLiq->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmtLiq->close();
+        $stmtL->bind_param("s", $idReporte);
+        $stmtL->execute();
+        $liquidaciones = $stmtL->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtL->close();
 
-        $stmtAud = $this->consulta('SELECT nombre, stock_teorico, stock_real FROM DETALLE_AUDITORIA WHERE id_reporte = ?', [$idReporte]);
-        $auditoria = $stmtAud->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmtAud->close();
+        $stmtA = $this->conn->prepare("SELECT nombre, stock_teorico, stock_real FROM DETALLE_AUDITORIA WHERE id_reporte = ?");
+        $stmtA->bind_param("s", $idReporte);
+        $stmtA->execute();
+        $auditoria = $stmtA->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtA->close();
 
-        $stmtPedidos = $this->consulta(
-            'SELECT p.id_pedido, p.total, p.metodo_pago, c.nombre AS cliente
+        $stmtP = $this->conn->prepare(
+            "SELECT p.id_pedido, p.total, p.metodo_pago, c.nombre AS cliente
              FROM PEDIDO p JOIN CLIENTE c ON c.id_cliente = p.id_cliente
-             WHERE p.id_reporte = ?',
-            [$idReporte]
+             WHERE p.id_reporte = ?"
         );
-        $pedidos = $stmtPedidos->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmtPedidos->close();
+        $stmtP->bind_param("s", $idReporte);
+        $stmtP->execute();
+        $pedidos = $stmtP->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtP->close();
+
+        $liquidacionesJson = [];
+        foreach ($liquidaciones as $l) {
+            $stmtC = $this->conn->prepare(
+                "SELECT COUNT(*) AS total FROM PEDIDO WHERE id_reporte = ? AND id_domiciliario = ? AND metodo_pago = 'efectivo'"
+            );
+            $stmtC->bind_param("si", $idReporte, $l['id_domiciliario']);
+            $stmtC->execute();
+            $conteo = $stmtC->get_result()->fetch_assoc();
+            $stmtC->close();
+
+            $liquidacionesJson[] = [
+                'driverName'    => $l['driver_nombre'],
+                'ordersCount'   => (int) $conteo['total'],
+                'baseCash'      => (float) $l['base_asignada'],
+                'cashCollected' => (float) $l['efectivo_recolectado'],
+                'totalDue'      => (float) $l['efectivo_liquidado'],
+            ];
+        }
+
+        $insumos = [];
+        foreach ($auditoria as $a) {
+            $insumos[] = ['name' => $a['nombre'], 'used' => (float) $a['stock_teorico'], 'stockReal' => (float) $a['stock_real']];
+        }
+
+        $ordenes = [];
+        foreach ($pedidos as $o) {
+            $ordenes[] = [
+                'id'            => '#ORD-' . $o['id_pedido'],
+                'client'        => $o['cliente'],
+                'total'         => (float) $o['total'],
+                'paymentMethod' => $o['metodo_pago'] === 'efectivo' ? 'cash' : 'online',
+            ];
+        }
 
         return [
-            'date' => $reporte['fecha'],
-            'totalVentas' => (float) $reporte['total_ventas'],
-            'totalOrdenes' => count($pedidos),
-            'desglose' => [
+            'date'               => $reporte['fecha'],
+            'totalVentas'        => (float) $reporte['total_ventas'],
+            'totalOrdenes'       => count($pedidos),
+            'desglose'           => [
                 'efectivo' => (float) $reporte['total_efectivo'],
-                'digital' => (float) $reporte['total_digital'],
+                'digital'  => (float) $reporte['total_digital'],
             ],
-            'driverLiquidations' => array_map(function ($l) use ($idReporte) {
-                $stmtCount = $this->consulta(
-                    "SELECT COUNT(*) AS total FROM PEDIDO WHERE id_reporte = ? AND id_domiciliario = ? AND metodo_pago = 'efectivo'",
-                    [$idReporte, $l['id_domiciliario']]
-                );
-                $ordersCount = (int) $stmtCount->get_result()->fetch_assoc()['total'];
-                $stmtCount->close();
-
-                return [
-                    'driverName' => $l['driver_nombre'],
-                    'ordersCount' => $ordersCount,
-                    'baseCash' => (float) $l['base_asignada'],
-                    'cashCollected' => (float) $l['efectivo_recolectado'],
-                    'totalDue' => (float) $l['efectivo_liquidado'],
-                ];
-            }, $liquidaciones),
-            'insumosConsumidos' => array_map(function ($a) {
-                return ['name' => $a['nombre'], 'used' => (float) $a['stock_teorico'], 'stockReal' => (float) $a['stock_real']];
-            }, $auditoria),
-            'orders' => array_map(function ($o) {
-                return [
-                    'id' => '#ORD-' . $o['id_pedido'],
-                    'client' => $o['cliente'],
-                    'total' => (float) $o['total'],
-                    'paymentMethod' => $o['metodo_pago'] === 'efectivo' ? 'cash' : 'online',
-                ];
-            }, $pedidos),
+            'driverLiquidations' => $liquidacionesJson,
+            'insumosConsumidos'  => $insumos,
+            'orders'             => $ordenes,
         ];
     }
 
-    public function historialDeAdmin($idAdmin) {
-        $stmt = $this->consulta(
-            'SELECT id_reporte, fecha, total_ventas, total_efectivo, total_digital
-             FROM REPORTE_CAJA WHERE id_admin = ? ORDER BY fecha DESC',
-            [$idAdmin]
+    public function historialDeAdmin($idAdmin)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT id_reporte, fecha, total_ventas, total_efectivo, total_digital
+             FROM REPORTE_CAJA WHERE id_admin = ? ORDER BY fecha DESC"
         );
-        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->bind_param("s", $idAdmin);
+        $stmt->execute();
+        $data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        return $filas;
+        return $data;
     }
 }

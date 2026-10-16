@@ -1,91 +1,89 @@
 <?php
-// Modelo de PRODUCTO (+ RECETA). El producto "sombra" Hamburguesa Personalizada
-// (usado por Pedido::crear para el creador interactivo) nunca aparece en el
-// catalogo gestionable desde el panel.
+/**
+ * Modelo Producto (PRODUCTO y RECETA).
+ * El producto oculto "Hamburguesa Personalizada" nunca aparece en el catalogo.
+ */
+require_once __DIR__ . '/Ingrediente.php';
 
-class Producto {
+class Producto
+{
+    private $conn;
 
-    public $conn;
+    /** Texto de la etiqueta en el frontend => valor del ENUM etiqueta_destacada. */
+    private const BADGE_A_ENUM = [
+        'Más Vendido'  => 'mas_vendido',
+        'Recomendado'  => 'recomendado',
+        'Nuevo'        => 'nuevo',
+        'Especialidad' => 'especialidad',
+    ];
 
-    public function __construct($conn) {
+    private const BASE = "SELECT p.*, c.nombre AS categoria_nombre
+                          FROM PRODUCTO p
+                          JOIN CATEGORIA c ON c.id_categoria = p.id_categoria";
+
+    public function __construct()
+    {
+        global $conn;
         $this->conn = $conn;
     }
 
-    private function consulta($sql, $parametros = []) {
-        $stmt = $this->conn->prepare($sql);
-        if (!empty($parametros)) {
-            $tipos = '';
-            foreach ($parametros as $p) {
-                if (is_int($p)) {
-                    $tipos .= 'i';
-                } elseif (is_float($p)) {
-                    $tipos .= 'd';
-                } else {
-                    $tipos .= 's';
-                }
-            }
-            $stmt->bind_param($tipos, ...$parametros);
-        }
-        $stmt->execute();
-        return $stmt;
-    }
-
     /**
-     * $soloActivos=true para catalogos publicos; false para gestion de admin.
-     * $esAdmin controla el shape del JSON (costPrice/receta/empaques solo para
-     * el panel de gestion, nunca en el catalogo publico o de cliente).
+     * $soloActivos = true para el catalogo publico.
+     * $esAdmin = true devuelve el JSON completo (costos, receta y empaques).
      */
-    public function listar($soloActivos = false, $esAdmin = false) {
-        $sql = "SELECT p.*, c.nombre AS categoria_nombre
-                FROM PRODUCTO p
-                JOIN CATEGORIA c ON c.id_categoria = p.id_categoria
-                WHERE p.nombre != 'Hamburguesa Personalizada'";
+    public function listar($soloActivos = false, $esAdmin = false)
+    {
+        $sql = self::BASE . " WHERE p.nombre != 'Hamburguesa Personalizada'";
         if ($soloActivos) {
             $sql .= " AND p.estado = 'activo'";
         }
-        $sql .= ' ORDER BY p.creado_en DESC';
+        $sql .= " ORDER BY p.creado_en DESC";
 
-        $stmt = $this->consulta($sql);
-        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        return array_map(function ($fila) use ($esAdmin) {
-            return $this->comoJson($fila, $esAdmin);
-        }, $filas);
+
+        $productos = [];
+        foreach ($rows as $row) {
+            $productos[] = $this->comoJson($row, $esAdmin);
+        }
+        return $productos;
     }
 
-    public function buscar($id, $esAdmin = false) {
-        $stmt = $this->consulta(
-            'SELECT p.*, c.nombre AS categoria_nombre
-             FROM PRODUCTO p
-             JOIN CATEGORIA c ON c.id_categoria = p.id_categoria
-             WHERE p.id_producto = ? LIMIT 1',
-            [$id]
-        );
-        $fila = $stmt->get_result()->fetch_assoc();
+    public function buscar($id, $esAdmin = false)
+    {
+        $stmt = $this->conn->prepare(self::BASE . " WHERE p.id_producto = ? LIMIT 1");
+        $stmt->bind_param("s", $id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        return $fila ? $this->comoJson($fila, $esAdmin) : null;
+        return $row ? $this->comoJson($row, $esAdmin) : null;
     }
 
-    public function comoJson($fila, $esAdmin = false) {
-        $receta = $this->recetaDe($fila['id_producto']);
-        return producto_a_json($fila, $receta['ingredientes'], $receta['empaques'], $esAdmin);
+    public function comoJson($row, $esAdmin = false)
+    {
+        $receta = $this->recetaDe($row['id_producto']);
+        return producto_a_json($row, $receta['ingredientes'], $receta['empaques'], $esAdmin);
     }
 
-    private function recetaDe($idProducto) {
-        $stmt = $this->consulta(
-            'SELECT r.cantidad_necesaria, i.id_ingrediente, i.nombre, c.ambito
+    private function recetaDe($idProducto)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT r.cantidad_necesaria, i.id_ingrediente, i.nombre, c.ambito
              FROM RECETA r
              JOIN INGREDIENTE i ON i.id_ingrediente = r.id_ingrediente
              JOIN CATEGORIA c ON c.id_categoria = i.id_categoria
-             WHERE r.id_producto = ?',
-            [$idProducto]
+             WHERE r.id_producto = ?"
         );
-        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->bind_param("i", $idProducto);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
         $ingredientes = [];
         $empaques = [];
-        foreach ($filas as $r) {
+        foreach ($rows as $r) {
             $entrada = ['id' => (string) $r['id_ingrediente'], 'name' => $r['nombre'], 'quantityDeduct' => (float) $r['cantidad_necesaria']];
             if ($r['ambito'] === 'empaque_desechable') {
                 $empaques[] = $entrada;
@@ -96,49 +94,39 @@ class Producto {
         return ['ingredientes' => $ingredientes, 'empaques' => $empaques];
     }
 
-    /**
-     * El frontend maneja las etiquetas como texto para mostrar ("Más Vendido",
-     * con tilde y espacio); la columna etiqueta_destacada es un ENUM que solo
-     * acepta los slugs exactos ('mas_vendido', etc). "Recomendado"/"Nuevo"
-     * coincidian por casualidad (misma palabra), pero "Más Vendido" nunca
-     * coincidia con 'mas_vendido' y el INSERT/UPDATE fallaba con "Data
-     * truncated for column 'etiqueta_destacada'".
-     */
-    private const BADGE_A_ENUM = [
-        'Más Vendido' => 'mas_vendido',
-        'Recomendado' => 'recomendado',
-        'Nuevo' => 'nuevo',
-        'Especialidad' => 'especialidad',
-    ];
-
-    private function badgeAEnum($badge) {
+    private function badgeAEnum($badge)
+    {
         if (empty($badge)) {
             return 'ninguna';
         }
         return self::BADGE_A_ENUM[$badge] ?? (in_array($badge, self::BADGE_A_ENUM, true) ? $badge : 'ninguna');
     }
 
-    /** Crea el producto junto con su RECETA (ingredients + packaging), en transaccion. */
-    public function crear($datos) {
+    /** Crea el producto con su receta (ingredientes + empaques) en una transaccion. */
+    public function crear($d)
+    {
         $this->conn->begin_transaction();
         try {
-            $idCategoria = $this->resolverCategoria($datos['category'] ?? null);
+            $values = [
+                $this->resolverCategoria($d['category'] ?? null),
+                $d['name'], $d['description'] ?? null, $d['price'],
+                $d['costPrice'] ?? null, $d['image'] ?? null, $d['prepTime'] ?? null,
+                ($d['active'] ?? true) ? 'activo' : 'oculto',
+                $this->badgeAEnum($d['badge'] ?? null),
+            ];
 
-            $stmt = $this->consulta(
-                'INSERT INTO PRODUCTO
+            $stmt = $this->conn->prepare(
+                "INSERT INTO PRODUCTO
                     (id_categoria, nombre, descripcion, precio, costo_calculado,
                      imagen, tiempo_preparacion, estado, etiqueta_destacada)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [
-                    $idCategoria, $datos['name'], $datos['description'] ?? null, $datos['price'],
-                    $datos['costPrice'] ?? null, $datos['image'] ?? null, $datos['prepTime'] ?? null,
-                    ($datos['active'] ?? true) ? 'activo' : 'oculto', $this->badgeAEnum($datos['badge'] ?? null),
-                ]
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
+            $stmt->bind_param(tiposDe($values), ...$values);
+            $stmt->execute();
             $stmt->close();
             $id = $this->conn->insert_id;
 
-            $this->sincronizarReceta($id, $datos['ingredients'] ?? [], $datos['packaging'] ?? []);
+            $this->sincronizarReceta($id, $d['ingredients'] ?? [], $d['packaging'] ?? []);
 
             $this->conn->commit();
             return $id;
@@ -148,7 +136,8 @@ class Producto {
         }
     }
 
-    public function actualizar($id, $datos) {
+    public function actualizar($id, $d)
+    {
         $this->conn->begin_transaction();
         try {
             $mapa = [
@@ -156,36 +145,38 @@ class Producto {
                 'costPrice' => 'costo_calculado', 'image' => 'imagen', 'prepTime' => 'tiempo_preparacion',
             ];
 
-            $campos = [];
-            $valores = [];
-            foreach ($mapa as $claveJson => $columna) {
-                if (array_key_exists($claveJson, $datos)) {
-                    $campos[] = "$columna = ?";
-                    $valores[] = $datos[$claveJson];
+            $sets = [];
+            $values = [];
+            foreach ($mapa as $clave => $columna) {
+                if (array_key_exists($clave, $d)) {
+                    $sets[] = "{$columna} = ?";
+                    $values[] = $d[$clave];
                 }
             }
+            if (array_key_exists('active', $d)) {
+                $sets[] = "estado = ?";
+                $values[] = $d['active'] ? 'activo' : 'oculto';
+            }
+            if (array_key_exists('badge', $d)) {
+                $sets[] = "etiqueta_destacada = ?";
+                $values[] = $this->badgeAEnum($d['badge']);
+            }
+            if (array_key_exists('category', $d)) {
+                $sets[] = "id_categoria = ?";
+                $values[] = $this->resolverCategoria($d['category']);
+            }
 
-            if (array_key_exists('active', $datos)) {
-                $campos[] = 'estado = ?';
-                $valores[] = $datos['active'] ? 'activo' : 'oculto';
-            }
-            if (array_key_exists('badge', $datos)) {
-                $campos[] = 'etiqueta_destacada = ?';
-                $valores[] = $this->badgeAEnum($datos['badge']);
-            }
-            if (array_key_exists('category', $datos)) {
-                $campos[] = 'id_categoria = ?';
-                $valores[] = $this->resolverCategoria($datos['category']);
-            }
-
-            if (!empty($campos)) {
-                $valores[] = $id;
-                $stmt = $this->consulta('UPDATE PRODUCTO SET ' . implode(', ', $campos) . ' WHERE id_producto = ?', $valores);
+            if (!empty($sets)) {
+                $values[] = $id;
+                $sql = "UPDATE PRODUCTO SET " . implode(", ", $sets) . " WHERE id_producto = ?";
+                $stmt = $this->conn->prepare($sql);
+                $stmt->bind_param(tiposDe($values), ...$values);
+                $stmt->execute();
                 $stmt->close();
             }
 
-            if (array_key_exists('ingredients', $datos) || array_key_exists('packaging', $datos)) {
-                $this->sincronizarReceta($id, $datos['ingredients'] ?? [], $datos['packaging'] ?? []);
+            if (array_key_exists('ingredients', $d) || array_key_exists('packaging', $d)) {
+                $this->sincronizarReceta($id, $d['ingredients'] ?? [], $d['packaging'] ?? []);
             }
 
             $this->conn->commit();
@@ -195,60 +186,72 @@ class Producto {
         }
     }
 
-    public function eliminar($id) {
-        $stmt = $this->consulta('DELETE FROM PRODUCTO WHERE id_producto = ?', [$id]);
+    public function eliminar($id)
+    {
+        $stmt = $this->conn->prepare("DELETE FROM PRODUCTO WHERE id_producto = ?");
+        $stmt->bind_param("s", $id);
+        $stmt->execute();
         $stmt->close();
     }
 
     /**
-     * $item['id'] puede venir vacio o ser un id inventado por el navegador
-     * (ej. 'im1g01') cuando el admin escribe un insumo nuevo directo en la
-     * receta en vez de elegirlo del inventario -- antes eso se mandaba tal
-     * cual a RECETA.id_ingrediente y fallaba ("Incorrect integer value" /
-     * violacion de llave foranea). Ahora se resuelve por nombre contra
-     * INGREDIENTE real, creandolo si hace falta (Ingrediente::resolverOCrear).
+     * Rehace la receta del producto. Cada insumo se busca por nombre en INGREDIENTE
+     * y si no existe se crea (Ingrediente::resolverOCrear).
      */
-    private function sincronizarReceta($idProducto, $ingredientes, $empaques) {
-        $stmtDel = $this->consulta('DELETE FROM RECETA WHERE id_producto = ?', [$idProducto]);
-        $stmtDel->close();
+    private function sincronizarReceta($idProducto, $ingredientes, $empaques)
+    {
+        $stmtD = $this->conn->prepare("DELETE FROM RECETA WHERE id_producto = ?");
+        $stmtD->bind_param("s", $idProducto);
+        $stmtD->execute();
+        $stmtD->close();
 
-        $ingredienteModelo = new Ingrediente($this->conn);
-        $lista = array_merge(
-            array_map(function ($item) { $item['ambito'] = 'insumo_alimenticio'; return $item; }, $ingredientes),
-            array_map(function ($item) { $item['ambito'] = 'empaque_desechable'; return $item; }, $empaques)
-        );
+        $lista = [];
+        foreach ($ingredientes as $item) {
+            $item['ambito'] = 'insumo_alimenticio';
+            $lista[] = $item;
+        }
+        foreach ($empaques as $item) {
+            $item['ambito'] = 'empaque_desechable';
+            $lista[] = $item;
+        }
 
+        $ingredienteModel = new Ingrediente();
         foreach ($lista as $item) {
             if (empty($item['name'])) {
                 continue;
             }
-            $idIngrediente = $ingredienteModelo->resolverOCrear($item['name'], $item['ambito']);
+            $idIngrediente = $ingredienteModel->resolverOCrear($item['name'], $item['ambito']);
             if ($idIngrediente === null) {
                 continue;
             }
-            $stmtIns = $this->consulta(
-                'INSERT INTO RECETA (id_producto, id_ingrediente, cantidad_necesaria) VALUES (?, ?, ?)',
-                [$idProducto, $idIngrediente, $item['quantity'] ?? 1]
-            );
-            $stmtIns->close();
+            $values = [$idProducto, $idIngrediente, $item['quantity'] ?? 1];
+            $stmtI = $this->conn->prepare("INSERT INTO RECETA (id_producto, id_ingrediente, cantidad_necesaria) VALUES (?, ?, ?)");
+            $stmtI->bind_param(tiposDe($values), ...$values);
+            $stmtI->execute();
+            $stmtI->close();
         }
     }
 
-    private function resolverCategoria($nombreCategoria) {
+    private function resolverCategoria($nombreCategoria)
+    {
         $nombreCategoria = trim((string) $nombreCategoria);
         if ($nombreCategoria === '') {
             throw new Exception('La categoría del producto es obligatoria.');
         }
 
-        $stmt = $this->consulta('SELECT id_categoria FROM CATEGORIA WHERE nombre = ? AND ambito = ? LIMIT 1', [$nombreCategoria, 'menu']);
-        $fila = $stmt->get_result()->fetch_assoc();
+        $stmt = $this->conn->prepare("SELECT id_categoria FROM CATEGORIA WHERE nombre = ? AND ambito = 'menu' LIMIT 1");
+        $stmt->bind_param("s", $nombreCategoria);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        if ($fila) {
-            return $fila['id_categoria'];
+        if ($row) {
+            return $row['id_categoria'];
         }
 
-        $stmtIns = $this->consulta('INSERT INTO CATEGORIA (nombre, ambito) VALUES (?, ?)', [$nombreCategoria, 'menu']);
-        $stmtIns->close();
+        $stmtI = $this->conn->prepare("INSERT INTO CATEGORIA (nombre, ambito) VALUES (?, 'menu')");
+        $stmtI->bind_param("s", $nombreCategoria);
+        $stmtI->execute();
+        $stmtI->close();
         return $this->conn->insert_id;
     }
 }

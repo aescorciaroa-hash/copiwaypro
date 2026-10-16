@@ -1,6 +1,7 @@
 <?php
-// Configuracion general de la app. require_once database.php antes de este archivo
-// para que env() ya este disponible.
+/**
+ * Configuracion general de la app (necesita database.php cargado antes para usar env()).
+ */
 
 return [
     'nombre' => 'CopiwayPRO',

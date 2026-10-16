@@ -1,63 +1,58 @@
 <?php
-// Modelo de CODIGO_VERIFICACION (recuperacion de contrasena, paso 1 y 2).
+/**
+ * Modelo CodigoVerificacion (codigos para recuperar la contrasena).
+ */
+class CodigoVerificacion
+{
+    private $conn;
 
-class CodigoVerificacion {
-
-    public $conn;
-
-    public function __construct($conn) {
+    public function __construct()
+    {
+        global $conn;
         $this->conn = $conn;
     }
 
-    private function consulta($sql, $parametros = []) {
-        $stmt = $this->conn->prepare($sql);
-        if (!empty($parametros)) {
-            $tipos = '';
-            foreach ($parametros as $p) {
-                if (is_int($p)) {
-                    $tipos .= 'i';
-                } elseif (is_float($p)) {
-                    $tipos .= 'd';
-                } else {
-                    $tipos .= 's';
-                }
-            }
-            $stmt->bind_param($tipos, ...$parametros);
-        }
-        $stmt->execute();
-        return $stmt;
-    }
-
-    public function crearParaCliente($idCliente, $codigo) {
-        $stmt = $this->consulta(
+    public function crearParaCliente($idCliente, $codigo)
+    {
+        $hash = password_hash($codigo, PASSWORD_DEFAULT);
+        $stmt = $this->conn->prepare(
             "INSERT INTO CODIGO_VERIFICACION (id_cliente, codigo_hash, canal_envio, fecha_expiracion)
-             VALUES (?, ?, 'email', DATE_ADD(NOW(), INTERVAL 15 MINUTE))",
-            [$idCliente, password_hash($codigo, PASSWORD_DEFAULT)]
+             VALUES (?, ?, 'email', DATE_ADD(NOW(), INTERVAL 15 MINUTE))"
         );
+        $stmt->bind_param("is", $idCliente, $hash);
+        $stmt->execute();
         $stmt->close();
     }
 
-    public function buscarValidoPorCorreo($correo) {
-        $stmt = $this->consulta(
-            'SELECT cv.* FROM CODIGO_VERIFICACION cv
+    public function buscarValidoPorCorreo($correo)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT cv.* FROM CODIGO_VERIFICACION cv
              JOIN CLIENTE c ON c.id_cliente = cv.id_cliente
              WHERE c.correo = ? AND cv.usado = 0 AND cv.fecha_expiracion > NOW() AND cv.intentos < 5
-             ORDER BY cv.fecha_generacion DESC',
-            [$correo]
+             ORDER BY cv.fecha_generacion DESC"
         );
-        $fila = $stmt->get_result()->fetch_assoc();
+        $stmt->bind_param("s", $correo);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        return $fila ?: null;
+        return $row ?: null;
     }
 
-    public function marcarUsado($idCodigo) {
-        $stmt = $this->consulta('UPDATE CODIGO_VERIFICACION SET usado = 1 WHERE id_codigo = ?', [$idCodigo]);
+    public function marcarUsado($idCodigo)
+    {
+        $stmt = $this->conn->prepare("UPDATE CODIGO_VERIFICACION SET usado = 1 WHERE id_codigo = ?");
+        $stmt->bind_param("i", $idCodigo);
+        $stmt->execute();
         $stmt->close();
     }
 
-    /** Registra un intento fallido de verificacion; al quinto, el codigo deja de ser valido. */
-    public function incrementarIntentos($idCodigo) {
-        $stmt = $this->consulta('UPDATE CODIGO_VERIFICACION SET intentos = intentos + 1 WHERE id_codigo = ?', [$idCodigo]);
+    /** Suma un intento fallido; al quinto el codigo deja de servir. */
+    public function incrementarIntentos($idCodigo)
+    {
+        $stmt = $this->conn->prepare("UPDATE CODIGO_VERIFICACION SET intentos = intentos + 1 WHERE id_codigo = ?");
+        $stmt->bind_param("i", $idCodigo);
+        $stmt->execute();
         $stmt->close();
     }
 }

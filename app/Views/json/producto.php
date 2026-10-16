@@ -1,18 +1,11 @@
 <?php
-// Shape puro (sin SQL) de una fila PRODUCTO -> JSON del frontend. $ingredients y
-// $packaging ya vienen armados (Producto::recetaDe), ya en su shape final.
-//
-// $esAdmin distingue el shape completo (panel de gestion: costPrice, receta con
-// quantityDeduct exacto y packaging) del shape publico (catalogo del cliente,
-// con o sin sesion, pero no admin): ahi solo van id+name de ingredients (lo que
-// el customizer de hamburguesas necesita para "sin X"/"extra X"), sin costos ni
-// cantidades internas de receta ni empaques.
+/**
+ * Convierte una fila de PRODUCTO al JSON del frontend.
+ * $esAdmin = true: JSON completo (costo, receta y empaques).
+ * $esAdmin = false: catalogo publico (solo id y nombre de los ingredientes).
+ */
 
-// Inverso de Producto::BADGE_A_ENUM: la BD guarda el slug ('mas_vendido'),
-// pero el frontend compara contra el texto mostrado ("Más Vendido") en
-// varios lugares (íconos de la etiqueta, filtros). Sin este mapeo el
-// producto se guardaba bien pero la insignia dejaba de reconocerse al
-// releerlo.
+// Valor del ENUM en la base de datos => texto de la etiqueta en el frontend.
 const PRODUCTO_ENUM_A_BADGE = [
     'mas_vendido' => 'Más Vendido',
     'recomendado' => 'Recomendado',
@@ -20,7 +13,8 @@ const PRODUCTO_ENUM_A_BADGE = [
     'especialidad' => 'Especialidad',
 ];
 
-function producto_a_json($fila, $ingredients, $packaging, $esAdmin = false) {
+function producto_a_json($fila, $ingredients, $packaging, $esAdmin = false)
+{
     $etiqueta = PRODUCTO_ENUM_A_BADGE[$fila['etiqueta_destacada']] ?? null;
 
     $resultado = [

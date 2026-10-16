@@ -1,6 +1,7 @@
 <?php
-// Shape puro (sin SQL) de un PEDIDO -> JSON del frontend. $items ya viene armado
-// (Pedido::itemsDe), esta funcion solo mapea $fila + $items al shape final.
+/**
+ * Convierte una fila de PEDIDO al JSON del frontend ($items ya viene armado por Pedido::itemsDe).
+ */
 
 const PEDIDO_ESTADO_BD_A_APP = [
     'pendiente' => 'Pendiente',
@@ -11,22 +12,17 @@ const PEDIDO_ESTADO_BD_A_APP = [
     'cancelado' => 'Cancelado',
 ];
 
-function pedido_a_json($fila, $items, $rolQueVe, $idQueVe) {
+function pedido_a_json($fila, $items, $rolQueVe, $idQueVe)
+{
     $estado = PEDIDO_ESTADO_BD_A_APP[$fila['estado']] ?? $fila['estado'];
 
-    // Regla: el telefono del cliente solo es visible al domiciliario asignado
-    // mientras el pedido esta "En Camino"; admin/cocina/el propio cliente lo ven siempre.
+    // El domiciliario solo ve el telefono del cliente si es suyo y va "En Camino".
     $mostrarTelefono = true;
     if ($rolQueVe === 'delivery') {
         $mostrarTelefono = $fila['estado'] === 'en_camino' && $fila['id_domiciliario'] === $idQueVe;
     }
 
-    // Regla: el PIN de entrega es un secreto entre el cliente y el domiciliario
-    // en la puerta -- el domiciliario debe PEDIRSELO al cliente, no leerlo de
-    // la API (por eso confirmarEntrega() lo valida en servidor con
-    // hash_equals). admin/cocina/otros clientes tampoco lo necesitan nunca.
-    // requiresDeliveryPin es un booleano seguro de exponer a todos (el
-    // frontend del domiciliario lo usa solo para decidir si pedir el PIN).
+    // El PIN de entrega solo lo ve el cliente: el domiciliario se lo pide en la puerta.
     return [
         'id' => '#ORD-' . $fila['id_pedido'],
         'status' => $estado,

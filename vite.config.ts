@@ -63,11 +63,6 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modify file watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
       // En desarrollo, las llamadas a /api/* se redirigen al backend PHP (por
       // defecto el servidor embebido en localhost:8000 -- ver start.bat).
       // Cambia VITE_API_PROXY_TARGET en .env si usas Apache/subcarpeta en su lugar.

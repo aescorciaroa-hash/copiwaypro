@@ -1,727 +1,557 @@
-# MANUAL TÉCNICO Y DE USUARIO — HAMBURGUER COPIWAY
-## Sistema Integrado de Automatización para Dark Kitchen
+# MANUAL DE USUARIO Y LÓGICA DE NEGOCIO — HAMBURGUER COPIWAY
+## Sistema Integrado de Automatización para Dark Kitchen (CopiwayPRO)
 
-Este documento detalla la arquitectura, lógica de negocio, módulos y flujos operativos del sistema **Hamburguer Copiway**.
+Este documento explica qué hace el sistema **Hamburguer Copiway**, cómo lo usa cada persona, qué reglas sigue y qué pasa detrás de cada botón. Está escrito en lenguaje sencillo: no hace falta saber programar para entenderlo.
+
+---
+
+## 0. CÓMO USAR ESTE MANUAL
+
+| Si eres... | Lee primero |
+|---|---|
+| Dueño o administrador del negocio | Secciones 1, 3, 4, 8, 9 y 10 |
+| Cliente o encargado de atención al cliente | Secciones 4 y 5 |
+| Ayudante de cocina | Secciones 4 y 6 |
+| Domiciliario | Secciones 4 y 7 |
+| Diseñador de pantallas (mockups) | Sección 17 |
+| Persona que prueba el sistema | Secciones 15, 16 y 18 |
+
+Al final hay un **glosario** (sección 19) con las palabras propias del sistema.
 
 ---
 
 ## 1. VISIÓN GENERAL
-Hamburguer Copiway es una plataforma diseñada para gestionar una **Dark Kitchen** (Cocina Oculta). El sistema centraliza la recepción de pedidos, la gestión de inventario por recetas, la priorización en cocina y la logística de entrega, eliminando el desorden de los registros manuales.
+
+Hamburguer Copiway es una **Dark Kitchen** (cocina oculta): una cocina que **solo vende a domicilio** y no atiende público en mesas. El sistema reemplaza los cuadernos, las llamadas y los mensajes sueltos por un solo lugar donde:
+
+*   El **cliente** ve el menú, arma su hamburguesa, paga y sigue su pedido en vivo.
+*   La **cocina** recibe los pedidos ordenados y los prepara.
+*   El **domiciliario** toma los pedidos listos, llega con ayuda del mapa y confirma la entrega con un PIN.
+*   El **administrador** controla el menú, los precios, el inventario, el personal, el horario y el cierre de caja.
+
+Todo lo que hace una persona lo ven las demás en pocos segundos, sin recargar la página.
 
 ---
 
-## 2. ROLES Y ACCESOS (RBAC)
-El sistema utiliza un Control de Acceso Basado en Roles para garantizar la seguridad y privacidad:
+## 2. ROLES Y ACCESOS
 
-*   **Administrador**: Control total del sistema (Inventario, Precios, Empleados, Cierre de Caja).
-*   **Ayudante de Cocina**: Gestiona el tablero Kanban de preparación (KDS).
-*   **Domiciliario**: Gestiona las entregas activas con mapas y contacto al cliente.
-*   **Cliente**: Usuario final que realiza compras, acumula puntos y rastrea sus pedidos.
-*   **Programador**: Rol técnico para configuración inicial y mantenimiento de base de datos.
+Cada persona entra con su propio usuario y solo ve lo que le corresponde a su rol.
 
-**Jerarquía de Creación:**
-1. El **Programador** crea la cuenta maestra del Administrador.
-2. El **Administrador** crea las cuentas de Cocina y Domiciliarios.
-3. El **Cliente** se registra de forma autónoma aceptando la política de Habeas Data.
+| Rol | Qué hace | Cómo entra |
+|---|---|---|
+| **Administrador** | Controla todo el negocio: menú, precios, inventario, personal, clientes, horario y cierre de caja. | Correo y contraseña. |
+| **Ayudante de Cocina** | Prepara los pedidos en el tablero de cocina. | Correo y contraseña; luego, en el panel de cocina, su **usuario y PIN de acceso**. |
+| **Domiciliario** | Toma, transporta y entrega los pedidos. | Correo y contraseña; luego, en su panel, su **usuario y PIN de acceso**. |
+| **Cliente** | Compra, sigue sus pedidos, califica y acumula puntos. | Correo y contraseña. |
+| **Programador** | Crea la cuenta del primer administrador y da mantenimiento técnico. | No usa la web: trabaja desde la consola del servidor. |
+
+**Quién crea a quién:**
+1. El **Programador** crea la cuenta del Administrador.
+2. El **Administrador** crea las cuentas de Cocina y Domiciliarios (con su contraseña y su PIN de 4 dígitos).
+3. El **Cliente** se registra solo, aceptando la política de tratamiento de datos (Habeas Data).
+
+**Detalles útiles:**
+*   En los paneles de cocina y domiciliario basta con escribir el usuario (lo que va antes del "@" del correo). Si dos cuentas activas comparten ese usuario con distinto correo, hay que escribir el correo completo.
+*   El administrador **no puede registrarse** desde la página web; solo el Programador puede crearlo.
+*   Si una persona intenta abrir el panel de otro rol (por ejemplo, un ayudante de cocina que escribe la dirección del panel de administración), el sistema no le muestra nada y lo envía al inicio de sesión.
 
 ---
 
 ## 3. REGLAS DE NEGOCIO INQUEBRANTABLES
-1.  **Cero Crédito**: Todo pedido web debe estar pagado antes de llegar a cocina.
-2.  **Tarifa Plana de Domicilio**: Costo de envío único configurable por el administrador.
-3.  **Punto de No Retorno**: Una vez pagado, el pedido no puede ser editado ni cancelado por el cliente.
-4.  **Habeas Data**: El registro de clientes exige la aceptación de términos legales.
-5.  **Horario Automático**: El botón "Pagar" se bloquea fuera del horario de atención configurado.
-6.  **Cero IVA**: El sistema opera con precios netos finales para simplificar la contabilidad.
+
+1.  **Cero Crédito**: un pedido con pago digital solo llega a cocina si el pago fue **aprobado**. Un pedido en efectivo llega a cocina de inmediato y se cobra al entregarlo.
+2.  **Tarifa Plana de Domicilio**: todos los pedidos pagan el mismo valor de envío, sin importar la distancia. Lo define el administrador.
+3.  **Punto de No Retorno**: una vez confirmado el pedido, el cliente ya no puede editarlo ni cancelarlo.
+4.  **Habeas Data**: nadie puede registrarse como cliente sin aceptar la política de tratamiento de datos. El sistema guarda la fecha de aceptación.
+5.  **Horario de Atención**: fuera del horario, con el local cerrado manualmente o con la pausa de emergencia activa, **no se reciben pedidos**.
+6.  **Cero IVA**: los precios del menú son precios finales; el sistema no suma impuestos.
+7.  **El precio lo calcula el sistema**: el total de cada pedido se calcula de nuevo en el servidor al momento de pagar, con los precios vigentes. Lo que muestre el navegador del cliente no se puede manipular para pagar menos.
+8.  **Entrega con PIN**: un pedido solo se marca como entregado si el domiciliario escribe el **PIN de entrega** que le dice el cliente.
+9.  **No se borra la historia**: los empleados dados de baja y los pedidos cerrados no se eliminan; se desactivan o se archivan para conservar el historial.
+10. **Un cierre de caja por día** por cada administrador.
 
 ---
 
-## 4. MÓDULOS EN DETALLE
+## 4. CICLO DE VIDA DE UN PEDIDO
 
-### A. Módulo Administrador
-*   **Dashboard de Control**: Gráficos de ventas, productos más vendidos y métricas en tiempo real.
-*   **Gestión de Catálogo**: CRUD de productos donde se definen precios, fotos y categorías.
-*   **Escandallo (Recetas)**: Configuración de qué insumos gasta cada producto.
-*   **Insumos y Desechables**: Gestión unificada de carnes, vegetales y empaques en una sola base de datos de inventario.
-*   **Abastecimiento Express**: Botón "+" para cargar stock rápidamente tras una compra sin formularios complejos.
-*   **Cierre de Caja**: Consolidación de ingresos (Efectivo vs Digital) y reporte de insumos consumidos.
-*   **Logs de Inventario**: Registro automático de quién y cuándo ajustó las existencias de cada ingrediente.
+### 4.1 Los estados
+| Estado | Qué significa | Quién lo cambia |
+|---|---|---|
+| **Pendiente** | El pedido fue confirmado y espera a la cocina. | Se crea así cuando el cliente confirma. |
+| **En Preparación** | La cocina lo está preparando. | Ayudante de cocina (o administrador). |
+| **Listo** | Está empacado y espera domiciliario. | Ayudante de cocina (o administrador). |
+| **Listo – Recepcionado** | Un domiciliario lo tomó, pero aún no ha salido. | Domiciliario. |
+| **En Camino** | El domiciliario salió hacia la dirección del cliente. | Domiciliario. |
+| **Entregado** | El cliente lo recibió y dio su PIN. | Domiciliario, con el PIN correcto. |
+| **Archivado** | Ya se incluyó en un cierre de caja. Desaparece de las vistas del día, pero se conserva. | Cierre de caja. |
 
-### B. Módulo Cliente
-*   **Creador Interactivo**: Permite armar productos capa por capa, bloqueando ingredientes agotados en tiempo real.
-*   **Fidelización**: Acumulación automática de puntos y descuentos especiales en el día del cumpleaños.
-*   **Recompra en 1 Clic**: Botón para repetir exactamente el último pedido realizado.
-*   **Rastreo en Tiempo Real**: Visualización del estado: `Recibido` -> `Preparación` -> `Listo` -> `En Camino`.
+El sistema **no deja saltarse pasos**: por ejemplo, no se puede marcar como "Listo" un pedido que ya va en camino.
 
-### C. Módulo Cocina (KDS)
-*   **Tablero Kanban**: Columnas de `Pendientes`, `En Preparación` y `Listos`.
-*   **Alertas Visuales**: Resaltado en **ROJO** para ingredientes quitados ("SIN") y **VERDE** para extras.
-*   **Impresión de Tirilla**: Generación de stickers con datos del cliente y pedido para sellar bolsas.
-*   **Alertas de Stock**: Notificaciones cuando un ingrediente está por agotarse.
-
-### D. Módulo Domiciliario
-*   **Logística Móvil**: Vista optimizada para celulares.
-*   **Mapas Interactivos**: Integración con Google Maps/Waze para trazar rutas de entrega.
-*   **Contacto Seguro**: Botón de llamada/WhatsApp visible solo mientras el pedido está "En Camino".
-
----
-
-## 5. FLUJOS PASO A PASO
-
-### Flujo de un Pedido (Ciclo de Vida)
-1.  **Creación**: El cliente selecciona productos, personaliza y paga.
-2.  **Recepción**: El pedido aparece automáticamente en la columna `Pendientes` de Cocina. El Administrador recibe alerta sonora.
-3.  **Inventario**: El sistema descuenta automáticamente ingredientes y empaques del stock.
-4.  **Preparación**: Cocina mueve el pedido a `En Preparación`. El cliente ve el cambio de estado.
-5.  **Despacho**: Cocina marca como `Listo`. Se notifica al domiciliario y al cliente.
-6.  **Entrega**: El domiciliario marca `En Camino` (envía WhatsApp al cliente) y finalmente `Entregado` al llegar.
-
-### Flujo de Cierre de Caja
-1.  El administrador presiona "Cerrar Caja" al final del turno.
-2.  El sistema suma todas las ventas digitales y las ventas en efectivo registradas manualmente.
-3.  Se genera un reporte PDF con la ganancia neta y el listado de insumos consumidos.
-4.  El sistema se reinicia (limpia órdenes del día) para la siguiente jornada.
+### 4.2 El recorrido completo, paso a paso
+1.  **El cliente arma su pedido**: elige productos, los personaliza o crea su hamburguesa en el Creador Interactivo.
+2.  **El cliente confirma y paga**: escribe su dirección y elige efectivo o pago digital.
+3.  **El sistema valida todo a la vez**: que el local esté abierto, los precios vigentes, el pago (si es digital) y que haya inventario suficiente. Si algo falla, **no se guarda nada** y el cliente ve el motivo.
+4.  **Se descuenta el inventario**: la receta de cada producto, menos lo que el cliente quitó, más los extras y los empaques.
+5.  **Se genera el PIN de entrega** (4 dígitos), que solo ve el cliente.
+6.  **Suena la campana** en el panel de cocina y en el del administrador. El pedido aparece en "Pendientes".
+7.  **Cocina lo prepara**: lo pasa a "En Preparación" y después a "Listos". El cliente ve cada cambio.
+8.  **Un domiciliario lo toma**, lo recoge e inicia la ruta: el pedido pasa a "En Camino".
+9.  **En la puerta**, el cliente le dice el PIN y el domiciliario lo escribe. El pedido queda "Entregado".
+10. **Al entregar**: el pago queda aprobado (si era en efectivo, ya se cobró), se suman los puntos al cliente y le llega una notificación para calificar.
+11. **Al final del día**, el administrador hace el cierre de caja y los pedidos entregados se archivan.
 
 ---
 
-## 6. LÓGICA TÉCNICA DE INVENTARIO
-El sistema diferencia entre:
-*   **Ingredientes**: Son parte de la receta y se muestran en la comanda de cocina (Ej: Carne, Queso).
-*   **Empaques**: Son desechables necesarios para el despacho (Ej: Caja de Hamburguesa, Servilletas). Se descuentan del stock al venderse el producto, pero no aparecen en la lista de ingredientes del cocinero para mantener la pantalla limpia.
+## 5. MÓDULO DEL CLIENTE (Experiencia de Compra)
+
+### 5.1 Registro e inicio de sesión
+*   **Registro**: nombre completo, celular, correo, fecha de nacimiento, contraseña (mínimo 8 caracteres) y su confirmación. La casilla de **Habeas Data** es obligatoria: sin marcarla no se crea la cuenta.
+*   **Inicio de sesión**: correo y contraseña. Después de **5 intentos fallidos en 15 minutos**, el acceso se bloquea temporalmente.
+*   **¿Olvidaste tu contraseña?**: el cliente escribe su correo y recibe un **código de 6 dígitos**. El código sirve una sola vez, vence a los 15 minutos y se anula después de 5 intentos equivocados. Por seguridad, el sistema responde lo mismo exista o no el correo.
+
+### 5.2 Catálogo
+*   Productos organizados por **categorías** (Hamburguesas, Perros, Bebidas, Extras, etc.).
+*   Cada producto muestra foto, nombre, descripción, precio y, si aplica, una etiqueta: **Más Vendido**, **Nuevo**, **Recomendado** o **Especialidad**.
+*   Si un ingrediente de la receta llega a 0 en el inventario, el producto aparece como **"Agotado"** y no se puede agregar.
+*   Los productos que el administrador ocultó no aparecen.
+
+### 5.3 Personalizar un producto
+Al abrir un producto, el cliente puede:
+*   **Retirar ingredientes** (ej. "Sin cebolla"): no cambia el precio y ese ingrediente no se descuenta del inventario.
+*   **Añadir extras** (ej. "Extra queso"): suma el precio del extra. Si el extra está agotado, aparece bloqueado.
+El precio se recalcula mientras el cliente elige.
+
+### 5.4 Creador Interactivo ("Arma tu Burger")
+*   El cliente arma una hamburguesa **capa por capa**, viendo un dibujo que se actualiza con cada ingrediente.
+*   Puede eliminar cualquier capa.
+*   El precio es la **suma de los ingredientes elegidos** (cada ingrediente cuesta su costo más el margen de ganancia; ver sección 11).
+*   Los ingredientes sin existencias aparecen como **"AGOTADO"** y no se pueden agregar.
+
+### 5.5 Carrito
+*   Muestra cada producto con sus personalizaciones ("Sin cebolla", "Extra queso"), cantidad y precio.
+*   Permite editar un producto, eliminarlo o vaciar todo el carrito.
+*   El carrito se guarda en el navegador: si el cliente cierra la página, lo encuentra igual al volver.
+*   **Resumen de pago**: subtotal, descuento de cumpleaños (si aplica), domicilio y total.
+
+### 5.6 Checkout y pago
+1.  **Dirección de entrega** (ej. "Calle 10 # 5-20, Centro").
+2.  **Método de pago**:
+    *   **Efectivo**: se paga al domiciliario al recibir.
+    *   **Digital**: Nequi, Daviplata o Bancolombia. Para Nequi y Daviplata se pide el número de celular.
+3.  **Pasarela de pago**: una ventana muestra los pasos "Conectando", "Esperando aprobación", "Verificando" y "Aprobado" (o "Rechazado").
+4.  Si el pago es aprobado, aparece el aviso **"¡Pedido confirmado! Tu orden ha sido enviada a cocina"**.
+
+Si el local está cerrado, el botón de pago muestra el aviso de **horario de atención** y no deja continuar.
+
+> **Importante:** la pasarela actual es **de prueba**: simula un pago real pero **no cobra dinero**. Está lista para reemplazarse por una pasarela real sin cambiar el resto del sistema.
+
+### 5.7 Órdenes Activas (rastreo)
+*   Muestra los pedidos en curso con su estado actual: Pendiente → En Preparación → Listo → En Camino → Entregado.
+*   Muestra el **PIN de entrega** de cada pedido. El cliente debe decírselo al domiciliario **solo cuando reciba el pedido**.
+*   El estado se actualiza solo, sin recargar la página.
+
+### 5.8 Historial y calificaciones
+*   Lista de todos los pedidos anteriores, con buscador por número de orden o por plato.
+*   Cada pedido muestra su recibo y los **puntos ganados**.
+*   **Calificar**: en los pedidos entregados, el cliente da de 1 a 5 estrellas y deja un comentario. Las reseñas con comentario pueden aparecer en la página de inicio.
+
+### 5.9 Recompra en 1 Clic
+Repite un pedido anterior con un solo botón. Antes de llenar el carrito, el sistema revisa cada producto:
+*   **Descontinuado**: ya no está en el menú y no se agrega.
+*   **Con faltantes**: algún ingrediente está agotado; se avisa cuál.
+*   **Disponible**: se agrega igual que la vez anterior.
+
+Si los precios, el domicilio o la disponibilidad cambiaron desde la última vez, el sistema lo avisa para que el cliente revise antes de pagar. Siempre se cobran los **precios vigentes**.
+
+### 5.10 Perfil
+*   Editar datos personales (nombre, correo, celular, dirección y fecha de nacimiento).
+*   Cambiar la contraseña (pide la actual y la nueva, mínimo 8 caracteres).
+*   Activar las **notificaciones** en el celular o computador.
+*   Cerrar sesión.
+
+### 5.11 Beneficios: puntos y cumpleaños
+*   **Puntos**: 1 punto por cada $1.000 del total del pedido. Se suman cuando el pedido se **entrega**. Hoy los puntos se acumulan y se consultan; todavía no se pueden canjear.
+*   **Cumpleaños**: el día del cumpleaños del cliente se descuenta automáticamente el **15 % del subtotal** de los productos. El descuento **no aplica** al domicilio.
+
+### 5.12 Notificaciones
+Si el cliente las activa, cuando su pedido se entrega recibe el aviso **"¡Tu pedido ha llegado!"** aunque tenga la página cerrada. Al tocarlo, se abre directamente la ventana para calificar.
 
 ---
 
-## 7. SEGURIDAD Y DATOS
-*   **Contraseñas**: Encriptadas mediante hashing seguro.
-*   **Persistencia**: Sincronización en tiempo real mediante un sistema de datos centralizado para que todos los roles vean los cambios al instante.
-*   **Privacidad**: Los datos de contacto del cliente se ocultan al domiciliario una vez finalizada la entrega.
+## 6. MÓDULO DE COCINA (KDS — Pantalla de Cocina)
+
+Pantalla de alto contraste pensada para usarse rápido, con las manos ocupadas y desde una tablet o pantalla horizontal.
+
+### 6.1 Entrada
+Después del inicio de sesión, el panel pide el **usuario y el PIN de acceso** del ayudante. Así, varias personas pueden usar la misma tablet y el sistema sabe quién preparó cada pedido.
+
+### 6.2 Tablero de tres columnas
+| Columna | Qué contiene | Botón |
+|---|---|---|
+| **Pendientes** | Pedidos recién confirmados. | Pasar a preparación. |
+| **En Preparación** | Pedidos que se están cocinando. | Marcar como listo para despacho. |
+| **Listos** | Pedidos empacados que esperan domiciliario. | — |
+
+### 6.3 La tarjeta del pedido (comanda)
+*   Número del pedido grande y un **reloj** con el tiempo transcurrido.
+*   Lista de productos con cantidades.
+*   **"Sin: ..."** en **rojo** para lo que el cliente quitó, y **"Extra: ..."** en **verde** para lo que agregó.
+*   En la hamburguesa del Creador Interactivo se muestra la lista completa de ingredientes elegidos.
+*   **Alerta de tiempo**: si un pedido lleva **15 minutos o más** en preparación, la tarjeta se marca en **rojo** para darle prioridad.
+
+### 6.4 Herramientas laterales
+*   **Campana de nuevo pedido**: suena y aparece el aviso **"¡NUEVA COMANDA EN COCINA!"**. Se puede **silenciar** o reactivar con el botón de sonido.
+*   **Preparación promedio**: cuánto tarda la cocina, en promedio, en tener listo un pedido.
+*   **Inventario crítico**: los insumos con menos existencias; los que tienen menos de 20 unidades aparecen en rojo.
+*   **Resumen de preparación**: cuántas unidades de cada producto hay que preparar en total entre todos los pedidos activos (ej. "6 Hamburguesas Clásicas"). Ayuda a cocinar por lotes.
+*   **Indicador "Sistema en Línea"**: confirma que la pantalla está recibiendo pedidos.
+
+### 6.5 Imprimir tirilla
+El botón de impresora abre la **vista previa del ticket** para impresora térmica. Incluye número del pedido, fecha, cliente, teléfono, dirección, método de pago, productos, subtotal, tarifa de envío y total a pagar. Se pega en la bolsa para identificar el pedido.
 
 ---
 
-## 8. DESCRIPCIÓN DETALLADA DE VISTAS Y ACCIONES POR ROL
+## 7. MÓDULO DEL DOMICILIARIO (Última Milla)
 
-### A. FLUJO DEL ADMINISTRADOR (Control Maestro)
-El administrador es el corazón operativo del sistema. Su vista es un centro de mando integral.
+Pantalla pensada para el celular, con botones grandes.
 
-#### Vista: Dashboard Principal
-*   **Métricas en Tiempo Real**: Visualiza el total de ventas del día, el número de pedidos y el rendimiento de los productos.
-*   **Gráficos de Tendencia**: Gráficos de barras y circulares que muestran las horas pico y las categorías más populares.
-*   **Acción: Cierre de Caja**: Al presionar este botón, el sistema bloquea nuevas ventas, suma ingresos (efectivo + digital), calcula el consumo de insumos y genera un reporte PDF. **Resultado**: El sistema queda en limpio para el siguiente turno.
+### 7.1 Entrada y disponibilidad
+*   Después del inicio de sesión, el panel pide el **usuario y el PIN de acceso**.
+*   Un interruptor permite marcarse como **Disponible** o **Desconectado**.
 
-#### Vista: Comandas Activas (KDS Admin)
-*   **Monitoreo**: El admin ve exactamente lo mismo que cocina, pero con poder de edición.
-*   **Acción: Registro de Pedido Externo**: Permite al admin digitar un pedido que llega por WhatsApp o llamada. **Botón**: "Registrar Venta Manual". **Resultado**: El pedido viaja a cocina como si fuera un pedido web, permitiendo pago en efectivo al entregar.
-*   **Acción: Editar Dirección**: Si un cliente se equivoca, el admin puede corregir la dirección en un pedido activo. **Resultado**: El mapa del domiciliario se actualiza automáticamente.
+### 7.2 Pedidos Disponibles
+Lista de los pedidos "Listos" con su dirección, productos, valor y forma de pago:
+*   **Pagado (Digital)**: no hay que cobrar nada.
+*   **Efectivo**: hay que cobrar el total al entregar.
 
-#### Vista: Inventario (Abastecimiento Express)
-*   **Control de Stock**: Lista de todos los ingredientes y empaques con alertas de color si el stock es bajo.
-*   **Acción: Botón "+"**: Permite sumar unidades rápidamente tras hacer mercado. **Resultado**: El stock se actualiza al instante sin necesidad de abrir formularios complejos.
-
-#### Vista: Gestión de Catálogo y Menú
-*   **Acción: Crear/Editar Producto**: Define nombre, precio, imagen y categoría.
-*   **Acción: Configurar Escandallo**: Abre un panel para asignar ingredientes y empaques. **Resultado**: Establece cuánto se descuenta del inventario por cada venta.
-
-#### Vista: Gestión Humana
-*   **Acción: Crear Empleado**: El admin genera el usuario y contraseña para cocina y domiciliarios.
-*   **Acción: Soft Delete (Dar de Baja)**: Revoca el acceso a un empleado. **Resultado**: El empleado ya no puede entrar al sistema, pero su historial de trabajo se mantiene para auditoría.
+### 7.3 Acciones, en orden
+1.  **Tomar Pedido**: el pedido queda asignado a él. Si otro domiciliario lo tomó un segundo antes, recibe el aviso "Este pedido ya no está disponible para reparto" (nunca lo pueden tomar dos personas).
+2.  **Soltar**: si todavía no ha salido, puede devolver el pedido para que lo tome otro.
+3.  **Iniciar Ruta (En Camino)**: el pedido pasa a "En Camino" y el cliente lo ve de inmediato.
+4.  **Ver ruta**: el mapa muestra el recorrido hasta el destino. Los botones **Waze** y **Maps** abren la navegación en esas aplicaciones.
+5.  **Contactar Cliente**: abre WhatsApp con un mensaje ya escrito ("Te escribo de Copiway PRO, soy tu domiciliario y ya voy en camino con tu pedido..."). El domiciliario solo tiene que enviarlo. Este botón y el teléfono del cliente **solo aparecen mientras el pedido está En Camino**.
+6.  **Entregar**: se abre la ventana **"Validar Entrega"**, donde escribe el **PIN de 4 dígitos** que le dice el cliente. Si es correcto, el pedido queda entregado; si no, aparece "PIN incorrecto".
 
 ---
 
-### B. FLUJO DEL CLIENTE (Experiencia de Compra)
-Diseñado para ser rápido, visual y sin fricciones.
+## 8. MÓDULO DEL ADMINISTRADOR (Control Maestro)
 
-#### Vista: Catálogo y Menú
-*   **Navegación**: Filtros por categorías (Hamburguesas, Perros, Extras, etc.).
-*   **Acción: Recompra 1-Clic**: Si el cliente ya ha pedido antes, aparece un botón para repetir su última orden. **Resultado**: Ahorra tiempo al reconstruir el carrito automáticamente.
+El panel tiene un menú lateral con ocho secciones, además de una campana de **notificaciones** y un aviso de **stock crítico**.
 
-#### Vista: Creador Interactivo (Minijuego)
-*   **Personalización**: El cliente ve una hamburguesa base y puede añadir o quitar capas.
-*   **Lógica de Agotado**: Si un ingrediente llega a 0 en el inventario del admin, la opción en el minijuego se bloquea con el aviso "Agotado".
+### 8.1 Tablero Analítico
+*   **Indicadores**: Ventas Totales, Órdenes Hoy, Ticket Promedio (valor promedio por pedido) y Empleados Activos.
+*   **Comparativos**: esta semana frente a la semana pasada, y este mes frente al mes anterior.
+*   **Productos más vendidos**, **Órdenes recientes** y un resumen de **Despacho y Logística**.
+*   **Alerta Preventiva de Stock Crítico**: lista los insumos que tienen entre 1 y 10 unidades, antes de que se agoten.
 
-#### Vista: Carrito y Checkout
-*   **Acción: Pagar**: Solo se activa si el local está abierto (según el horario configurado). **Resultado**: Al confirmar, el pedido es irreversible (Punto de No Retorno).
-*   **Costo de Envío**: Se suma automáticamente la tarifa plana configurada por el admin.
+### 8.2 Comandas Activas
+*   **Órdenes en tiempo real**: todos los pedidos del día con su estado, cliente, dirección y domiciliario.
+*   **Ver detalles**: productos, pago, datos del cliente y del domiciliario asignado (nombre, vehículo y placa).
+*   **Soltar pedido**: el administrador puede quitarle un pedido a un domiciliario que todavía no ha salido, para que lo tome otro.
+*   **Mapa de entregas**: ubicación de los pedidos en reparto.
+*   **Editar dirección** e **Ingreso de Orden Manual** (pedidos que llegan por llamada o WhatsApp): ver la sección 18, porque hoy tienen limitaciones.
 
-#### Vista: Rastreo de Pedido
-*   **Estados**: Una barra de progreso que se mueve en tiempo real según las acciones de Cocina y el Domiciliario.
-*   **Botón de Contacto**: Aparece un botón de WhatsApp para hablar con el domiciliario, pero **solo** cuando el pedido está "En Camino". Desaparece al ser entregado.
+### 8.3 Rutas & Zonas
+Mapa con la flota de domiciliarios y los pedidos en reparto, para ver de un vistazo cómo va la logística.
 
----
+### 8.4 Gestión de Menú
+*   **Crear o editar un producto**, en cuatro partes:
+    1.  **Información comercial**: nombre, descripción, precio, categoría y etiqueta (Más Vendido, Nuevo, Recomendado, Especialidad).
+    2.  **Imagen del producto**: fotos JPG, PNG, WEBP o GIF de hasta 5 MB.
+    3.  **Receta e insumos (Escandallo)**: qué insumos lleva y en qué cantidad por porción.
+    4.  **Desechables y empaques**: caja, bolsa, servilletas, etc.
+*   **Ocultar / Disponible**: retira un producto del menú sin borrarlo.
+*   **Eliminar producto** (pide confirmación).
+*   **Categorías**: crear y eliminar las categorías del menú.
 
-### C. FLUJO DEL AYUDANTE DE COCINA (KDS)
-Interfaz de alto contraste, diseñada para ser usada con manos ocupadas y en ambiente de calor.
+Al cambiar un precio, los clientes ven el nuevo valor en pocos segundos. Los pedidos ya confirmados conservan el precio con el que se pagaron.
 
-#### Vista: Tablero Kanban (Comandas)
-*   **Columna Pendientes**: Pedidos recién pagados entran aquí con una alerta sonora.
-*   **Columna En Preparación**: El cocinero arrastra o presiona el botón para indicar que está trabajando en el pedido.
-*   **Columna Listos**: El pedido se mueve aquí cuando la comida está empacada.
+### 8.5 Inventario Express (Abastecimiento)
+*   **Registrar un insumo**: nombre, categoría (Panadería, Carnes, Quesos, Verduras, Salsas, Acompañamientos, Bebidas, Empaques y Desechables, General), unidad de medida (unidades, kg, g, litros, ml, paquetes, cajas, porciones), existencias, costo unitario y foto opcional.
+*   **Botón "+" (Sumar al stock)**: después de una compra, se escribe cuántas unidades llegaron y se suman al instante.
+*   **Botón "−" (Registrar merma / Restar)**: descuenta producto dañado, vencido o perdido.
+*   **Editar** y **Eliminar** insumos.
+*   **Semáforo de existencias**: rojo con 10 o menos, naranja hasta 30 y verde por encima de 30.
+*   **Historial de Movimientos**: cada entrada (compra), salida (venta, con el número del pedido) o ajuste queda registrado con fecha, cantidad y motivo.
 
-#### Acciones y Botones:
-*   **Resaltado de Personalización**: El sistema lee la receta y resalta en **ROJO** lo que NO debe llevar y en **VERDE** los extras.
-*   **Botón: Imprimir Tirilla**: Genera una etiqueta con el nombre del cliente, dirección y detalle del pedido para pegar en la bolsa.
-*   **Botón: Marcar como Listo**: **Resultado**: Notifica al domiciliario que hay un paquete esperando y avisa al cliente que su comida está terminada.
+### 8.6 Equipo y Personal
+*   **Registrar un colaborador**: nombre, rol (Ayudante de cocina o Domiciliario), correo, contraseña, teléfono y **PIN de acceso**. Para domiciliarios, además: vehículo (moto, bicicleta, carro o a pie), modelo, placa y **base de efectivo** (el dinero de cambio con el que sale).
+*   **Editar** sus datos o asignar un nuevo PIN.
+*   **Dar de baja**: le quita el acceso de inmediato, incluso si tenía la sesión abierta. Su historial se conserva.
+*   **Filtrar** la lista y **Exportar a CSV** (se abre en Excel).
 
----
+### 8.7 Directorio de Clientes
+Lista de clientes con nombre, teléfono, puntos acumulados y fecha de nacimiento, con buscador. **Ver perfil** muestra el resumen del cliente y sus pedidos.
 
-### D. FLUJO DEL DOMICILIARIO (Última Milla)
-Interfaz móvil centrada en la ubicación y la rapidez de entrega.
+### 8.8 Ajustes y Caja
+| Ajuste | Para qué sirve |
+|---|---|
+| **Horario de atención** | Hora de apertura y de cierre. Admite horarios que pasan la medianoche (ej. 6:00 p. m. a 2:00 a. m.). |
+| **Abrir / Cerrar el local manualmente** | Cierra la tienda aunque esté dentro del horario (o vuelve al horario automático). |
+| **Pausa de emergencia** | Detiene la recepción de pedidos al instante (ej. se acabó el gas o se fue la luz). Se reanuda con el mismo botón. |
+| **Tarifa plana de domicilio** | Valor del envío que se suma a cada pedido. |
+| **Margen de ganancia** | Porcentaje que se suma al costo de cada ingrediente para calcular el precio de los extras y del Creador Interactivo. |
+| **Cierre de caja** | Ver la sección 9. |
 
-#### Vista: Pedidos por Entregar
-*   **Lista de Espera**: Muestra los pedidos marcados como "Listos" por cocina.
-*   **Acción: Botón "En Camino"**: El domiciliario toma el pedido e inicia la ruta. **Resultado**: Envía un mensaje automático de WhatsApp al cliente informando que el domiciliario ya salió.
-
-#### Vista: Mapa Interactivo
-*   **Navegación**: Muestra un mapa con la ubicación del cliente.
-*   **Botón: Abrir en GPS**: Abre Google Maps o Waze con la ruta optimizada.
-
-#### Vista: Finalización
-*   **Acción: Botón "Entregado"**: Cierra el ciclo del pedido. **Resultado**: El pedido desaparece de la vista activa y suma la ganancia/pago al reporte diario del administrador.
-
----
-
-## 9. ¿QUÉ PASA SI...? (Casos de Borde)
-
-*   **¿Si se agota un ingrediente?**: El sistema lo bloquea en el menú del cliente al instante, evitando ventas de productos que no se pueden preparar.
-*   **¿Si el administrador cambia un precio?**: Los pedidos que ya están en el carrito o pagados mantienen el precio anterior; el cambio solo aplica a pedidos nuevos.
-*   **¿Si el domiciliario no encuentra la dirección?**: Tiene un botón de llamada directa al cliente que solo funciona mientras el pedido está activo (protección de datos).
-*   **¿Si el local está cerrado?**: El cliente puede ver el menú pero el botón de pago muestra un aviso indicando que el local está fuera de horario.
-
----
-
-## 10. GUÍA DE BOTONES Y FUNCIONALIDADES POR MÓDULO (DICCIONARIO DE ACCIONES)
-
-A continuación, se detalla cada botón crítico del sistema, su ubicación y el efecto inmediato que genera en la base de datos y la interfaz de otros usuarios.
-
-### A. Módulo del Cliente (Experiencia de Usuario)
-
-*   **Botón: "Agregar al Carrito" (Menú)**:
-    *   **Acción**: Guarda el producto seleccionado en el almacenamiento local del navegador (carrito).
-    *   **Qué pasa**: El contador del carrito en la barra de navegación aumenta. Si el producto ya existía, suma la cantidad.
-*   **Botón: "Personalizar" (Icono de lápiz/ajustes)**:
-    *   **Acción**: Abre el **Creador Interactivo**.
-    *   **Qué pasa**: Permite quitar ingredientes o añadir extras. El precio se recalcula en tiempo real mientras el usuario interactúa.
-*   **Botón: "Recompra 1-Clic" (Perfil/Inicio)**:
-    *   **Acción**: Consulta la última orden finalizada en la base de datos centralizada y la clona.
-    *   **Qué pasa**: Llena el carrito instantáneamente con los mismos productos y personalizaciones que el pedido anterior.
-*   **Botón: "Pagar" (Checkout)**:
-    *   **Acción**: Ejecuta la lógica de validación de horario y stock.
-    *   **Qué pasa**: Si todo es correcto, registra la orden en estado `pagado` en el motor de persistencia centralizado. **Efecto Dominó**: 
-        1. Se descuenta el stock del inventario.
-        2. Aparece en el KDS de cocina con alerta sonora.
-        3. El cliente ya no puede editar ni cancelar (Punto de No Retorno).
-
-### B. Módulo del Administrador (Gestión Maestra)
-
-*   **Botón: "+" (Inventario Express)**:
-    *   **Acción**: Incrementa la cantidad de un insumo seleccionado.
-    *   **Qué pasa**: Actualiza el campo `stock` en la base de datos. Si el producto estaba "Agotado" para el cliente, se habilita nuevamente de forma automática.
-*   **Botón: "Cerrar Caja" (Dashboard)**:
-    *   **Acción**: Dispara el proceso de consolidación diaria.
-    *   **Qué pasa**: 
-        1. Suma todos los pagos marcados como `entregado`.
-        2. Genera un documento PDF con el resumen de ventas y gastos de insumos.
-        3. Cambia el estado de las órdenes del día a `archivado`, dejando la lista de comandas limpia para el nuevo día.
-*   **Botón: "Registrar Venta Manual" (Admin KDS)**:
-    *   **Acción**: Abre un formulario para pedidos de WhatsApp/Llamada.
-    *   **Qué pasa**: Crea una orden con estado `pago_efectivo`. Al enviarse, viaja directamente a la columna de "Pendientes" en cocina.
-*   **Botón: "Guardar Cambios" (Edición de Menú)**:
-    *   **Acción**: Actualiza las propiedades del producto (Precio, Foto, Categoría).
-    *   **Qué pasa**: Todos los clientes ven el nuevo precio al instante. **Nota**: No afecta a los pedidos que ya fueron pagados o están en carritos activos para proteger la oferta original.
-
-### C. Módulo de Cocina (KDS - Kitchen Display System)
-
-*   **Botón: "Empezar Preparación" (Flecha en Comanda)**:
-    *   **Acción**: Mueve la tarjeta del pedido de la columna "Pendientes" a "En Preparación".
-    *   **Qué pasa**: El cliente ve en su pantalla de rastreo que su pedido ha comenzado a ser cocinado.
-*   **Botón: "Imprimir Tirilla" (Icono de impresora)**:
-    *   **Acción**: Genera una vista de impresión optimizada para impresoras térmicas.
-    *   **Qué pasa**: Envía el comando de impresión con el nombre del cliente, dirección, teléfono y el detalle de "CON/SIN" ingredientes.
-*   **Botón: "Marcar como Listo" (Flecha hacia columna final)**:
-    *   **Acción**: Cambia el estado de la orden a `listo`.
-    *   **Qué pasa**: 
-        1. El pedido aparece en la aplicación del domiciliario.
-        2. El cliente recibe una notificación visual de que su pedido está listo para despacho.
-
-### D. Módulo del Domiciliario (Logística)
-
-*   **Botón: "En Camino" (Tarjeta de Entrega)**:
-    *   **Acción**: Asigna el domiciliario a la orden y cambia el estado a `en_camino`.
-    *   **Qué pasa**: 
-        1. Se activa el botón de contacto con el cliente.
-        2. Se dispara un mensaje automático (vía API o enlace) al WhatsApp del cliente con el aviso de salida.
-*   **Botón: "Ir al Mapa" (Icono de ubicación)**:
-    *   **Acción**: Detecta las coordenadas o dirección de la orden.
-    *   **Qué pasa**: Abre la aplicación de mapas externa (Google Maps/Waze) con la ruta ya trazada desde el local hasta la casa del cliente.
-*   **Botón: "Entregado" (Check final)**:
-    *   **Acción**: Marca la orden como `finalizada`.
-    *   **Qué pasa**: 
-        1. Desaparece de la ruta activa del domiciliario.
-        2. Se deshabilita el acceso a los datos de contacto del cliente (privacidad).
-        3. El pago se suma oficialmente al reporte de caja del administrador.
+**El local recibe pedidos solo si se cumplen las tres condiciones**: está abierto manualmente, no está en pausa de emergencia y la hora actual está dentro del horario.
 
 ---
 
-## 11. PROFUNDIZACIÓN DE FUNCIONES CLAVE (PASO A PASO DETALLADO)
+## 9. CIERRE DE CAJA
 
-Para una comprensión absoluta del sistema, aquí se explica la lógica interna de las funciones más avanzadas:
+Se hace al final de la jornada desde **Ajustes y Caja → Cierre de Caja**.
 
-### 11.1 El Creador Interactivo de Hamburguesas (Lógica de Capas)
-Este no es un simple formulario, es un simulador visual que interactúa con el inventario real:
-1.  **Selección**: El cliente abre un producto base (Ej: Hamburguesa de la Casa).
-2.  **Consulta de Stock**: El sistema verifica en milisegundos qué ingredientes tiene esa receta.
-3.  **Visualización**: Muestra los ingredientes en una lista. Si el Administrador marcó que el "Pan" tiene stock 0, el cliente verá el ingrediente con una opacidad baja y un aviso de "AGOTADO".
-4.  **Acción de Quitar**: Al presionar "Sin Cebolla", el sistema marca ese ítem para que el descuento de inventario **NO** se aplique a la cebolla, ahorrando costos al local.
-5.  **Acción de Agregar**: Al añadir "Extra Queso", el sistema busca el precio del extra en la configuración del admin y lo suma al subtotal.
+### 9.1 Paso a paso
+1.  **Vista previa** (no guarda nada todavía). Muestra:
+    *   **Ventas totales** y número de pedidos.
+    *   **Desglose por método de pago**: efectivo y digital (Nequi, Daviplata, Bancolombia).
+    *   **Consumo de insumos**: cuánto se gastó de cada insumo, su costo, la ganancia y el margen.
+    *   **Liquidación de domiciliarios**: por cada uno, cuántos pedidos entregó, cuánto cobró en efectivo, su base y el **total que debe entregar** (base + efectivo cobrado).
+2.  **Advertencia de órdenes activas**: si todavía hay pedidos en curso, el sistema lo avisa antes de cerrar. Esos pedidos **no se pierden**: siguen su curso y entran en el siguiente cierre.
+3.  **Reporte PDF**: se puede ver en pantalla o descargar.
+4.  **Confirmar el cierre**: guarda el reporte, registra la liquidación de cada domiciliario y **archiva** los pedidos entregados.
 
-### 11.2 Sistema de Fidelización (Puntos y Cumpleaños)
-Lógica automática para retener clientes:
-*   **Puntos**: Por cada $1.000 pesos de compra, el sistema asigna 1 punto al perfil del cliente. Estos puntos se almacenan de forma persistente y pueden ser consultados en el perfil.
-*   **Cumpleaños**: El sistema lee la fecha de nacimiento del registro. El día del cumpleaños, el checkout detecta la fecha y aplica un descuento del 15% automáticamente sobre el total de productos (no aplica al domicilio).
+### 9.2 Qué entra en el cierre
+Entran **todos los pedidos entregados que aún no estaban en un cierre anterior**. Ningún pedido se cuenta dos veces y ninguno se borra: quedan en el historial para reportes posteriores.
 
-### 11.3 Cierre de Caja e Inteligencia de Inventario
-¿Cómo sabe el sistema si falta dinero o insumos?
-1.  **Conteo de Ventas**: El sistema filtra todas las órdenes del día con estado `entregado`.
-2.  **Cruce de Recetas**: Por cada hamburguesa vendida, el sistema suma cuánta carne, pan y vegetales debieron consumirse teóricamente.
-3.  **Generación del PDF**: Crea un documento profesional que muestra:
-    *   Ventas totales digitales (transacciones verificadas).
-    *   Ventas totales en efectivo (dinero que el admin debe tener en mano).
-    *   Lista de insumos que salieron de la bodega.
-4.  **Reinicio Seguro**: Al finalizar, el sistema limpia la pantalla pero **mantiene** los datos en el historial histórico para reportes mensuales.
-
-### 11.4 Gestión Humana y "Soft Delete"
-Seguridad ante rotación de personal:
-1.  **Creación**: El admin asigna un nombre y clave. El sistema genera un ID único.
-2.  **Desactivación**: Si un empleado es despedido, el admin presiona "Dar de Baja".
-3.  **Lógica Interna**: El sistema no borra al usuario (para no romper el historial de quién preparó qué pedido), sino que cambia su estado a `inactivo`.
-4.  **Bloqueo**: Al intentar iniciar sesión, el sistema verifica el estado `inactivo` y rechaza el acceso, notificando al usuario que contacte al administrador.
-
-### 11.5 Protección de Datos (Habeas Data)
-Cumplimiento legal automático:
-*   En el registro, el checkbox de "Acepto términos" no es decorativo. Si no está marcado en `true`, la función de "Registrar" devuelve un error de validación y bloquea la creación del perfil en la base de datos centralizada.
+### 9.3 Reglas
+*   Solo se puede hacer **un cierre por día** por administrador.
+*   El consumo de insumos se calcula con las salidas reales registradas en cada venta, no con estimaciones.
 
 ---
 
-## 12. ARQUITECTURA DE PERSISTENCIA Y TIEMPO REAL
+## 10. LÓGICA DEL INVENTARIO
 
-Para entender "por qué todo cambia solo" en las pantallas, es necesario conocer la infraestructura invisible:
+### 10.1 Ingredientes y empaques
+*   **Ingredientes**: forman parte de la receta y aparecen en la comanda de cocina (carne, queso, pan).
+*   **Empaques y desechables**: se necesitan para despachar (caja, bolsa, servilletas). Se descuentan del inventario con cada venta, pero **no aparecen** en la comanda, para que la pantalla de cocina sea más clara.
 
-### 12.1 El Corazón: Sincronización y Persistencia Centralizada
-El sistema no requiere que nadie "refresque" la página. Utiliza escuchas activas (*Listeners*):
-*   **Sincronización Multi-Pantalla**: Cuando el Administrador cambia el precio de una hamburguesa, el motor de datos envía una señal a todos los clientes conectados. Sus pantallas se actualizan en menos de 1 segundo sin recargar la página.
-*   **Persistencia Total**: Si el Administrador cierra el navegador accidentalmente, al abrirlo de nuevo encontrará todo exactamente como estaba. Las órdenes activas, el stock y el carrito del cliente viven en la nube, no solo en la memoria del computador.
+### 10.2 Cuándo se mueve el inventario
+| Momento | Qué pasa |
+|---|---|
+| El cliente confirma un pedido | **Salida**: se descuenta la receta, menos lo que quitó, más los extras y los empaques. Queda registrado con el número del pedido. |
+| El administrador suma stock ("+") | **Entrada** en el historial. |
+| El administrador registra una merma ("−") | **Salida** en el historial, con su motivo. |
+| Cierre de caja | Se calcula el consumo total del periodo a partir de las salidas. |
 
-### 12.2 Ciclo de Vida de una Orden en la Base de Datos
-Una orden no es solo un papel, es un objeto que cambia de estado:
-1.  **Estado `cart`**: Existe solo en el navegador del cliente.
-2.  **Estado `pagado`**: Se crea en la base de datos. Se dispara la alerta sonora en Cocina.
-3.  **Estado `preparacion`**: El Ayudante de Cocina reclama la orden. El timestamp de inicio se registra para medir eficiencia.
-4.  **Estado `listo`**: El pedido se hace visible para el Domiciliario.
-5.  **Estado `entregado`**: El pedido se oculta de las vistas operativas y se marca para el reporte de cierre de caja.
-
----
-
-## 13. FLUJOS DE SEGURIDAD Y AUDITORÍA (AUDIT LOGS)
-
-El sistema vigila las acciones críticas para evitar fraudes o errores humanos:
-
-### 13.1 El Log de Inventario
-Cada vez que un administrador ajusta el stock manualmente, el sistema registra: **¿Quién lo hizo?**, **¿A qué hora?** y **¿Qué cantidad se añadió?**. Esto permite mantener un control estricto sobre las entradas de mercancía y evitar descuadres sospechosos en el reporte de cierre.
-
-### 13.2 Validación de Sesiones
-*   **Expiración**: Por seguridad, si una sesión de empleado permanece inactiva por mucho tiempo, el sistema solicita credenciales nuevamente.
-*   **Protección de Rutas**: Si un Ayudante de Cocina intenta entrar manualmente a la URL de `/admin`, el sistema detecta que su rol no tiene permisos y lo redirige automáticamente a su panel de cocina.
+### 10.3 Protección contra la doble venta
+Si dos clientes intentan comprar al mismo tiempo la última unidad de un ingrediente, el sistema atiende un pedido a la vez: el primero se confirma y el segundo recibe el aviso **"Sin stock suficiente de ..."**, sin que se le cobre. Nunca se vende algo que no se puede preparar.
 
 ---
 
-## 14. ESCENARIOS OPERATIVOS CRÍTICOS (MANEJO DE CRISIS)
+## 11. CÓMO SE CALCULAN LOS PRECIOS
 
-¿Qué pasa en situaciones extremas?
+| Concepto | Cómo se calcula |
+|---|---|
+| Producto del menú | Precio del producto + precio de los extras elegidos. |
+| Precio de un extra o de un ingrediente del Creador | Costo unitario × (1 + margen de ganancia), redondeado a la centena. |
+| Hamburguesa del Creador Interactivo | Suma de los precios de sus ingredientes. |
+| Descuento de cumpleaños | 15 % del subtotal de productos (solo el día del cumpleaños). |
+| Domicilio | Tarifa plana configurada por el administrador. |
+| **Total** | Subtotal − descuento de cumpleaños + domicilio. |
+| Puntos | 1 punto por cada $1.000 del total. |
 
-### 14.1 Pérdida de Conexión a Internet
-*   **En Cocina**: El sistema detecta la desconexión y muestra un aviso visual. Los pedidos que ya estaban cargados permanecen visibles. Al volver el internet, el KDS se sincroniza automáticamente con las nuevas órdenes que entraron mientras estuvo offline.
-*   **En el Cliente**: Si el cliente pierde internet durante el pago, el sistema bloquea la transacción para evitar cobros dobles o pedidos fantasma.
+**Ejemplo:** un extra de queso cuesta $1.500 y el margen es 35 %. $1.500 × 1,35 = $2.025, que redondeado a la centena da **$2.000**.
 
-### 14.2 Error en la Dirección de Entrega
-Si el cliente nota un error después de pagar:
-1.  El cliente llama al local.
-2.  El **Administrador** entra a "Comandas Activas".
-3.  Presiona el botón de **"Editar Dirección"**.
-4.  Ingresa la nueva dirección.
-5.  **Al instante**, el Domiciliario ve el cambio en su mapa y recibe una alerta visual de "Dirección Actualizada".
-
-### 14.3 Producto Agotado a Mitad de una Venta
-Si un cliente tiene una hamburguesa en su carrito y, justo antes de pagar, otro cliente compra la última unidad disponible:
-*   El sistema realiza una **validación de stock final** al presionar "Pagar".
-*   Si ya no hay existencias, el pago se detiene y se le informa al cliente: *"Lo sentimos, uno de los productos en tu carrito se acaba de agotar"*. Esto evita que el local reciba un pedido que no puede cumplir.
+**Ejemplo de pedido:** subtotal $40.000, cumpleaños del cliente (−$6.000) y domicilio $5.000. **Total: $39.000**, que suma **39 puntos** al entregarse.
 
 ---
 
-## 15. SOPORTE Y MANTENIMIENTO
-El sistema está diseñado para ser "cero mantenimiento":
-*   **Backups**: El sistema en la nube realiza copias de seguridad automáticas de forma periódica.
-*   **Escalabilidad**: El sistema soporta desde 10 hasta 10,000 pedidos diarios sin necesidad de cambios en el código.
+## 12. SEGURIDAD Y PRIVACIDAD
+
+*   **Contraseñas y PIN cifrados**: el sistema nunca guarda la contraseña real, ni siquiera el administrador puede verla.
+*   **Bloqueo por intentos**: 5 intentos fallidos en 15 minutos bloquean temporalmente el acceso.
+*   **Sesión**: se cierra sola después de un tiempo sin uso (por defecto, 2 horas). Si un empleado es dado de baja, pierde el acceso al instante.
+*   **Permisos por rol**: cada persona solo puede ver y hacer lo que corresponde a su rol. Un cliente solo ve sus propios pedidos y su perfil.
+*   **Datos visibles solo cuando hacen falta**:
+    *   El **PIN de entrega** solo lo ve el cliente dueño del pedido.
+    *   El **teléfono del cliente** solo lo ve el domiciliario asignado mientras el pedido está En Camino. Después de entregarlo, deja de verlo.
+    *   Los **costos** de los insumos y las **recetas** solo los ve el administrador.
+*   **Pagos protegidos**: cada pago digital lleva una firma de seguridad. Si alguien altera el monto, el pago se rechaza. Un mismo pago no se puede usar en dos pedidos.
+*   **Fotos**: solo se aceptan imágenes reales (JPG, PNG, WEBP, GIF) de hasta 5 MB.
+*   **Protección de formularios**: el sistema impide que otra página web haga acciones en nombre de un usuario que tiene la sesión abierta.
 
 ---
 
-## 16. GUÍA ESTRUCTURAL PARA CREACIÓN DE MOCKUPS (UI/UX)
+## 13. ACTUALIZACIÓN EN TIEMPO REAL
 
-Esta sección está diseñada específicamente para diseñadores UI/UX. Detalla la estructura visual, disposición de elementos (layout), botones y modales que debe tener cada pantalla en herramientas como Figma, Adobe XD o Sketch.
+Nadie tiene que recargar la página. Cada pantalla consulta los cambios automáticamente:
+*   **Cada 2 a 3 segundos** mientras hay actividad.
+*   Un poco más despacio (unos 6 segundos) cuando no ha cambiado nada.
+*   Cada 20 segundos si la pestaña está en segundo plano, para ahorrar batería y datos. Al volver a la pestaña, se actualiza de inmediato.
 
-### 16.1 Generalidades de Diseño Global
-*   **Tema (Theme)**: El sistema soporta Modo Claro y Modo Oscuro. En todas las vistas (excepto KDS de cocina, que es fijo en modo oscuro) debe existir un icono de "Sol/Luna" para cambiar el tema.
-*   **Colores Corporativos**: El color principal de acento es un Naranja vibrante (brand-orange). Los fondos deben ser blancos/grises claros (Modo claro) y gris carbón/negro mate (Modo oscuro).
-*   **Tipografía**: Sans-serif, limpia, moderna y legible (ej. Inter o Roboto).
+Así, cuando la cocina marca un pedido como "Listo", el domiciliario y el cliente lo ven en pocos segundos.
 
----
-
-### 16.2 Módulo de Autenticación (Auth)
-Estas vistas son el punto de entrada para todos los usuarios.
-
-#### Vista: Login (Inicio de Sesión)
-*   **Layout**: Tarjeta blanca/oscura centrada en la pantalla sobre un fondo sutil o imagen difuminada.
-*   **Elementos Visuales**:
-    *   Logo de Hamburguer Copiway centrado en la parte superior.
-    *   Campos de texto con iconos a la izquierda: "Correo Electrónico" (icono sobre) y "Contraseña" (icono candado, con botón de "ver/ocultar" a la derecha).
-    *   Checkbox: "Recordarme".
-    *   Enlace: "¿Olvidaste tu contraseña?" alineado a la derecha.
-    *   **Botón Principal**: Botón ancho, color naranja, texto "Iniciar Sesión" con icono de flecha.
-    *   Enlace inferior: "¿No tienes cuenta? Regístrate aquí".
-
-#### Vista: Registro (Cliente)
-*   **Layout**: Similar al Login pero con más campos, idealmente divididos en dos columnas si hay espacio, o lista vertical.
-*   **Elementos Visuales**:
-    *   Campos: Nombre completo, Número de celular, Correo, Contraseña, Confirmar Contraseña.
-    *   **Campo Especial (Fecha de Nacimiento)**: Un DatePicker customizado o inputs de (Día/Mes/Año) para el sistema de cumpleaños.
-    *   **Checkbox Obligatorio**: "Acepto las políticas de Tratamiento de Datos (Habeas Data)". (Sin esto, el botón principal está bloqueado/gris).
-    *   **Botón Principal**: "Completar Registro" (Naranja).
-
-#### Vista: Recuperar Contraseña
-*   **Layout**: Tarjeta pequeña y simple.
-*   **Elementos**: Texto explicativo, un input para "Correo o Celular registrado", Botón "Enviar código / enlace", y enlace "Volver al Login".
+Toda la información (pedidos, inventario, clientes, configuración) se guarda en la **base de datos del servidor**. Si alguien cierra el navegador, encuentra todo igual al volver. La excepción es el carrito del cliente, que se guarda en su propio navegador hasta que paga.
 
 ---
 
-### 16.3 Módulo del Cliente (Experiencia de Compra)
+## 14. AVISOS, SONIDOS Y NOTIFICACIONES
 
-#### Vista: Pantalla Principal (Catálogo / Landing)
-*   **Layout**: Estilo E-commerce moderno.
-*   **Barra Superior (Navbar)**: Logo a la izquierda. Centro: Barra de búsqueda. Derecha: Botón de "Perfil/Cumpleaños", Botón "Órdenes Activas" (si las hay), Botón del "Carrito" (con un badge/burbuja indicando el número de items), y Toggle de Tema (Sol/Luna).
-*   **Hero Banner**: Imagen promocional grande y atractiva.
-*   **Botón Flotante "Recompra 1 Clic"**: Visible en la parte superior si el usuario tiene historial.
-*   **Grid de Catálogo**: Una cuadrícula de tarjetas de productos.
-    *   **Tarjeta de Producto**: Foto grande, Nombre (bold), Descripción corta (gris), Precio grande (naranja), y Botón "Agregar" en la esquina.
+### 14.1 Avisos en pantalla
+Mensajes cortos que aparecen en una esquina y se cierran solos. Tienen un color según su tipo:
 
-#### Vista / Modal: Creador Interactivo (Personalización)
-*   **Layout**: Modal (pop-up) grande que se abre al dar clic en un producto.
-*   **Izquierda**: Foto del producto grande.
-*   **Derecha**: Lista de ingredientes (Escandallo base).
-    *   Cada ingrediente tiene botones circulares [+] y [-] o switches (Toggle).
-    *   **Estado Agotado**: Si un ingrediente no tiene stock, su fila aparece en gris (opacidad baja), el botón de agregar está bloqueado y dice "AGOTADO".
-    *   Sección inferior: "Extras" (con sus precios).
-*   **Pie del Modal**: Subtotal recalculado en tiempo real, Botón "Confirmar y Agregar al carrito".
+| Color | Cuándo aparece |
+|---|---|
+| Naranja | Producto agregado al carrito, cambios en el inventario y avisos informativos (pedido en preparación, ruta iniciada, pedido asignado). |
+| Verde | Pago aprobado, registro exitoso, pedido entregado, reseña enviada, cierre de caja generado y ticket enviado a impresión. |
+| Azul | Cambios en el equipo de trabajo. |
+| Morado | Cambios de configuración: tarifa, horario, margen, sonido, apertura o pausa. |
+| Amarillo | Advertencias: sesión cerrada, datos incompletos, colaborador dado de baja. |
+| Rojo | Errores: pago rechazado, sin stock, producto eliminado, acción no permitida. |
 
-#### Vista: Carrito Lateral (Drawer) o Checkout
-*   **Layout**: Panel que se desliza desde la derecha.
-*   **Elementos**:
-    *   Lista de productos seleccionados, mostrando debajo y en letra pequeña las personalizaciones (ej: "Sin Cebolla", "Extra Queso").
-    *   Subtotal, **Costo Fijo de Domicilio** (visible y claro).
-    *   Total Grande a Pagar.
-    *   **Botón Principal**: "Ir a Pagar" o "Pagar con Wompi/MercadoPago".
-    *   **Validación de Horario**: Si el local está cerrado, el botón es gris y muestra "Cerrado en este momento".
+### 14.2 Sonidos
+*   **Campana de nueva comanda** en cocina y en el panel del administrador cada vez que entra un pedido.
+*   Se puede silenciar desde el panel de cocina.
 
-#### Vista: Rastreo de Orden
-*   **Layout**: Vista limpia con el ID de la orden gigante en el centro.
-*   **Elemento Principal**: Barra de progreso tipo "Steps" (1. Recibido, 2. En Cocina, 3. Listo, 4. En Camino).
-*   **Botón Condicional**: Botón de WhatsApp/Llamar al domiciliario (Solo visible si el step actual es el 4 "En Camino").
+### 14.3 Notificaciones en el celular (push)
+El cliente que las activa recibe **"¡Tu pedido ha llegado!"** cuando el domiciliario confirma la entrega, aunque tenga la página cerrada. Funcionan en Chrome, Edge y Firefox. En iPhone, solo si la página se agregó a la pantalla de inicio.
+
+### 14.4 WhatsApp
+El sistema **no envía WhatsApp automáticamente**: cuando el pedido va En Camino, el domiciliario tiene el botón **Contactar Cliente**, que abre WhatsApp con el mensaje ya escrito para que solo lo envíe.
 
 ---
 
-### 16.4 Módulo del Administrador
+## 15. ¿QUÉ PASA SI...? (Casos especiales)
 
-#### Vista: Dashboard y Menú Lateral
-*   **Layout Base**: Panel con una barra lateral (Sidebar) fija a la izquierda y el contenido principal a la derecha.
-*   **Sidebar**: Enlaces con iconos: Dashboard, Menú/Productos, Inventario, Gestión Humana, Comandas, Configuración.
-*   **Dashboard Principal**:
-    *   Tarjetas superiores (KPIs): Total Ventas, Pedidos Activos, Pedidos Entregados.
-    *   Gráficos: Ventas por hora, Top Productos.
-    *   **Botón Rojo Principal**: "Cerrar Caja" (ubicado en un lugar estratégico, visible pero no fácil de presionar por accidente).
-
-#### Vista: Gestión de Catálogo y Recetas
-*   **Lista**: Tabla con miniatura de foto, Nombre, Categoría, Precio, y botones de "Editar/Borrar".
-*   **Modal de Edición de Producto**:
-    *   Campos básicos (Nombre, Descripción, Precio).
-    *   **Sección de Escandallo**: Un buscador/dropdown para añadir ingredientes. Cada fila agregada muestra "Ingrediente", "Cantidad por porción".
-    *   **Sección de Empaques**: Igual al escandallo, pero solo para agregar desechables (cajas, bolsas).
-
-#### Vista: Inventario
-*   **Layout**: Tabla grande de datos.
-*   **Columnas**: Nombre, Categoría (Comida vs Empaques), Unidad de Medida, Stock Actual, Costo Unitario.
-*   **Botón de Abastecimiento Express**: Un botón con el símbolo "+" en cada fila. Al presionarlo, sale un pop-up pequeño preguntando "¿Cuántas unidades ingresaron?" para sumar rápidamente.
-
-#### Vista: Comandas del Administrador
-*   **Layout**: Tabla o vista de tarjetas de los pedidos del día.
-*   **Botón "Nueva Venta Manual"**: Abre un formulario para registrar un pedido telefónico.
-*   **Botón "Editar Dirección"**: En los pedidos en curso, permite cambiar el destino del domicilio en tiempo real.
+*   **¿Se agota un ingrediente?** Los productos que lo usan se muestran como "Agotado" en el menú en pocos segundos. Si alguien ya lo tenía en el carrito, el sistema lo rechaza al pagar con el aviso "Sin stock suficiente de ...", sin cobrar.
+*   **¿El administrador cambia un precio?** Los pedidos ya confirmados conservan su precio. Los que están en un carrito sin pagar se cobran con el **precio nuevo**, porque el total se calcula al momento de pagar.
+*   **¿El administrador oculta o elimina un producto que un cliente tiene en el carrito?** Al pagar aparece "Uno de los productos del carrito ya no está disponible".
+*   **¿El local está cerrado?** El cliente puede ver el menú y armar su carrito, pero no puede pagar.
+*   **¿Se acaba el gas o hay una emergencia?** El administrador activa la **pausa de emergencia** y nadie más puede pedir hasta que la quite.
+*   **¿El pago digital es rechazado?** No se crea el pedido, no se descuenta inventario y el cliente puede intentarlo de nuevo.
+*   **¿El cliente pierde internet durante el pago?** El pedido solo se crea cuando el pago queda aprobado y verificado. Un mismo pago no puede generar dos pedidos.
+*   **¿Dos domiciliarios quieren el mismo pedido?** Solo uno lo consigue; el otro recibe el aviso de que ya no está disponible.
+*   **¿El domiciliario tomó un pedido pero no puede llevarlo?** Lo **suelta** (si no ha salido), o el administrador se lo quita desde Comandas Activas.
+*   **¿El domiciliario no encuentra la dirección?** Usa **Contactar Cliente** (WhatsApp) mientras el pedido va En Camino.
+*   **¿El cliente no tiene el PIN a la mano?** Lo encuentra en **Órdenes Activas**, dentro de su cuenta.
+*   **¿Un pedido tarda demasiado en cocina?** A los 15 minutos en preparación, la tarjeta se marca en rojo.
+*   **¿Un empleado deja la empresa?** Se le da de baja: pierde el acceso al instante y su historial se conserva.
+*   **¿Hay pedidos en curso a la hora del cierre de caja?** El sistema advierte; esos pedidos continúan y entran en el siguiente cierre.
+*   **¿Se pierde la conexión en cocina?** Los pedidos que ya estaban en pantalla siguen visibles. Al volver la conexión, la pantalla se pone al día sola con los pedidos que llegaron mientras tanto.
 
 ---
 
-### 16.5 Módulo de Cocina (KDS - Kitchen Display System)
+## 16. MENSAJES FRECUENTES Y QUÉ HACER
 
-*   **Layout**: Diseño a pantalla completa (Fullscreen), sin sidebars para aprovechar todo el espacio visual. Tipografía extra grande, colores de altísimo contraste. (Por defecto, sugerido modo oscuro).
-*   **Estructura Kanban**: 3 Columnas verticales enormes:
-    1.  **Pendientes**: Color de cabecera gris/neutro.
-    2.  **En Preparación**: Color de cabecera Amarillo/Naranja.
-    3.  **Listos**: Color de cabecera Verde.
-*   **La Comanda (Tarjeta de Pedido)**:
-    *   Cabecera de la tarjeta: ID del pedido (#104) gigante y un temporizador (04:12 min).
-    *   Cuerpo de la tarjeta: Lista de productos.
-    *   **Regla Visual de Personalización (CRÍTICO)**: Todo lo que diga "SIN" (ej. Sin Tomate) debe ir en texto **ROJO BOLD**. Todo lo que diga "EXTRA" (ej. Extra Tocino) debe ir en texto **VERDE BOLD**.
-    *   **Footer de la Tarjeta**:
-        *   Botón de flecha o texto ("Preparar") para mover a la siguiente columna.
-        *   **Botón de Impresión (Tirilla)**: Icono de impresora.
-
----
-
-### 16.6 Módulo Domiciliario (Logística)
-
-*   **Layout**: Mobile First (Diseñado principalmente para verse en pantallas de celular). Barra superior sencilla con nombre del domiciliario y un botón de cerrar sesión.
-*   **Vista: Pedidos Asignados**:
-    *   Tarjetas apiladas verticalmente de pedidos "Listos" esperando recogida.
-    *   **Tarjeta**: Muestra la dirección en fuente grande, nombre del cliente, ID del pedido.
-    *   **Botón Principal**: "Tomar Pedido y En Camino" (Desaparece la tarjeta de esta vista y pasa a la vista de "Ruta Activa").
-*   **Vista: Ruta Activa**:
-    *   **Mapa Integrado**: Un recuadro superior o modal interactivo con el pin de ubicación.
-    *   **Botón "Abrir GPS"**: Para exportar las coordenadas a Waze o Google Maps.
-    *   **Botón "Contactar"**: Icono de teléfono/WhatsApp para comunicarse con el cliente.
-    *   **Botón "Entregado"**: Botón grande en la parte inferior, color verde, que cierra el ciclo del pedido.
+| Mensaje | Qué significa | Qué hacer |
+|---|---|---|
+| "La tienda está cerrada o pausada" | Fuera de horario, cerrada a mano o en pausa de emergencia. | Revisar Ajustes y Caja. |
+| "Sin stock suficiente de ..." | Falta inventario de ese insumo. | Sumar existencias en Inventario Express. |
+| "Uno de los productos del carrito ya no está disponible" | El producto se ocultó o se eliminó. | Quitarlo del carrito. |
+| "Este pedido ya no está disponible para reparto" | Otro domiciliario lo tomó primero. | Tomar otro pedido. |
+| "PIN incorrecto" | El PIN de entrega no coincide. | Pedir al cliente que lo revise en Órdenes Activas. |
+| "Transición de estado no permitida" | Se intentó saltar un paso del pedido. | Seguir el orden normal de estados. |
+| "Ya se generó un cierre de caja hoy" | Ya hubo un cierre ese día. | Esperar al día siguiente. |
+| "Demasiados intentos fallidos" | 5 intentos de acceso fallidos en 15 minutos. | Esperar 15 minutos o recuperar la contraseña. |
+| "Correo o contraseña incorrectos" (con datos correctos) | La cuenta puede estar dada de baja. | El administrador debe reactivarla. |
+| "El pago fue rechazado por el banco" | La pasarela no aprobó el pago. | Intentar de nuevo o pagar en efectivo. |
 
 ---
 
-## 17. ESPECIFICACIONES TÉCNICAS PARA IA GENERADORA DE MOCKUPS (PROMPTING PARA UI)
+## 17. GUÍA VISUAL PARA DISEÑO DE PANTALLAS (Mockups)
 
-Esta sección está diseñada para ser copiada y pegada como contexto adicional en cualquier IA generativa de código UI (como ChatGPT, Claude, o v0.dev) para que pueda construir las vistas sin necesidad de imágenes de referencia. 
+Descripción de cómo se ven las pantallas reales, para quien necesite dibujarlas en Figma, Adobe XD o una herramienta parecida.
 
-Si eres una IA leyendo esto para generar un componente, **DEBES SEGUIR ESTRICTAMENTE** las siguientes directrices estructurales y de clases CSS (preferiblemente Tailwind CSS).
+### 17.1 Estilo general
+*   **Color principal**: naranja vibrante, en los botones principales (Pagar, Iniciar sesión, Agregar) y los detalles de marca.
+*   **Modo claro y modo oscuro**: fondos blancos y gris muy claro en modo claro; gris carbón y negro mate en modo oscuro. Casi todas las pantallas tienen un botón de sol y luna para cambiar.
+*   **Colores con significado**: rojo para peligro, errores y lo que se quita ("Sin"); verde para éxito y lo que se agrega ("Extra"); amarillo para advertencias.
+*   **Tipografía**: sans-serif moderna y legible. Títulos muy gruesos para dar impacto; números de pedido en letra de ancho fijo y negrita.
+*   **Formas**: tarjetas y ventanas con esquinas muy redondeadas, bordes finos y sombras suaves.
+*   **Íconos**: de línea, simples (reloj, llama, cubiertos, escudo, carrito, impresora, mapa).
 
-### 17.1 Sistema de Diseño (Design Tokens en Tailwind)
+### 17.2 Página de inicio (antes de iniciar sesión)
+*   **Portada**: foto grande de hamburguesa artesanal con un velo oscuro, titular grande con acentos naranja y dos botones: "Hacer Pedido" (naranja) y "Ver Menú" (borde blanco).
+*   **Barra de valores**: cuatro tarjetas con íconos sobre rapidez, frescura y calidad.
+*   **Vista previa del menú**: productos con pestañas por categoría.
+*   **Historia y cifras**: mosaico de fotos y cifras destacadas.
+*   **Testimonios**: reseñas reales de clientes con estrellas.
+*   **Contacto y mapa** con la ubicación de la cocina.
 
-*   **Paleta de Colores**:
-    *   **Brand Primary (Naranja)**: `bg-orange-500`, `text-orange-500`, `border-orange-500` (Hover: `bg-orange-600`). Este color se usa en el botón de "Pagar", "Iniciar Sesión" y acentos principales.
-    *   **Background (Light Mode)**: Fondos generales en `bg-gray-50` o `bg-stone-50`. Tarjetas (Cards) en `bg-white`.
-    *   **Background (Dark Mode)**: Fondos generales en `bg-stone-900` o `bg-gray-900`. Tarjetas (Cards) en `bg-stone-800` o `bg-gray-800`.
-    *   **Texto**: `text-gray-900` (Light) y `text-white` o `text-gray-100` (Dark). Texto secundario en `text-gray-500` (Light) y `text-gray-400` (Dark).
-    *   **Alertas Semánticas**: Rojo para peligro/cancelar/SIN ingredientes (`text-red-500`, `bg-red-50`). Verde para éxito/EXTRA ingredientes (`text-green-500`, `bg-green-50`).
-*   **Tipografía y Espaciados**:
-    *   **Fuente**: Inter, Roboto o sistema sans-serif.
-    *   **Sombras (Elevación)**: Tarjetas flotantes y modales usan `shadow-lg` o `shadow-xl`. Componentes clickeables usan `shadow-sm`.
-    *   **Bordes**: `rounded-xl` o `rounded-2xl` para tarjetas y modales. `rounded-lg` para botones y inputs.
+### 17.3 Acceso
+*   **Inicio de sesión**: tarjeta centrada con logo, campos de correo y contraseña con ícono a la izquierda, botón para ver u ocultar la contraseña, enlace "¿Olvidaste tu contraseña?", botón naranja ancho "Iniciar Sesión" y enlace para registrarse.
+*   **Registro**: los campos del punto 5.1, selector de calendario para la fecha de nacimiento y casilla obligatoria de Habeas Data.
+*   **Recuperar contraseña**: tarjeta pequeña en dos pasos: primero el correo; después el código de 6 dígitos y la nueva contraseña.
+*   **Paneles de cocina y domiciliario**: pantalla adicional de usuario y PIN de 4 dígitos.
 
-### 17.2 Patrones de Componentes (Estructura DOM)
+### 17.4 Panel del cliente
+*   **Barra superior** con logo, accesos a Catálogo, Arma tu Burger, Órdenes Activas, Historial y Perfil, botón de carrito con contador, campana de notificaciones y cambio de tema.
+*   **Catálogo** en cuadrícula: foto grande arriba; nombre, descripción corta, etiqueta y precio grande en naranja abajo, con botón "+".
+*   **Ventana de producto**: foto, secciones "Retirar Ingredientes" y "Añadir Extras" (los agotados en gris con la palabra "AGOTADO") y total recalculado con el botón para agregar.
+*   **Arma tu Burger**: dibujo de la hamburguesa que crece capa por capa y lista de ingredientes con precio.
+*   **Carrito y Checkout**: lista de productos con sus personalizaciones en letra pequeña, resumen de pago, dirección, método de pago con logos de bancos y botón de pagar (gris con "Cerrado" si el local no atiende).
+*   **Ventana de la pasarela**: pasos animados hasta "Aprobado" o "Rechazado".
+*   **Órdenes Activas**: tarjeta por pedido con barra de pasos (Pendiente, En Preparación, Listo, En Camino) y el PIN de entrega destacado.
+*   **Historial**: buscador, lista de pedidos con puntos ganados, recibo y ventana de calificación con 5 estrellas.
 
-Cuando la IA genere código, debe usar estos patrones repetibles:
+### 17.5 Panel del administrador
+*   **Menú lateral fijo** con las ocho secciones (en celular se oculta y se abre con un botón).
+*   **Tablero**: fila de tarjetas con indicadores, gráficas de ventas y comparativos, productos más vendidos y órdenes recientes.
+*   **Comandas**: tarjetas o filas por pedido con su estado, más el mapa de entregas.
+*   **Menú**: lista de productos con miniatura y formulario en cuatro pasos.
+*   **Inventario**: tarjetas de insumos con punto de color (semáforo), botones "+" y "−", e historial de movimientos.
+*   **Personal**: tabla con nombre, rol, estado (activo/inactivo con un punto que late) y acciones.
+*   **Ajustes y Caja**: interruptores de apertura y pausa, campos de horario, tarifa y margen, y el botón de cierre de caja, visible pero ubicado de forma que no se presione por accidente.
 
-*   **Inputs (Campos de texto)**: 
-    *   Estructura: Un `div` contenedor con `relative`. Un icono de Lucide-react (ej. `Mail`, `Lock`) posicionado absoluto a la izquierda (`absolute left-3 top-1/2 -translate-y-1/2`). El input real debe tener `pl-10` (padding izquierdo) para no pisar el icono.
-    *   Estados: `focus:ring-2 focus:ring-orange-500 focus:border-transparent`.
-*   **Tarjetas de Producto (Client Catalog)**:
-    *   Estructura: `div` con `flex flex-col`, `bg-white rounded-2xl shadow-sm overflow-hidden`.
-    *   Top: `img` con `w-full h-48 object-cover`.
-    *   Bottom: `div` con padding `p-4`. Título `h3 font-bold`, descripción truncada `text-sm text-gray-500 line-clamp-2`.
-    *   Footer de tarjeta: `flex justify-between items-center mt-4`. Precio en fuente grande y un botón de "+" redondo.
-*   **Comanda Kanban (KDS Cocina)**:
-    *   Estructura: Tarjeta ancha `bg-stone-800 rounded-xl p-4 border-l-4 border-l-orange-500`.
-    *   Header: ID gigante (`text-3xl font-black`) y un reloj (`text-sm font-mono`).
-    *   Lista de items: `ul` con `li` que tengan `border-b border-stone-700 py-2`.
-    *   Modificadores: Si el texto contiene "SIN", aplicar `<span className="text-red-400 font-bold">`. Si contiene "EXTRA", aplicar `<span className="text-green-400 font-bold">`.
+### 17.6 Panel de cocina
+*   Pantalla completa, letras grandes y alto contraste, pensada para tablet horizontal.
+*   Tres columnas iguales: Pendientes (gris), En Preparación (amarillo/naranja) y Listos (verde).
+*   Tarjetas con número grande, reloj, productos, "Sin" en rojo y "Extra" en verde, y botones para avanzar e imprimir.
+*   Panel lateral con inventario crítico y resumen de preparación.
 
-### 17.3 Comportamiento Responsivo (Mobile vs Desktop)
+### 17.7 Panel del domiciliario
+*   Diseñado primero para celular, con botones grandes y fáciles de tocar.
+*   Lista de pedidos disponibles a un lado (o arriba en celular) y el mapa con la ruta en el área principal.
+*   Botones Waze y Maps, botón verde "Contactar Cliente" y ventana de "Validar Entrega" con cuatro casillas para el PIN.
 
-*   **Módulo Cliente y Login**: Fluidos. En móvil (`w-full`), en pantallas grandes las tarjetas no deben estirarse infinitamente (usar `max-w-md` para Login, y un grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` para el catálogo).
-*   **Módulo Administrador**: Desktop-First. Debe tener un sidebar lateral (`w-64 hidden md:block`) y un botón de hamburguesa (`md:hidden`) para pantallas pequeñas. El contenido a la derecha flex-grow.
-*   **Módulo Cocina (KDS)**: Pensado para Tablets/Pantallas Horizontales (`min-w-[1024px]`). Las 3 columnas (Pendientes, Preparación, Listos) deben ser un grid de 3 columnas iguales (`grid-cols-3 gap-4`).
-*   **Módulo Domiciliario**: Mobile-First puro. Elementos táctiles muy grandes (`min-h-[48px]`). Cero sidebars, navegación tipo barra inferior (Bottom Navigation) o solo barra superior simple.
-
-### 17.4 Prompt Templates (Plantillas para pedirle a la IA)
-
-*(Copia el siguiente texto y pégalo en una IA generativa junto con el resto de este manual para generar una vista perfecta):*
-
-> **Prompt para el Login/Registro**:
-> "Actúa como un experto en React y Tailwind CSS. Basándote en el manual de Hamburguer Copiway, genera el código del componente de la vista de 'Registro de Cliente'. Debe tener soporte para Modo Oscuro, usar la paleta Naranja corporativa, tener iconos a la izquierda en los inputs, incluir un Datepicker para el cumpleaños y tener un checkbox obligatorio para Habeas Data. No uses CSS personalizado, solo clases de Tailwind. Hazlo completamente responsive."
-
-> **Prompt para el Tablero Kanban (KDS)**:
-> "Genera el componente React + Tailwind para la vista KDS de Ayudante de Cocina de Hamburguer Copiway. Usa tema oscuro obligatorio (bg-stone-900). Crea un grid de 3 columnas (Pendientes, En Preparación, Listos). Diseña la tarjeta de la comanda con tipografía extra grande, resaltando dinámicamente en rojo intenso los ingredientes con prefijo 'SIN ' y en verde los 'EXTRA '. Incluye un botón de 'Imprimir Tirilla'."
-
-> **Prompt para el Dashboard de Admin**:
-> "Genera la vista del Dashboard de Administrador para Hamburguer Copiway. Necesito el Layout completo: un Sidebar lateral fijo (colapsable en móvil) y un área principal. En el área principal, incluye tarjetas de KPI (Ventas, Pedidos), y el botón estratégico de 'Cerrar Caja' resaltado, pero protegido visualmente. Usa Tailwind CSS y asegúrate de que cambie correctamente entre bg-gray-50 y bg-stone-900 según el modo."
-
----
-
-## 18. DETALLE ESTRUCTURAL DE SUB-MÓDULOS (VISTAS REALES)
-
-Para la creación de mockups precisos, el administrador y los roles cuentan con las siguientes vistas y sub-vistas implementadas:
-
-### 18.1 Gestión de Equipo (Staff)
-*   **Vista Principal**: Tabla con diseño "Clean" y bordes `rounded-3xl`.
-*   **Columnas**: ID, Nombre, Rol (Badge estilizado), Estado (Pill con pulso: Activo/Inactivo).
-*   **Botones**:
-    *   **"Agregar Colaborador"**: Abre un formulario lateral o modal.
-    *   **"Editar"** (Lápiz): Abre el formulario con datos cargados.
-    *   **"Eliminar"** (Basura): Dispara diálogo de confirmación.
-*   **Notificación**: `type: 'staff'` al realizar cambios.
-
-### 18.2 Base de Datos de Clientes
-*   **Layout**: Buscador superior integrado en el header del dashboard.
-*   **Tabla**: Muestra Nombre, Teléfono, Puntos (Badge naranja) y Fecha de Nacimiento.
-*   **Botón "Ver Perfil"**: Abre un resumen informativo del cliente.
-
-### 18.3 Inventario y Abastecimiento Express
-*   **Vista**: Grid de tarjetas de ingredientes.
-*   **Elementos de cada tarjeta**: Nombre, stock actual, unidad de medida.
-*   **Botón "+" (Abastecimiento Express)**: Incrementa rápidamente el stock (RF-32).
-*   **Botón "Editar Receta"**: Permite vincular el ingrediente a productos.
-
-### 18.4 Cierre de Caja y Reportes
-*   **Layout**: Sección de "Reportes" con KPIs (Ventas totales, pedidos completados).
-*   **Botón "Generar Cierre de Caja"**: Procesa los datos del turno actual.
-*   **Acción Final**: Botón **"Descargar PDF"** (Genera el reporte oficial para contabilidad).
-*   **Notificación**: `type: 'cierre'` al finalizar el proceso.
+### 17.8 Pantallas vacías
+El sistema nunca muestra una pantalla en blanco. Ejemplos: "Tu carrito está vacío", "No tienes órdenes en curso", "No hay productos en esta categoría", "Sin pedidos pendientes", "No hay comandas activas en este momento", "No hay entregas asignadas en este momento".
 
 ---
 
-## 19. SISTEMA DE NOTIFICACIONES Y TOASTS (REALES)
+## 18. LIMITACIONES ACTUALES Y FUNCIONES PENDIENTES
 
-El sistema utiliza el componente `ToastNotification` con los siguientes tipos de alertas visuales:
+Estas funciones aparecen en pantalla pero hoy no funcionan por completo. Se dejan anotadas para que nadie confíe en ellas mientras se corrigen:
 
-*   **`cart` (Naranja)**: Confirmación de productos añadidos al carrito.
-*   **`success` (Verde)**: Éxito en pagos, registros y entregas.
-*   **`whatsapp` (Verde)**: Al enviar notificaciones de salida a los clientes.
-*   **`warning` (Amarillo)**: Avisos de cierre de sesión o acciones canceladas.
-*   **`danger` (Rojo)**: Errores de validación, eliminación de datos o fallos de impresión.
-*   **`inventory` (Naranja)**: Alertas de stock crítico o actualizaciones de ingredientes.
-*   **`staff` (Azul)**: Cambios en el equipo de trabajo.
-*   **`config` (Púrpura)**: Cambios en tarifa de envío, horario o sonidos.
-*   **`cierre` (Verde Esmeralda)**: Confirmación de reportes generados.
-
----
-
-## 20. BOTONES Y ACCIONES POR ROL (GUÍA DE INTERACCIÓN)
-
-### 20.1 Administrador (AdminDashboard)
-*   **Botón "Nuevo Pedido"**: Abre un modal con el formulario de pedido manual (RF-30).
-*   **Botón "Editar Configuración"**: Permite cambiar la **Tarifa de Envío** y el **Horario de Atención**.
-*   **Botón "Corregir Dirección"**: Disponible en pedidos activos; actualiza el destino en tiempo real.
-*   **Switch de Horario**: Permite forzar el cierre del local manualmente.
-
-### 20.2 Cliente (ClientDashboard)
-*   **Botón "Personalizar"**: En cada producto, abre el **Creador Interactivo**.
-*   **Botón "Pagar Ahora"**: Inicia el flujo de checkout (bloqueado fuera de horario).
-*   **Botón "Repetir Pedido"**: En el historial, duplica exactamente la orden anterior (RF-08).
-*   **Botón "Calificar"**: Visible solo en pedidos entregados para dejar reseñas (RF-16).
-
-### 20.3 Cocina (KitchenDashboard)
-*   **Botón "Marcar en Preparación"**: Mueve la tarjeta de la columna 'Pendientes' a 'En Preparación'.
-*   **Botón "Listo para Despacho"**: Mueve la tarjeta a 'Listos' y notifica al domiciliario.
-*   **Botón "Imprimir Sticker"**: Abre la vista previa del ticket/factura para impresión térmica (RF-40).
-*   **Botón "Silenciar/Activar Alerta"**: Controla el timbre sonoro de nuevas comandas.
-
-### 20.4 Domiciliario (DeliveryDashboard)
-*   **Botón "Tomar Pedido"**: Asigna una orden lista a su ruta.
-*   **Botón "En Camino"**: Actualiza el estado y habilita el botón de contacto.
-*   **Botón "Contactar" (WhatsApp/Llamada)**: Visible **solo** durante el trayecto (RF-44).
-*   **Botón "Entregado"**: Finaliza el pedido y lo archiva en el historial.
+| Función | Situación actual |
+|---|---|
+| **Ingreso de Orden Manual** (administrador) | La pantalla muestra "creado y enviado a cocina", pero el pedido **no se guarda** porque el sistema solo permite crear pedidos a los clientes. Mientras se corrige, los pedidos por teléfono o WhatsApp deben registrarse desde una cuenta de cliente. |
+| **Editar Dirección** de un pedido en curso | El cambio se ve en la pantalla del administrador, pero **no se guarda** ni le llega al domiciliario. Hay que avisarle por teléfono. |
+| **Ubicación GPS del domiciliario** | La ubicación en vivo del domiciliario **no se guarda**, así que el mapa de la flota del administrador puede no mostrarla. |
+| **"Eliminar empleado permanentemente"** | Aunque el aviso dice "eliminado definitivamente", el sistema hace lo mismo que **Dar de baja**: desactiva la cuenta y conserva su historial. |
+| **Cancelar pedidos** | El estado "Cancelado" existe, pero todavía no hay ninguna pantalla para cancelar un pedido. |
+| **Canje de puntos** | Los puntos se acumulan y se consultan, pero aún no se pueden canjear. |
+| **Pasarela de pago** | Es de prueba: no cobra dinero real. |
+| **Datos del ticket impreso** | El ticket muestra datos fijos de ejemplo del negocio (NIT, dirección y teléfono), que deben ajustarse a los datos reales. |
 
 ---
 
-## 21. FLUJOS DE EXCEPCIÓN Y VALIDACIONES
+## 19. GLOSARIO
 
-### 21.1 Punto de No Retorno (Inquebrantable)
-Una vez el cliente presiona "Pagar" y la transacción es exitosa, el sistema **oculta automáticamente** los botones de "Editar" o "Cancelar" en la vista del cliente. El pedido pasa a control de Cocina inmediatamente.
-
-### 21.2 Alerta de SLA en Cocina
-Si un pedido en la columna "En Preparación" supera los 15 minutos sin ser marcado como "Listo", el borde de la tarjeta cambia a **rojo vibrante** y muestra un aviso de tiempo excedido para priorizar la entrega.
-
-### 21.3 Bloqueo de Stock en Tiempo Real
-Si un ingrediente llega a stock 0 (agotado), el producto que lo contiene muestra un overlay de **"Agotado"** en el catálogo y el botón de añadir al carrito se desactiva instantáneamente para todos los clientes conectados.
-
----
-
-## 22. GUÍA ESTRUCTURAL PARA MOCKUPS (PROMPTING UI)
-
-### 22.1 Estilo de Tarjetas (Cards)
-*   Usa `rounded-[32px]` para los contenedores principales.
-*   Añade `border border-gray-100 dark:border-stone-800`.
-*   Sombras suaves: `shadow-sm` o `shadow-[0_8px_30px_rgb(0,0,0,0.04)]`.
-
-### 22.2 Tipografía
-*   **Títulos**: Peso `font-black` (900) para impacto visual.
-*   **Cuerpo**: Peso `font-medium` o `font-bold` para legibilidad.
-*   **IDs de Pedido**: Fuente monoespaciada (`font-mono`) en negrita.
-
-### 22.3 Feedback de Personalización (KDS)
-*   Los ingredientes eliminados ("SIN") deben aparecer en **Texto Rojo negrita**.
-*   Los ingredientes extras ("EXTRA") deben aparecer en **Texto Verde/Esmeralda negrita**.
-
----
-
-## 23. CRONOLOGÍA DEL PEDIDO (PASO A PASO VISUAL)
-
-1.  **Dashboard Cliente**: Explora el menú con transiciones de opacidad suave.
-2.  **Creador Interactivo**: Capas visuales que se activan/desactivan al tocar.
-3.  **Carrito Flotante**: Resumen lateral con recálculo de total en tiempo real.
-4.  **KDS (Cocina)**: Kanban dinámico donde las tarjetas se "deslizan" entre columnas.
-5.  **Mapa Domiciliario**: Interfaz móvil con pines de ubicación y botones táctiles de gran tamaño.
-6.  **Reseña Final**: Modal de 5 estrellas que aparece al cerrar el ciclo de entrega.
-
----
-
-## 24. VISTA DE BIENVENIDA (LANDING PAGE - ESTRUCTURA REAL)
-
-Para el mockup de la página de inicio (antes de loguearse), se deben incluir estas secciones:
-
-### 24.1 Hero Principal (Impacto Visual)
-*   **Fondo**: Imagen de hamburguesa artesanal en alta resolución con un overlay degradado oscuro para legibilidad del texto.
-*   **Titular**: "Las Mejores Hamburguesas de la Ciudad" con tipografía de 4.5rem y acentos en naranja gradiente.
-*   **Botones**: "Hacer Pedido" (Naranja sólido) y "Ver Menú" (Borde blanco translúcido).
-
-### 24.2 Secciones de Valor y Catálogo
-*   **Barra de Valores**: Cuatro tarjetas con iconos de `Clock`, `Flame`, `Utensils` y `ShieldCheck` detallando la rapidez y frescura.
-*   **Preview del Menú**: Un grid simplificado de productos con pestañas de categorías para que el usuario explore antes de registrarse.
-*   **Historia y Cifras**: Sección con grid de fotos (estilo bento) y métricas clave (ej: +10K Pedidos Entregados).
-*   **Testimonios**: Carrusel o grid de reseñas con estrellas y nombres de clientes reales.
-*   **Contacto y Mapa**: Formulario de contacto integrado y un **Mapa Interactivo (Leaflet)** que muestra la ubicación de la Dark Kitchen.
-
----
-
-## 25. ESTADOS VACÍOS Y DE ERROR (REAL UI STATES)
-
-El sistema maneja visualmente la ausencia de datos para evitar pantallas en blanco:
-
-*   **Búsqueda sin resultados**: "No se encontraron productos en esta categoría" con icono de búsqueda fallida.
-*   **Sin Pedidos Activos**: "No tienes pedidos en curso en este momento" con un botón de acceso rápido al menú.
-*   **Historial Vacío**: "Aún no has realizado pedidos" con una invitación a realizar la primera compra.
-*   **Inventario Agotado**: Tarjeta de producto con opacidad al 50%, overlay de texto "AGOTADO" y botón de compra deshabilitado.
-
----
-
-## 26. SISTEMA DE ALERTAS SONORAS Y NOTIFICACIONES (LÓGICA REAL)
-
-*   **Timbre de Cocina**: Al entrar un nuevo pedido pagado, el KDS emite un sonido de "Ding" o "Alerta de campana". El ayudante puede silenciarlo con un botón de `VolumeX` si es necesario.
-*   **Notificación de WhatsApp**: Al marcar "En Camino", el sistema abre una nueva ventana o enlace directo a `https://wa.me/` con un mensaje pre-configurado: *"¡Hola! Tu pedido de Hamburguer Copiway ya va en camino con nuestro domiciliario..."*.
-*   **Alertas de Cierre**: Si el cliente intenta pagar faltando 5 minutos para el cierre, el sistema muestra un Toast de advertencia: *"El local está a punto de cerrar, apresura tu pedido"*.
-
----
-
-## 27. EL MOTOR DE DATOS: FUNCIONAMIENTO Y ROL EN EL SISTEMA
-La base de datos no es solo un almacén de información, es el sistema nervioso central de Hamburguer Copiway que garantiza:
-*   **Sincronización Omnicanal**: Permite que una acción en la aplicación del cocinero (marcar como "Listo") se refleje instantáneamente en el celular del domiciliario y en la pantalla del cliente, coordinando a todo el equipo sin necesidad de comunicación verbal.
-*   **Integridad de la Operación**: Asegura que el stock se descuente en el momento exacto del pago, evitando que dos personas compren el mismo ingrediente si solo queda una unidad (validación de concurrencia).
-*   **Memoria de Negocio**: Protege cada registro de venta, cada punto de fidelidad y cada ajuste de inventario, permitiendo que el administrador pueda auditar la operación y tomar decisiones basadas en datos reales.
-*   **Disponibilidad Continua**: Al ser un sistema gestionado en la nube, la información es accesible desde cualquier lugar y está protegida contra fallos físicos del hardware local, garantizando que el negocio nunca pierda su historial operativo.
+| Término | Significado |
+|---|---|
+| **Dark Kitchen** | Cocina que solo vende a domicilio, sin atención en mesas. |
+| **KDS** | Pantalla de cocina donde se ven y se mueven los pedidos (del inglés *Kitchen Display System*). |
+| **Comanda** | La tarjeta o el papel con el detalle de un pedido para la cocina. |
+| **Tirilla / Ticket** | El papel impreso que se pega en la bolsa del pedido. |
+| **Escandallo** | La receta de un producto: qué insumos lleva y en qué cantidad. |
+| **Insumo** | Todo lo que se compra para producir: ingredientes y empaques. |
+| **Merma** | Insumo que se pierde por daño, vencimiento o error. |
+| **Stock / Existencias** | Cantidad disponible de un insumo. |
+| **Abastecimiento Express** | Sumar existencias rápidamente después de una compra. |
+| **Margen de ganancia** | Porcentaje que se suma al costo de un ingrediente para fijar su precio de venta. |
+| **Tarifa plana** | Valor de domicilio igual para todos los pedidos. |
+| **Ticket promedio** | Valor promedio de cada pedido. |
+| **PIN de acceso** | Clave de 4 dígitos con la que cocina y domiciliarios entran a su panel. |
+| **PIN de entrega** | Clave de 4 dígitos de cada pedido que el cliente le da al domiciliario al recibir. |
+| **Base** | Dinero de cambio con el que sale el domiciliario. |
+| **Liquidación** | Lo que cada domiciliario debe entregar al cierre: su base más el efectivo que cobró. |
+| **Cierre de caja** | Resumen de ventas, pagos e insumos de la jornada, que archiva los pedidos entregados. |
+| **Dar de baja** | Desactivar una cuenta sin borrar su historial. |
+| **Pausa de emergencia** | Botón que detiene la recepción de pedidos al instante. |
+| **Habeas Data** | Ley colombiana de protección de datos personales; el cliente debe aceptarla para registrarse. |
+| **Punto de No Retorno** | Momento (la confirmación del pedido) desde el cual el cliente ya no puede modificarlo ni cancelarlo. |
 
 ---
 **Hamburguer Copiway — Sistema Integrado de Gestión Operativa.**
-
-
-
-
-

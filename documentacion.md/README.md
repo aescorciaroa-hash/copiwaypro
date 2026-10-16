@@ -20,6 +20,14 @@ Algunas carpetas tienen además un `README.md` que explica lo que tienen en com�
 
 ---
 
+## 📘 Guías generales (empieza aquí)
+Si es la primera vez, lee primero las guías por tema en [general/](general/README.md):
+[qué es](general/01-que-es-copiwaypro.md) · [instalación](general/02-instalacion.md) · [arrancar el sistema](general/03-arrancar-el-sistema.md) · [cómo funciona](general/04-como-funciona.md) · [roles](general/05-roles-y-usuarios.md) · [ciclo de un pedido](general/06-ciclo-de-un-pedido.md) · [base de datos](general/07-base-de-datos.md) · [configuración](general/08-configuracion.md) · [seguridad](general/09-seguridad.md) · [pagos](general/10-pagos.md) · [notificaciones y correo](general/11-notificaciones-y-correo.md) · [hacer cambios](general/12-como-hacer-cambios.md) · [problemas comunes](general/13-problemas-comunes.md) · [comandos](general/14-comandos.md)
+
+El resto de esta carpeta documenta **cada archivo** del proyecto.
+
+---
+
 ## 1. ¿Cómo funciona el sistema?
 
 | Parte | Hecha con | Carpeta | Qué hace |

@@ -4,6 +4,8 @@ Plataforma multi-rol para una dark kitchen (Cliente, Administrador, Ayudante de 
 
 Corre 100% en local con **`localhost`**, sin dominios `.test` obligatorios y sin tocar el archivo `hosts` de Windows.
 
+> 📘 **Guías generales** (instalar, arrancar, cómo funciona, roles, pedidos, seguridad, problemas comunes...): [documentacion.md/general/README.md](documentacion.md/general/README.md).
+>
 > 📚 **Documentación archivo por archivo:** [documentacion.md/README.md](documentacion.md/README.md). Explica qué hace cada archivo del proyecto (PHP, React, base de datos y configuración), con qué se conecta y para qué sirve cada variable.
 
 ## Arquitectura

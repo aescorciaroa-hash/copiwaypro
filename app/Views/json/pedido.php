@@ -39,6 +39,8 @@ function pedido_a_json($fila, $items, $rolQueVe, $idQueVe)
         'subtotal' => (float) $fila['subtotal'],
         'shipping' => (float) $fila['costo_domicilio'],
         'discount' => (float) $fila['descuento_cumpleanos'],
+        'pointsRedeemed' => (int) $fila['puntos_canjeados'],
+        'pointsDiscount' => (float) $fila['descuento_puntos'],
         'pointsEarned' => (int) $fila['puntos_ganados'],
         'items' => $items,
         'address' => $fila['direccion_entrega'],
@@ -50,5 +52,8 @@ function pedido_a_json($fila, $items, $rolQueVe, $idQueVe)
         'paymentMethod' => $fila['metodo_pago'] === 'efectivo' ? 'cash' : 'online',
         'digitalBank' => $fila['banco_digital'] ?? null,
         'paymentStatus' => $fila['estado_pago'] === 'aprobado' ? 'Pagado' : ucfirst($fila['estado_pago']),
+        // web, llamada o whatsapp; isGuest = pedido manual de alguien sin cuenta.
+        'channel' => $fila['canal_origen'],
+        'isGuest' => $fila['id_cliente'] === null,
     ];
 }

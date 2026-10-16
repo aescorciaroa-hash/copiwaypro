@@ -75,6 +75,44 @@ elseif ($action === 'store') {
         }
     }
 }
+elseif ($action === 'storeManual') {
+    // Pedido por llamada o WhatsApp: se paga en efectivo al entregar.
+    $errores = [];
+    if (empty($datos['items'])) $errores['items'] = ['Agrega al menos un producto.'];
+    if (trim((string) ($datos['clientName'] ?? '')) === '') $errores['clientName'] = ['El nombre del cliente es obligatorio.'];
+    if (strlen(preg_replace('/\D/', '', (string) ($datos['clientPhone'] ?? ''))) < 7) $errores['clientPhone'] = ['El celular del cliente no es válido.'];
+    if (trim((string) ($datos['address'] ?? '')) === '') $errores['address'] = ['La dirección es obligatoria.'];
+    if ($errores) {
+        responderError('Datos inválidos.', 422, $errores);
+    }
+
+    try {
+        responderJson($pedidoService->crearManual(Auth::id(), $datos), 201);
+    } catch (InvalidArgumentException $e) {
+        responderError($e->getMessage(), 422);
+    } catch (Exception $e) {
+        $mensaje = $e->getMessage();
+        $cerrada = stripos($mensaje, 'cerrada') !== false || stripos($mensaje, 'pausada') !== false;
+        responderError($mensaje, $cerrada ? 403 : 409);
+    }
+}
+elseif ($action === 'updateAddress') {
+    // Admin: corrige la direccion de un pedido en curso.
+    $id = $_GET['id'] ?? $_POST['id'] ?? '';
+    $direccion = (string) ($datos['address'] ?? '');
+    if (trim($direccion) === '') {
+        responderError('Datos inválidos.', 422, ['address' => ['La dirección es obligatoria.']]);
+    }
+    cambiarEstado($id, 'cambiarDireccion', $direccion);
+}
+elseif ($action === 'updateDestination') {
+    // Domiciliario: guarda las coordenadas del destino que ubico en su mapa.
+    $id = $_GET['id'] ?? $_POST['id'] ?? '';
+    if (!isset($datos['lat'], $datos['lng']) || !is_numeric($datos['lat']) || !is_numeric($datos['lng'])) {
+        responderError('Datos inválidos.', 422, ['lat' => ['Las coordenadas deben ser numéricas.']]);
+    }
+    cambiarEstado($id, 'guardarDestino', Auth::id(), (float) $datos['lat'], (float) $datos['lng']);
+}
 elseif ($action === 'markPreparing') {
     // Cocina: Pendiente -> En Preparacion
     $id = $_GET['id'] ?? $_POST['id'] ?? '';

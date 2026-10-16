@@ -1,8 +1,9 @@
 # app/Controllers/OrderController.php
 
 ## ¿Para qué sirve?
-Maneja los **pedidos**: listarlos, crearlos (checkout del cliente), moverlos de estado (cocina y
-domiciliario) y calificarlos.
+Maneja los **pedidos**: listarlos, crearlos (checkout del cliente y pedido manual del
+administrador), moverlos de estado (cocina y domiciliario), corregir su dirección, guardar el
+destino en el mapa y calificarlos.
 
 ## Ciclo de vida de un pedido
 ```
@@ -15,6 +16,9 @@ Pendiente ──(cocina)──► En Preparación ──(cocina)──► Listos
 | `GET /api/orders` | `index` | todos | `AdminDashboard.tsx` y `/api/sync` (clave `orders`) |
 | `GET /api/orders/{id}` | `show` | todos | — |
 | `POST /api/orders` | `store` | cliente | `almacenAplicacion.ts` (`addOrder`) ← `ClientDashboard.tsx` |
+| `POST /api/orders/manual` | `storeManual` | admin | `almacenAplicacion.ts` (`addManualOrder`) ← `AdminDashboard.tsx` (Ingreso de Orden Manual) |
+| `PATCH /api/orders/{id}/address` | `updateAddress` | admin | `almacenAplicacion.ts` (`updateOrderAddress`) ← `AdminDashboard.tsx` (Editar Dirección) |
+| `PATCH /api/orders/{id}/destination` | `updateDestination` | domiciliario | `almacenAplicacion.ts` (`saveOrderDestination`) ← `DeliveryDashboard.tsx` |
 | `PATCH /api/orders/{id}/preparing` | `markPreparing` | admin, cocina | `almacenAplicacion.ts` (`updateOrderStatus`) ← `KitchenDashboard.tsx`, `AdminDashboard.tsx` |
 | `PATCH /api/orders/{id}/ready` | `markReady` | admin, cocina | `almacenAplicacion.ts` (`updateOrderStatus`) ← `KitchenDashboard.tsx`, `AdminDashboard.tsx` |
 | `PATCH /api/orders/{id}/take` | `take` | domiciliario | `almacenAplicacion.ts` (`takeOrder`) ← `DeliveryDashboard.tsx` |
@@ -33,7 +37,7 @@ Pendiente ──(cocina)──► En Preparación ──(cocina)──► Listos
 | Variable | Para qué sirve |
 |---|---|
 | `$id` | Id del pedido. Puede venir como `#ORD-12` o `12`. |
-| `$datos` | En `store`: `items`, `address`, `paymentMethod`, `lat`, `lng`, `paymentTransactionId`... |
+| `$datos` | En `store`: `items`, `address`, `paymentMethod`, `lat`, `lng`, `paymentTransactionId`, `usePoints` (pagar parte con puntos)... En `storeManual`: `items`, `clientName`, `clientPhone`, `address`, `channel` (`llamada` o `whatsapp`). |
 | `$idAyudante` | Si quien cambia el estado es de cocina, su id (para guardar quién preparó el pedido). |
 | `$pin` | En `deliver`: el PIN que el cliente le dice al domiciliario. |
 
@@ -62,6 +66,15 @@ cambiarEstado($id, 'marcarPreparando', $idAyudante);
   - pago rechazado → **402**
   - datos inválidos (`InvalidArgumentException`) → **422**
   - otros (sin stock, pago ya usado...) → **409**
+- **`storeManual`**: pedido que llega por llamada o WhatsApp. Valida que haya productos, nombre,
+  celular (mínimo 7 dígitos) y dirección (si falta algo → **422**). Después
+  `PedidoService::crearManual()` busca al cliente por su celular: si está registrado, el pedido queda
+  en su cuenta; si no, queda como **cliente invitado**. Se paga en efectivo al entregar. Tienda
+  cerrada o pausada → **403**; sin stock → **409**.
+- **`updateAddress`**: el admin corrige la dirección de un pedido que aún no se entrega (usa
+  `cambiarEstado()` con `cambiarDireccion`). Dirección vacía → **422**; pedido ya entregado → **409**.
+- **`updateDestination`**: el domiciliario guarda las coordenadas (`lat`, `lng`) del destino que ubicó
+  en su mapa, para que el administrador vea la ruta. Solo cambia pedidos asignados a él.
 - **`markPreparing`**, **`markReady`**, **`take`**, **`release`**, **`accept`**: usan `cambiarEstado()`.
 - **`deliver`**: exige el PIN; si está vacío → **422**.
 - **`review`**: el cliente califica de 1 a 5 un pedido **suyo** y ya **entregado**.

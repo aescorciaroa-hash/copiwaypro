@@ -13,10 +13,10 @@ de pedido manual.
 | ← los pedidos vienen de | `orders` del almacén (`/api/sync`) — el admin recibe **todos** (`Pedido::porRol('admin')`) | |
 | → `releaseOrder(id)` (almacén) | `PATCH /api/orders/{id}/release` → `PedidoService::liberarPedido()` | Soltar el pedido de un domiciliario. |
 | → `handleViewOrder(id)` | ventana de detalle en el padre | |
-| → `setEditingAddressOrder`, `setNewAddress` | ventana "Editar dirección" del padre | (Solo cambia la dirección en el navegador; ver la observación en `AdminDashboard.md`.) |
+| → `setEditingAddressOrder`, `setNewAddress` | ventana "Editar dirección" del padre | La guarda en el servidor (`PATCH /api/orders/{id}/address`). No se puede en pedidos entregados. |
 | → `setShowManualForm(true)` | ventana de pedido manual del padre | |
 | → `setSelectedDriverInfo` | ventana de datos del domiciliario | |
-| → usa | `react-leaflet`, `RoutePolyline` (rutas OSRM), `vehicleWithModel`, `formatCOP` | |
+| → usa | `react-leaflet`, `RoutePolyline` (rutas OSRM), `vehicleWithModel`, `formatCOP`, `modificacionesDe` (SIN / EXTRA de cada producto) | |
 
 ## Props
 | Prop | Qué es |
@@ -28,6 +28,7 @@ de pedido manual.
 
 ## El mapa
 - **Origen:** la cocina.
-- **Domiciliarios:** los que tienen `location` (ubicación guardada).
-- **Rutas:** de cada domiciliario a su pedido, dibujadas con OSRM.
+- **Domiciliarios:** los que tienen `location` (la ubicación GPS real que envía su celular).
+- **Rutas:** de cada domiciliario a su pedido en curso (`destCoords`, el destino que él ubicó en su
+  mapa), dibujadas con OSRM.
 - Usa el estilo oscuro `leaflet-dark-tiles` (de `index.css`) cuando el tema es oscuro.

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-import { formatCOP, vehicleWithModel } from '../lib/format';
+import { formatCOP, vehicleWithModel, modificacionesDe } from '../lib/format';
 
 import { useStore, DEFAULT_MENU_CATEGORIES, Product, ProductComponent, Order, OrderItem, Staff, Client, NamedRef } from '../store/almacenAplicacion';
 import { api, ApiError, irA } from '../servicios/api';
@@ -268,7 +268,7 @@ export default function AdminDashboard() {
     inventory, addInventoryItem, updateInventoryItem, updateInventoryStock, deleteInventoryItem,
     inventoryLogs,
     staff, addStaff, updateStaff, deleteStaff,
-    orders, addOrder, updateOrderStatus, setOrders, ordersSynced,
+    orders, addManualOrder, updateOrderAddress, updateOrderStatus, setOrders, ordersSynced,
     clients, addClient, updateClient, deleteClient,
     storeConfig, updateStoreConfig,
     addCategory, removeCategory
@@ -436,6 +436,8 @@ export default function AdminDashboard() {
   const [newStaff, setNewStaff] = useState({ name: '', role: 'Ayudante de cocina', email: '', password: '', phone: '', plate: '', vehicle: 'moto', vehicleModel: '', pin: '', baseCash: 0 as number | '' });
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualOrderClient, setManualOrderClient] = useState({ name: '', address: '', phone: '' });
+  const [manualOrderChannel, setManualOrderChannel] = useState<'llamada' | 'whatsapp'>('llamada');
+  const [manualOrderSaving, setManualOrderSaving] = useState(false);
   const [manualOrderItems, setManualOrderItems] = useState<ManualOrderItem[]>([]);
   const [manualSelectedProduct, setManualSelectedProduct] = useState<Product | null>(null);
   const [manualCustomRemoved, setManualCustomRemoved] = useState<ManualCustomIngredient[]>([]);
@@ -459,10 +461,14 @@ export default function AdminDashboard() {
   };
 
   const handleUpdateAddress = async () => {
-    if (editingAddressOrder && newAddress) {
-      const { orders, setOrders } = useStore.getState();
-      const targetId = editingAddressOrder.id;
-      setOrders(orders.map(o => o.id === editingAddressOrder.id ? { ...o, address: newAddress } : o));
+    if (editingAddressOrder && newAddress.trim()) {
+      // Se guarda en el servidor: el domiciliario ve la nueva dirección en su próxima sincronización.
+      try {
+        await updateOrderAddress(editingAddressOrder.id, newAddress.trim());
+      } catch (err) {
+        showToast('danger', err instanceof ApiError ? err.message : 'No se pudo cambiar la dirección.', 'Dirección no Modificada');
+        return;
+      }
       setEditingAddressOrder(null);
       setNewAddress('');
       setShowAddressSuccess(true);
@@ -749,26 +755,38 @@ export default function AdminDashboard() {
     setManualQuantity(1);
   };
 
-  const handleCreateManualOrder = () => {
-    if (!manualOrderClient.address || manualOrderItems.length === 0) return;
-    const orderId = `#MAN-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newOrder = {
-      id: orderId,
-      status: 'Pagado',
-      client: manualOrderClient.name || 'Cliente General',
-      total: manualOrderTotal + storeConfig.shippingRate,
-      subtotal: manualOrderTotal,
-      shipping: storeConfig.shippingRate,
-      items: manualOrderItems,
-      address: manualOrderClient.address,
-      phone: manualOrderClient.phone,
-      date: new Date().toISOString()
-    };
-    addOrder(newOrder as unknown as Order);
-    showToast('success', `Pedido manual ${orderId} creado y enviado a cocina`, 'Pedido Manual');
-    setShowManualForm(false);
-    setManualOrderClient({ name: '', address: '', phone: '' });
-    setManualOrderItems([]);
+  const handleCreateManualOrder = async () => {
+    if (!manualOrderClient.name.trim() || !manualOrderClient.phone.trim() || !manualOrderClient.address.trim() || manualOrderItems.length === 0) {
+      showToast('warning', 'Completa el nombre, el celular y la dirección del cliente.', 'Datos Incompletos');
+      return;
+    }
+    // El servidor recalcula los precios, descuenta el inventario y busca al
+    // cliente por su celular (si no está registrado, el pedido queda como invitado).
+    setManualOrderSaving(true);
+    try {
+      const created = await addManualOrder({
+        clientName: manualOrderClient.name.trim(),
+        clientPhone: manualOrderClient.phone.trim(),
+        address: manualOrderClient.address.trim(),
+        channel: manualOrderChannel,
+        // Sin id, el servidor busca el ingrediente por su nombre.
+        items: manualOrderItems.map(item => ({
+          ...item,
+          extras: item.extras.map(e => ({ id: e.id || '', name: e.name })),
+          removed: item.removed.map(r => ({ id: r.id || '', name: r.name })),
+        })),
+      });
+      const cuenta = created.isGuest ? 'como cliente invitado' : `en la cuenta de ${created.client}`;
+      showToast('success', `Pedido manual ${created.id} registrado ${cuenta} y enviado a cocina.`, 'Pedido Manual');
+      setShowManualForm(false);
+      setManualOrderClient({ name: '', address: '', phone: '' });
+      setManualOrderChannel('llamada');
+      setManualOrderItems([]);
+    } catch (err) {
+      showToast('danger', err instanceof ApiError ? err.message : 'No se pudo registrar el pedido manual.', 'Pedido no Registrado');
+    } finally {
+      setManualOrderSaving(false);
+    }
   };
 
   const handleViewOrder = (orderId: string) => {
@@ -1769,6 +1787,22 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-2">Llegó por</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {([['llamada', 'Llamada'], ['whatsapp', 'WhatsApp']] as const).map(([valor, texto]) => (
+                          <button
+                            key={valor}
+                            type="button"
+                            onClick={() => setManualOrderChannel(valor)}
+                            className={`py-2.5 rounded-2xl border text-sm font-bold transition-all cursor-pointer ${manualOrderChannel === valor ? 'border-brand-orange bg-brand-orange/10 text-brand-orange' : 'border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-gray-600 dark:text-stone-300'}`}
+                          >
+                            {texto}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-gray-500 dark:text-stone-400 mt-2">Se cobra en efectivo al entregar. Si el celular es de un cliente registrado, el pedido queda en su cuenta y suma puntos.</p>
+                    </div>
+                    <div className="sm:col-span-2">
                       <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-2">Dirección de Entrega</label>
                       <div className="relative">
                         <MapPin className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -1937,10 +1971,10 @@ export default function AdminDashboard() {
                 </div>
                 <button
                   onClick={handleCreateManualOrder}
-                  disabled={manualOrderItems.length === 0 || !manualOrderClient.name}
+                  disabled={manualOrderSaving || manualOrderItems.length === 0 || !manualOrderClient.name.trim() || !manualOrderClient.phone.trim() || !manualOrderClient.address.trim()}
                   className="bg-brand-orange text-white w-full md:w-auto px-8 py-3.5 rounded-full font-bold hover:bg-[#e66500] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-brand-orange/20 cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <ShoppingBag className="w-4 h-4" /> Enviar a Cocina
+                  <ShoppingBag className="w-4 h-4" /> {manualOrderSaving ? 'Enviando...' : 'Enviar a Cocina'}
                 </button>
               </div>
             </motion.div>
@@ -2196,10 +2230,10 @@ export default function AdminDashboard() {
                               </span>
                               {item.price && <span className="font-black shrink-0">{formatCOP(item.price * (item.quantity || 1))}</span>}
                             </div>
-                            {item.modifications && item.modifications.length > 0 && (
+                            {modificacionesDe(item).length > 0 && (
                               <ul className="mt-1.5 space-y-0.5">
-                                {item.modifications.map((mod: string, mIdx: number) => (
-                                  <li key={mIdx} className="text-sm font-bold text-red-500">{mod}</li>
+                                {modificacionesDe(item).map(({ texto, tipo }, mIdx) => (
+                                  <li key={mIdx} className={`text-sm font-bold ${tipo === 'sin' ? 'text-red-500' : tipo === 'extra' ? 'text-emerald-500' : 'text-gray-500 dark:text-stone-400'}`}>{texto}</li>
                                 ))}
                               </ul>
                             )}

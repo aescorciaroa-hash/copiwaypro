@@ -5,7 +5,9 @@ Crea **toda la base de datos** desde cero: la base `hamburguer_copiway`, sus 23 
 y un "trigger" que genera el PIN de entrega.
 
 ⚠️ La primera línea útil es `DROP DATABASE IF EXISTS hamburguer_copiway;`: **borra** la base si ya
-existe. Solo se debe ejecutar para instalar desde cero.
+existe. Solo se debe ejecutar para instalar desde cero. Para agregar columnas nuevas a una base que
+ya tiene datos se usan las **migraciones** de `database/migraciones/` (ver
+[migraciones](migraciones/001_pedido_manual_puntos_ticket.md)).
 
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
@@ -37,7 +39,7 @@ existe. Solo se debe ejecutar para instalar desde cero.
 ### Paso 1: configuración
 | Tabla | Qué guarda | Modelo PHP |
 |---|---|---|
-| `CONFIGURACION_SISTEMA` | Una sola fila: horario, tarifa, margen, pausa... | `Configuracion` |
+| `CONFIGURACION_SISTEMA` | Una sola fila: horario, tarifa, margen, pausa, programa de puntos (`valor_punto`, `minimo_puntos_canje`) y datos del negocio para el ticket (`negocio_nombre`, `negocio_nit`, `negocio_direccion`, `negocio_telefono`, `negocio_instagram`, `negocio_web`). | `Configuracion` |
 | `CATEGORIA` | Categorías. `ambito`: `menu`, `insumo_alimenticio` o `empaque_desechable`. | `Configuracion`, `Producto`, `Ingrediente` |
 
 ### Paso 2: cuentas
@@ -67,7 +69,7 @@ existe. Solo se debe ejecutar para instalar desde cero.
 ### Paso 5: pedidos
 | Tabla | Qué guarda | Modelo |
 |---|---|---|
-| `PEDIDO` | El pedido: cliente, domiciliario, estado, pago, PIN, totales. | `Pedido`, `PedidoService` |
+| `PEDIDO` | El pedido: cliente, domiciliario, estado, pago, PIN, totales. `id_cliente` puede quedar vacío (**cliente invitado** de un pedido manual); en ese caso se usan `nombre_contacto` y `telefono_contacto`. `id_admin_registro` dice qué admin registró un pedido manual y `canal_origen` por dónde llegó (`web`, `llamada`, `whatsapp`). `puntos_canjeados` y `descuento_puntos` guardan el canje de puntos. | `Pedido`, `PedidoService` |
 | `PAGO_TRANSACCION` | Pagos de prueba de la pasarela. | `PagoService` |
 | `DETALLE_PEDIDO` | Los productos del pedido. Guarda el nombre y el precio **del momento de la compra**. | `Pedido`, `PedidoService` |
 | `PERSONALIZACION` | Extras agregados o ingredientes quitados de cada producto. | `Pedido`, `PedidoService` |

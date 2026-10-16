@@ -23,7 +23,7 @@ Consultas para el **cierre de caja**. Solo lee datos; los cálculos y el guardad
 | Método | Qué hace |
 |---|---|
 | `yaGeneradoHoy($idAdmin, $fecha)` | ¿Este admin ya hizo el cierre de hoy? |
-| `pedidosDelTurno()` | Pedidos **entregados** que todavía no pertenecen a ningún cierre (`id_reporte IS NULL`). |
+| `pedidosDelTurno()` | Pedidos **entregados** que todavía no pertenecen a ningún cierre (`id_reporte IS NULL`). Usa `LEFT JOIN CLIENTE` para incluir también los pedidos de clientes invitados (con el nombre que dictaron). |
 | `consumoTeorico($idsPedidos)` | Suma, por insumo, las salidas de inventario que generaron esos pedidos. |
 | `domiciliariosActivos()` | Domiciliarios activos con su base de efectivo. |
 | `stockActual($idIngrediente)` | Stock de un insumo en este momento. |

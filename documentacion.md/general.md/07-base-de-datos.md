@@ -29,7 +29,8 @@ PAGO_TRANSACCION
 ## Relaciones más importantes
 | Relación | Significa |
 |---|---|
-| PEDIDO → CLIENTE | Cada pedido es de un cliente. |
+| PEDIDO → CLIENTE | De qué cliente es el pedido. Puede estar vacío en un pedido manual de un **cliente invitado** (sin cuenta); entonces se guardan su nombre y celular en `nombre_contacto` y `telefono_contacto`. |
+| PEDIDO → ADMINISTRADOR | En un pedido manual, qué administrador lo registró (`id_admin_registro`). |
 | PEDIDO → DOMICILIARIO / AYUDANTE_COCINA | Quién lo repartió / quién lo preparó (pueden estar vacíos). |
 | PEDIDO → REPORTE_CAJA | En qué cierre quedó archivado (vacío hasta el cierre). |
 | DETALLE_PEDIDO → PEDIDO, PRODUCTO | Los productos de cada pedido. Guarda el nombre y el precio **del momento de la compra**, así un cambio de precio no altera pedidos viejos. |
@@ -39,7 +40,7 @@ PAGO_TRANSACCION
 
 ## Reglas que cumple la base de datos
 - **Ids numéricos automáticos** (`AUTO_INCREMENT`): 1, 2, 3... El número del pedido que se ve (`#ORD-12`) es su id.
-- **Nada importante se borra:** personal, insumos y pedidos se "dan de baja" o se archivan (`activo = 0`, `id_reporte`).
+- **Nada importante se borra:** personal, insumos y pedidos se "dan de baja" o se archivan (`activo = 0`, `id_reporte`). La única excepción es el personal **sin historial** (nunca preparó ni repartió un pedido), que el administrador sí puede eliminar.
 - **Contraseñas, PIN de acceso y códigos de recuperación** se guardan **cifrados** (hash).
 - **Trigger `trg_pedido_pin`:** genera solo el PIN de entrega de 4 dígitos de cada pedido.
 - **Un cierre por día por admin:** `UNIQUE (id_admin, fecha)` en REPORTE_CAJA.
@@ -73,7 +74,9 @@ PAGO_TRANSACCION
 `schema.sql` empieza con `DROP DATABASE IF EXISTS hamburguer_copiway;`.
 
 ## Agregar una columna o tabla
-1. Haz el cambio en la base de datos (`ALTER TABLE ...`).
+1. Escribe el cambio (`ALTER TABLE ...`) en un archivo nuevo de `database/migraciones/` (ej.
+   `002_...sql`) y ejecútalo en tu base. Así quien ya tenía el sistema instalado puede actualizarse
+   sin perder datos.
 2. Agrégalo también a `database/schema.sql`, para que una instalación nueva lo tenga.
 3. Usa la columna en el modelo correspondiente de `app/Models/` y, si React la necesita, en la función de `app/Views/json/`.
 

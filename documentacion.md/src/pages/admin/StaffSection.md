@@ -11,7 +11,7 @@ dar de baja y eliminar.
 |---|---|---|---|
 | Crear | `addStaff()` | `POST /api/staff` | `Personal::crear()` → AYUDANTE_COCINA o DOMICILIARIO |
 | Dar de baja | `updateStaff(id, { role, active: false })` | `PUT /api/staff/{id}` | `Personal::actualizar()` → `activo = 0` |
-| "Eliminar" | `deleteStaff(id, role)` | `DELETE /api/staff/{id}?role=...` | `Personal::eliminarSuave()` → también `activo = 0` |
+| Eliminar | `deleteStaff(id, role)` | `DELETE /api/staff/{id}?role=...` | `Personal::eliminarPermanente()` → borra la fila **solo si no tiene historial**; si lo tiene, PHP responde 409 |
 | Ver / editar | `handleOpenStaffModal(persona)` | ventana en `AdminDashboard.tsx` | |
 
 Siempre se envía el **rol** porque el mismo número de id puede existir en las dos tablas
@@ -41,7 +41,7 @@ Siempre se envía el **rol** porque el mismo número de id puede existir en las 
 | `handleExport()` | Crea un archivo **CSV** (se abre en Excel) con el personal filtrado y lo descarga. |
 | `handleAddStaff()` | Exige nombre, correo, contraseña de 8 o más y PIN de 4. Crea el miembro y limpia el formulario. Si PHP rechaza (ej: correo repetido → 409), muestra el mensaje. |
 | `handleSoftDelete(persona)` | Confirma y lo da de baja (`active: false`). Conserva su historial. |
-| `handleHardDelete(persona)` | El texto dice "eliminar permanentemente", pero el servidor también hace una **baja lógica** (`activo = 0`), para no perder el historial de pedidos. |
+| `handleHardDelete(persona)` | Aparece en quienes ya están dados de baja. Confirma y lo **borra de verdad**. Solo funciona si nunca preparó ni entregó un pedido; si ya tiene historial, muestra el mensaje de PHP ("...usa Dar de baja...") y la persona sigue en la lista, inactiva. |
 
 ## `handleExport()` explicado
 ```ts

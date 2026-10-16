@@ -10,7 +10,7 @@ fila**) y las **categorías del menú** (tabla `CATEGORIA` con `ambito = 'menu'`
 | ← lo usa | `SettingController.php` | Ver y cambiar ajustes y categorías. |
 | ← lo usa | `PaginaController.php` | Mandar los ajustes a React al abrir una página. |
 | ← lo usa | `SyncController.php` | Mandar los ajustes en cada sincronización. |
-| ← lo usa | `PedidoService.php` | ¿Está abierta la tienda? ¿Cuánto cuesta el domicilio? ¿Qué margen tiene? |
+| ← lo usa | `PedidoService.php` | ¿Está abierta la tienda? ¿Cuánto cuesta el domicilio? ¿Qué margen tiene? ¿Cuánto vale un punto? |
 
 ## Columnas de CONFIGURACION_SISTEMA
 | Columna | Qué guarda | React |
@@ -21,18 +21,22 @@ fila**) y las **categorías del menú** (tabla `CATEGORIA` con `ambito = 'menu'`
 | `tarifa_plana_domicilio` | Costo del domicilio | `shippingRate` |
 | `margen_ganancia_defecto` | % de ganancia sobre el costo de los extras | `profitMargin` |
 | `id_ingrediente_bolsa_global` | Insumo "bolsa" que se descuenta en cada pedido | — |
+| `valor_punto` | Pesos que vale 1 punto al canjearlo (por defecto 10) | `pointValue` |
+| `minimo_puntos_canje` | Puntos mínimos para poder canjear (por defecto 100) | `minPointsToRedeem` |
+| `negocio_nombre`, `negocio_nit`, `negocio_direccion`, `negocio_telefono`, `negocio_instagram`, `negocio_web` | Datos del negocio que se imprimen en el ticket de cocina | `business.name`, `business.nit`, `business.address`, `business.phone`, `business.instagram`, `business.website` |
 
 ## Métodos
 | Método | Qué hace |
 |---|---|
 | `get($columna = '*')` | Lee la única fila (todas las columnas o solo una). Usa `$this->conn->query()` porque no tiene parámetros. |
 | `obtener()` | Arma el formato de React. Si no existe la fila, usa valores por defecto. Agrega la lista de categorías. |
-| `actualizar($campos)` | Guarda los campos enviados. Convierte `"11:00"` → `"11:00:00"` y `true/false` → `1/0`. |
+| `actualizar($campos)` | Guarda los campos enviados. Convierte `"11:00"` → `"11:00:00"` y `true/false` → `1/0`. Los datos del negocio llegan agrupados en `$campos['business']` y se guardan sin espacios sobrantes (`trim`). |
 | `agregarCategoria($nombre)` | La crea si no existe (compara en minúsculas con `LOWER()`). |
 | `eliminarCategoria($nombre)` | La borra, salvo que la use un producto activo (lanza una excepción con el mensaje). |
 | `tiendaAbiertaAhora()` | `true` si está abierta, no pausada y la hora actual está dentro del horario. |
 | `aMinutos($hhmm)` (privado) | `"18:30"` → `1110` (18×60 + 30). |
 | `tarifaDomicilio()`, `margenGanancia()`, `idIngredienteBolsaGlobal()` | Leen un solo valor. |
+| `reglasPuntos()` | Devuelve `['valor' => ..., 'minimo' => ...]` del programa de puntos (lo usa `PedidoService` al canjear). |
 
 ## `tiendaAbiertaAhora()` explicado
 ```php

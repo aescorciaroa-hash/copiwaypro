@@ -57,4 +57,17 @@ Es solo un atajo para no repetir la lista de los 4 roles en varias rutas.
 | `/api/push` | PushController |
 
 **El orden importa:** `GET /api/cash-closing/preview` va antes que `GET /api/cash-closing/{id}`.
-Si fuera al revés, la palabra `preview` se tomaría como si fuera un `{id}`.
+Si fuera al revés, la palabra `preview` se tomaría como si fuera un `{id}`. Por la misma razón,
+`POST /api/orders/manual` (pedido por llamada o WhatsApp que registra el admin) está escrita junto a
+`POST /api/orders` y antes de las rutas de pedidos con `{id}`.
+
+## Rutas de pedidos y personal que más se confunden
+| Ruta | Quién | Para qué |
+|---|---|---|
+| `POST /api/orders` | cliente | Pedido web del cliente (puede incluir `usePoints`). |
+| `POST /api/orders/manual` | admin | Pedido por llamada o WhatsApp, a nombre de un cliente registrado o de un invitado. |
+| `PATCH /api/orders/{id}/address` | admin | Corregir la dirección de un pedido en curso. |
+| `PATCH /api/orders/{id}/destination` | domiciliario | Guardar las coordenadas del destino que ubicó en su mapa. |
+| `PUT /api/staff/{id}` | admin | Editar a un colaborador, o darlo de baja (`active: false`). |
+| `DELETE /api/staff/{id}?role=...` | admin | Eliminarlo de verdad, solo si no tiene historial de pedidos. |
+| `PATCH /api/staff/{id}/location` | domiciliario | Guardar su propia ubicación GPS. |

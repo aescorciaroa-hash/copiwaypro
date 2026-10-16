@@ -101,7 +101,8 @@ nuevos se guardan en `store/almacenAplicacion.ts` y todas las pantallas se actua
 [rutas.php](config/rutas.md) (rutas de la API) · [paginas.php](config/paginas.md) (páginas)
 
 ### database/
-[schema.sql](database/schema.md) (las 23 tablas) · [seed.sql](database/seed.md) (datos de ejemplo)
+[schema.sql](database/schema.md) (las 23 tablas) · [seed.sql](database/seed.md) (datos de ejemplo) ·
+[migraciones/001](database/migraciones/001_pedido_manual_puntos_ticket.md) (columnas nuevas para una base que ya existe)
 
 ### bin/
 [create-admin.php](bin/create-admin.md) — crear el primer administrador por consola.
@@ -176,15 +177,20 @@ nuevos se guardan en `store/almacenAplicacion.ts` y todas las pantallas se actua
 ---
 
 ## 4. Observaciones encontradas al documentar
-Comportamientos que ya existían y que **no se cambiaron** (se dejaron anotados para revisarlos):
+Las fallas que se habían anotado aquí ya se **corrigieron**. Se deja el registro de qué se cambió:
 
-| Dónde | Qué pasa | Detalle |
-|---|---|---|
-| Ubicación GPS del domiciliario | `DeliveryDashboard.tsx` la envía con `PUT /api/staff/{id}`, que es solo para admin → 403. La ruta correcta (`PATCH /api/staff/{id}/location`) no la usa nadie. | [StaffController](app/Controllers/StaffController.md) |
-| Pedido manual del admin | Usa `POST /api/orders`, que es solo para clientes → 403, pero la pantalla igual dice "creado". | [AdminDashboard](src/pages/AdminDashboard.md) |
-| Cambiar dirección de un pedido | Solo cambia en el navegador; no se guarda en el servidor. | [AdminDashboard](src/pages/AdminDashboard.md) |
-| Borrar personal sin `role` | Puede desactivar a la persona de cocina que tenga el mismo id. React siempre envía el rol. | [Personal](app/Models/Personal.md) |
-| Tarjetas de la cocina | Resaltan SIN/EXTRA leyendo `modifications`, pero el servidor envía `extras` y `removed`. | [KitchenDashboard](src/pages/KitchenDashboard.md) |
+| Dónde | Qué pasaba | Cómo quedó | Detalle |
+|---|---|---|---|
+| Ubicación GPS del domiciliario | Se enviaba con `PUT /api/staff/{id}` (solo admin) → 403, y nunca se guardaba. | Usa `PATCH /api/staff/{id}/location` cada 10 s con la posición real. La posición simulada (sin GPS) ya no se envía. | [StaffController](app/Controllers/StaffController.md), [DeliveryDashboard](src/pages/DeliveryDashboard.md) |
+| Pedido manual del admin | Usaba `POST /api/orders` (solo clientes) → 403, pero la pantalla decía "creado". | Ruta propia `POST /api/orders/manual`. Busca al cliente por celular; si no existe, queda como invitado. | [OrderController](app/Controllers/OrderController.md), [AdminDashboard](src/pages/AdminDashboard.md) |
+| Cambiar dirección de un pedido | Solo cambiaba en el navegador. | Se guarda con `PATCH /api/orders/{id}/address`; el domiciliario recibe el aviso "Dirección Actualizada". | [PedidoService](app/Services/PedidoService.md) |
+| Borrar personal | El DELETE solo desactivaba (aunque la pantalla decía "eliminado definitivamente") y sin `role` podía tocar a la persona equivocada. | Borra de verdad solo si no tiene historial; si lo tiene, responde 409 y sugiere "Dar de baja". El `role` es obligatorio. | [Personal](app/Models/Personal.md) |
+| Tarjetas de la cocina y comandas del admin | Resaltaban SIN/EXTRA leyendo `modifications`, que el servidor no envía, así que no mostraban nada. | Leen `removed` y `extras` con `modificacionesDe()` de `src/lib/format.ts`. | [KitchenDashboard](src/pages/KitchenDashboard.md), [format](src/lib/format.md) |
+| Ticket de cocina | Tenía NIT, dirección y teléfono de ejemplo escritos en el código. | Se editan en **Ajustes → Datos del Negocio**. | [SettingsSection](src/pages/admin/SettingsSection.md) |
+| Puntos de fidelidad | Se acumulaban pero no se podían usar. | El cliente los canjea en el checkout; el valor y el mínimo se configuran en **Ajustes**. | [PedidoService](app/Services/PedidoService.md) |
+
+Pendientes conocidos (a propósito, para más adelante): no hay pantalla para **cancelar** pedidos y la
+**pasarela de pagos** es de prueba.
 
 ---
 

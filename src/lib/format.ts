@@ -35,3 +35,25 @@ export const vehicleWithModel = (vehicle?: string | null, model?: string | null)
   if (!label) return modeloLimpio;
   return modeloLimpio ? `${label} - ${modeloLimpio}` : label;
 };
+
+export interface Modificacion {
+  texto: string;
+  tipo: 'sin' | 'extra' | 'ingrediente';
+}
+
+/**
+ * Personalizaciones de un producto del pedido para mostrar en cocina y en el
+ * panel del admin: lo quitado ("SIN Cebolla", en rojo) y lo agregado ("EXTRA
+ * Queso", en verde). El servidor las envía en `removed` y `extras`. En la
+ * hamburguesa del Creador Interactivo `extras` es su receta completa, así que
+ * se listan como ingredientes y no como "EXTRA".
+ */
+export const modificacionesDe = (item: { name?: string; removed?: { name: string }[]; extras?: { name: string }[] }): Modificacion[] => {
+  const esCreador = item.name === 'Hamburguesa Personalizada';
+  return [
+    ...(item.removed || []).map(r => ({ texto: `SIN ${r.name}`, tipo: 'sin' as const })),
+    ...(item.extras || []).map(e => esCreador
+      ? { texto: e.name, tipo: 'ingrediente' as const }
+      : { texto: `EXTRA ${e.name}`, tipo: 'extra' as const }),
+  ];
+};

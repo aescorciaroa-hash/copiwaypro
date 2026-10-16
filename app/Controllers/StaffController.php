@@ -73,11 +73,18 @@ elseif ($action === 'update') {
     responderJson(buscarEnPersonal($personalModel, $id));
 }
 elseif ($action === 'destroy') {
-    // 'role' (opcional) indica la tabla, porque el mismo id puede existir en cocina y en domicilio.
+    // Borrado permanente, solo si no tiene historial (si lo tiene, se da de baja con PUT active=false).
+    // 'role' es obligatorio: el mismo id puede existir en cocina y en domicilio.
     $id  = $_GET['id'] ?? $_POST['id'] ?? '';
     $rol = $_GET['role'] ?? null;
-    if ($personalModel->eliminarSuave($id, $rol) === null) {
-        responderError('Miembro de staff no encontrado.', 404);
+    try {
+        if (!$personalModel->eliminarPermanente($id, $rol)) {
+            responderError('Miembro de staff no encontrado.', 404);
+        }
+    } catch (InvalidArgumentException $e) {
+        responderError($e->getMessage(), 422);
+    } catch (Exception $e) {
+        responderError($e->getMessage(), 409);
     }
     responderJson(['ok' => true]);
 }

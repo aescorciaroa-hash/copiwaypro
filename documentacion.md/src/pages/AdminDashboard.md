@@ -12,7 +12,8 @@ manual, ajustar horario y alertas de pedidos nuevos.
 | ← la abre | `main.tsx` con `data-pagina="admin"` (`app/Views/paginas/admin.php`). Solo rol `admin`. | |
 | → muestra | `admin/OverviewSection`, `OrdersSection`, `MapSection`, `MenuSection`, `InventorySection`, `StaffSection`, `ClientsSection`, `SettingsSection` | Las secciones. |
 | → lee del almacén | `products`, `inventory`, `inventoryLogs`, `staff`, `orders`, `ordersSynced`, `clients`, `storeConfig` | Llegan por `/api/sync`. |
-| → acciones del almacén | productos, inventario, personal, categorías, ajustes, estados de pedidos | Ver la tabla de `documentacion.md/src/store/almacenAplicacion.md`. |
+| → acciones del almacén | productos, inventario, personal, categorías, ajustes, estados de pedidos, `addManualOrder` (pedido manual), `updateOrderAddress` (cambiar dirección) | Ver la tabla de `documentacion.md/src/store/almacenAplicacion.md`. |
+| → usa | `modificacionesDe` (`lib/format.ts`) | SIN / EXTRA de cada producto en el detalle del pedido. |
 | → llama directo a | `GET /api/cash-closing/preview`, `POST /api/cash-closing`, `GET /api/orders`, `POST /api/auth/logout` | Cierre de caja y salir. |
 | → usa | `generateCierrePDF` (`utils/generarCierrePdf.ts`) | El PDF del cierre. |
 | → usa | `soundFx` (`utils/audio.ts`) | Campana con pedidos nuevos. |
@@ -44,7 +45,7 @@ dibuja la sección activa.
 | Personal | `newStaff`, `staffEditData`, `selectedStaffInfo`, `staffModalReadOnly`, `showStaffPassword`, `staffSearch`, `staffRoleFilter`, `staffStatusFilter`, `staffCurrentPage` | Crear, ver y editar personal; filtros y páginas. |
 | Clientes | `selectedClientInfo`, `customerSearch` | Ventana de cliente y buscador. |
 | Pedidos | `viewingOrder`, `editingAddressOrder`, `newAddress`, `selectedDriverInfo`, `isMapExpanded` | Detalle de pedido, dirección, domiciliario. |
-| Pedido manual | `showManualForm`, `manualOrderClient`, `manualOrderItems`, `manualSelectedProduct`, `manualCustomRemoved`, `manualCustomExtras`, `manualQuantity` | Ventana de pedido por teléfono. |
+| Pedido manual | `showManualForm`, `manualOrderClient` (nombre, celular, dirección), `manualOrderChannel` (`'llamada'` o `'whatsapp'`), `manualOrderSaving` (mientras se envía), `manualOrderItems`, `manualSelectedProduct`, `manualCustomRemoved`, `manualCustomExtras`, `manualQuantity` | Ventana de pedido por llamada o WhatsApp. |
 | Cierre de caja | `showCierre`, `cierreData`, `isGeneratingPDF`, `showPdfPreview`, `pdfPreviewUrl` | Ventana del cierre y PDF. |
 | Ajustes | `shippingRateInput`, `profitMarginInput` | Campos de tarifa y margen (se llenan con `storeConfig`). |
 | Avisos | `toastData`, `confirmModal`, `showOrderAlert`, `showNotifications` | |
@@ -82,8 +83,9 @@ dibuja la sección activa.
 | `handleNavigateToOrders(id)` | Va a "Comandas Activas" y baja hasta el pedido, resaltándolo 4 segundos. |
 | `handleOpenStaffModal(persona, soloLectura)` | Abre la ventana de un miembro del personal. |
 | `handleViewOrder(id)` | Abre el detalle de un pedido. |
-| `handleUpdateAddress()` | Cambia la dirección de un pedido (ver la observación). |
-| `handleAddProductToManualOrder()` / `handleCreateManualOrder()` | Arma y envía un pedido manual (ver la observación). |
+| `handleUpdateAddress()` | Guarda la nueva dirección en el servidor (`updateOrderAddress` → `PATCH /api/orders/{id}/address`). Si falla, muestra el motivo y no cierra la ventana. |
+| `handleAddProductToManualOrder()` | Agrega un producto (con lo quitado y los extras) a la lista del pedido manual. |
+| `handleCreateManualOrder()` | Exige nombre, celular y dirección. Envía el pedido con `addManualOrder` → `POST /api/orders/manual` y **espera la respuesta**: el aviso dice el número real del pedido y si quedó en la cuenta de un cliente o como invitado. Si el servidor lo rechaza (tienda cerrada, sin stock...), muestra el motivo. |
 | `handleLogout()` | Confirma y cierra sesión. |
 | `showToast(...)` | Muestra un aviso. |
 
@@ -98,10 +100,9 @@ dibuja la sección activa.
 `RoutePolyline` (ruta OSRM en el mapa, igual que en `DeliveryDashboard.tsx`) y `CustomTooltip`
 (cuadro que aparece al pasar el mouse sobre una barra de la gráfica, con el valor en pesos).
 
-## Observaciones (comportamiento actual, no se cambió)
-- **Pedido manual:** `handleCreateManualOrder()` usa `addOrder()` → `POST /api/orders`, pero esa ruta
-  solo la puede usar el rol `client` (`config/rutas.php`), así que el servidor responde **403**. Como
-  la función no espera la respuesta (`addOrder(...)` sin `await`), igual muestra "Pedido manual creado".
-- **Cambiar dirección:** `handleUpdateAddress()` solo cambia la dirección en el navegador
-  (`setOrders(...)`); no hay ruta en PHP para guardarla, así que en la siguiente sincronización vuelve
-  la dirección original.
+## Pedido manual (ventana "Ingreso de Orden Manual")
+1. **Datos del cliente:** nombre, celular, por dónde llegó (**Llamada** o **WhatsApp**) y dirección.
+2. **Productos:** se eligen del menú, con lo que se quita y los extras.
+3. **Enviar a Cocina:** el servidor recalcula los precios, descuenta el inventario y busca al cliente
+   por su celular. Si está registrado, el pedido queda en su cuenta (y suma puntos al entregarse);
+   si no, queda como **cliente invitado**. Se cobra en efectivo al entregar.

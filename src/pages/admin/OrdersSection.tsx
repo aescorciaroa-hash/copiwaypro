@@ -7,7 +7,7 @@ import {
 
 import { Order, OrderItem, Staff, useStore } from '../../store/almacenAplicacion';
 import { CustomZoomControl, RoutePolyline, DriverMockInfo } from '../AdminDashboard';
-import { vehicleWithModel } from '../../lib/format';
+import { vehicleWithModel, modificacionesDe } from '../../lib/format';
 
 interface OrdersSectionProps {
   orders: Order[];
@@ -192,14 +192,14 @@ export default function OrdersSection({
                                   <span className="text-brand-orange font-black">{item.quantity}x</span>
                                   <span>{item.name}</span>
                                 </div>
-                                {item.modifications && item.modifications.length > 0 && (
+                                {modificacionesDe(item).length > 0 && (
                                   <ul className="mt-0.5 pl-4 space-y-0.5">
-                                    {item.modifications.map((mod: string, mIdx: number) => (
+                                    {modificacionesDe(item).map(({ texto, tipo }, mIdx) => (
                                       <li key={mIdx} className={`text-[10px] font-black ${
-                                        mod.includes('SIN') ? 'text-red-500' : 
-                                        mod.includes('EXTRA') ? 'text-emerald-500' : 'text-gray-500'
+                                        tipo === 'sin' ? 'text-red-500' :
+                                        tipo === 'extra' ? 'text-emerald-500' : 'text-gray-500'
                                       }`}>
-                                        {mod}
+                                        {texto}
                                       </li>
                                     ))}
                                   </ul>

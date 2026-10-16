@@ -318,7 +318,8 @@ export default function ClientDashboard() {
           phone: client.phone || prev.phone,
           address: client.address || prev.address,
           birthday: client.birthday || prev.birthday,
-          points: client.points || prev.points,
+          // ?? y no ||: tras canjear todos los puntos el saldo real es 0.
+          points: client.points ?? prev.points,
           notifications: client.notifications || prev.notifications
         }));
         // [] es "truthy" en JS: sin este length > 0, un cliente nuevo (sin
@@ -440,7 +441,21 @@ export default function ClientDashboard() {
 
   const cartSubtotal = cart.reduce((sum, item) => sum + (item.finalPrice * (item.quantity || 1)), 0);
   const birthdayDiscount = isBirthday ? cartSubtotal * 0.15 : 0; // 15% de descuento
-  const cartTotal = cartSubtotal - birthdayDiscount + (cart.length > 0 ? FLAT_SHIPPING_RATE : 0);
+
+  // Canje de puntos: solo sobre los productos (no el domicilio) y desde el mínimo
+  // configurado en Ajustes. Es una vista previa: el servidor lo recalcula al pagar.
+  const [usePoints, setUsePoints] = useState(false);
+  const pointValue = storeConfig.pointValue ?? 10;
+  const minPointsToRedeem = storeConfig.minPointsToRedeem ?? 100;
+  const availablePoints = userProfile.points || 0;
+  const canRedeemPoints = pointValue > 0 && availablePoints > 0 && availablePoints >= minPointsToRedeem;
+  const redeemPoints = usePoints && canRedeemPoints;
+  const pointsRedeemed = redeemPoints
+    ? Math.max(0, Math.min(availablePoints, Math.floor((cartSubtotal - birthdayDiscount) / pointValue)))
+    : 0;
+  const pointsDiscount = pointsRedeemed * pointValue;
+
+  const cartTotal = cartSubtotal - birthdayDiscount - pointsDiscount + (cart.length > 0 ? FLAT_SHIPPING_RATE : 0);
 
   // -- Manejadores --
   const openCustomizer = (product: Product) => {
@@ -544,7 +559,7 @@ export default function ClientDashboard() {
     setSimulationStep('Conectando con ' + bankName + '...');
 
     try {
-      const datos = await prepareOnlinePayment({ items: [...cart] as unknown as Order['items'], address: userProfile.address || '' });
+      const datos = await prepareOnlinePayment({ items: [...cart] as unknown as Order['items'], address: userProfile.address || '' }, redeemPoints);
       setGatewayReference(datos.reference);
       await esperar(900);
 
@@ -586,6 +601,8 @@ export default function ClientDashboard() {
       items: [...cart],
       subtotal: cartSubtotal,
       discount: birthdayDiscount,
+      pointsRedeemed,
+      pointsDiscount,
       shipping: FLAT_SHIPPING_RATE,
       total: cartTotal,
       status: 'Pendiente' as const, // Global Store status
@@ -599,7 +616,7 @@ export default function ClientDashboard() {
     };
 
     try {
-      await addOrder(newOrder as unknown as Order);
+      await addOrder(newOrder as unknown as Order, redeemPoints);
     } catch (err) {
       // El servidor rechazó el pedido (tienda cerrada, sin stock, pago no
       // confirmado, etc.) — se muestra el motivo real en vez de fingir éxito.
@@ -616,6 +633,7 @@ export default function ClientDashboard() {
     // Bloqueo y envío a cocina
     setTimeout(() => {
       setCart([]);
+      setUsePoints(false);
       setIsCheckingOut(false);
       setPaymentStatus('idle');
       setSimulationStep('');
@@ -1430,6 +1448,16 @@ export default function ClientDashboard() {
                 storeConfig={storeConfig}
                 handleCheckoutSubmit={handleCheckoutSubmit}
                 simulationStep={simulationStep}
+                pointsRedemption={{
+                  available: availablePoints,
+                  minimum: minPointsToRedeem,
+                  pointValue,
+                  canRedeem: canRedeemPoints,
+                  use: redeemPoints,
+                  setUse: setUsePoints,
+                  redeemed: pointsRedeemed,
+                  discount: pointsDiscount,
+                }}
               />
             )}
             {activeTab === 'activeOrders' && (

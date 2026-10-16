@@ -20,12 +20,13 @@ Las dos tablas se muestran en React como una sola lista de personal.
 | `hasPin` | `!empty($fila['pin'])`: `true` si tiene PIN (nunca se envía el PIN). |
 | `createdBy` | Nombre del admin que lo creó |
 
-## `personal_domicilio_a_json($fila, $currentOrderId)`
+## `personal_domicilio_a_json($fila, $currentOrderId, $destino)`
 Lo mismo, más los datos del domiciliario:
 | Campo de React | Sale de |
 |---|---|
 | `role` | Siempre `'Domiciliario'` |
 | `location` | `[lat, lng]` si tiene ubicación guardada; si no, `null` |
 | `currentOrderId` | El pedido que lleva "En Camino" (lo busca el modelo) |
+| `destCoords` | `[lat, lng]` del destino de ese pedido, si el domiciliario ya lo ubicó en su mapa; si no, `null`. Con esto el mapa del admin dibuja la ruta. |
 | `plate`, `vehicle`, `vehicleModel` | `placa`, `tipo_vehiculo`, `modelo_vehiculo` |
 | `baseCash` | `(float) base_efectivo_asignada` (efectivo para dar cambio) |

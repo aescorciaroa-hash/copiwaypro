@@ -26,8 +26,8 @@ class PedidoService
     // ---------------------------------------------------------------
 
     /**
-     * Crea un pedido. Recalcula precios en el servidor, valida horario y pago,
-     * y en una transaccion guarda el pedido y descuenta el inventario.
+     * Crea un pedido web del cliente. Recalcula precios en el servidor, valida
+     * horario y pago, y en una transaccion guarda el pedido y descuenta el inventario.
      */
     public function crear($idCliente, $payload)
     {
@@ -45,51 +45,131 @@ class PedidoService
             throw new InvalidArgumentException('Cliente no encontrado.');
         }
 
-        $calculo = $this->calcular($cliente, $payload, $configModel);
+        $calculo = $this->calcular($cliente, $payload, $configModel, !empty($payload['usePoints']));
         $total = $calculo['total'];
-        $puntos = (int) floor($total / 1000);
 
         $esEfectivo = ($payload['paymentMethod'] ?? 'online') === 'cash';
-        $metodoPago = $esEfectivo ? 'efectivo' : 'digital';
         $bancosValidos = ['nequi', 'daviplata', 'bancolombia'];
-        $bancoDigital = (!$esEfectivo && in_array($payload['bank'] ?? '', $bancosValidos, true)) ? $payload['bank'] : null;
-        $estadoPago = 'pendiente';
-        $fechaPago = null;
-        $comprobante = null;
+        $pago = [
+            'metodo'      => $esEfectivo ? 'efectivo' : 'digital',
+            'banco'       => (!$esEfectivo && in_array($payload['bank'] ?? '', $bancosValidos, true)) ? $payload['bank'] : null,
+            'estado'      => 'pendiente',
+            'fecha'       => null,
+            'comprobante' => null,
+        ];
 
         // Pago digital: se verifica la transaccion antes de crear nada.
         // En efectivo el pago queda 'pendiente' hasta la entrega.
         if (!$esEfectivo) {
             $pagoService = new PagoService();
-            $pago = $pagoService->verificarTransaccion((string) ($payload['paymentTransactionId'] ?? ''), $total, $idCliente);
+            $transaccion = $pagoService->verificarTransaccion((string) ($payload['paymentTransactionId'] ?? ''), $total, $idCliente);
 
             $stmt = $this->conn->prepare("SELECT id_pedido FROM PEDIDO WHERE comprobante_pago = ? LIMIT 1");
-            $stmt->bind_param("s", $pago['id']);
+            $stmt->bind_param("s", $transaccion['id']);
             $stmt->execute();
             $yaUsada = $stmt->get_result()->fetch_assoc();
             $stmt->close();
             if ($yaUsada) {
                 throw new Exception('Este pago ya fue usado en otro pedido.');
             }
-            $comprobante = $pago['id'];
-            $estadoPago = 'aprobado';
-            $fechaPago = date('Y-m-d H:i:s');
+            $pago['comprobante'] = $transaccion['id'];
+            $pago['estado'] = 'aprobado';
+            $pago['fecha'] = date('Y-m-d H:i:s');
         }
+
+        $idPedido = $this->guardar([
+            'id_cliente' => $idCliente,
+            'id_admin'   => null,
+            'nombre'     => null,
+            'telefono'   => null,
+            'direccion'  => $payload['address'] ?? $cliente['direccion'],
+            'lat'        => $payload['lat'] ?? null,
+            'lng'        => $payload['lng'] ?? null,
+            'canal'      => 'web',
+        ], $pago, $calculo, $configModel);
+
+        return $this->pedidoModel->buscar($idPedido, 'client', $idCliente);
+    }
+
+    /**
+     * Pedido manual que el administrador registra por llamada o WhatsApp (pago en
+     * efectivo al entregar). Si el celular pertenece a un cliente registrado, el
+     * pedido queda en su cuenta; si no, queda como cliente invitado.
+     */
+    public function crearManual($idAdmin, $payload)
+    {
+        $configModel = new Configuracion();
+        if (!$configModel->tiendaAbiertaAhora()) {
+            throw new Exception('La tienda está cerrada o pausada en este momento. No se pueden registrar pedidos.');
+        }
+
+        $nombre    = trim((string) ($payload['clientName'] ?? ''));
+        $telefono  = preg_replace('/\D/', '', (string) ($payload['clientPhone'] ?? ''));
+        $direccion = trim((string) ($payload['address'] ?? ''));
+        $canal     = in_array($payload['channel'] ?? '', ['llamada', 'whatsapp'], true) ? $payload['channel'] : 'llamada';
+
+        $cliente = $this->buscarClientePorTelefono($telefono);
+        $calculo = $this->calcular($cliente, $payload, $configModel, false);
+
+        $idPedido = $this->guardar([
+            'id_cliente' => $cliente ? $cliente['id_cliente'] : null,
+            'id_admin'   => $idAdmin,
+            'nombre'     => $nombre,
+            'telefono'   => $telefono,
+            'direccion'  => $direccion,
+            'lat'        => null,
+            'lng'        => null,
+            'canal'      => $canal,
+        ], [
+            'metodo' => 'efectivo', 'banco' => null, 'estado' => 'pendiente', 'fecha' => null, 'comprobante' => null,
+        ], $calculo, $configModel);
+
+        return $this->pedidoModel->buscar($idPedido, 'admin', $idAdmin);
+    }
+
+    /**
+     * En una sola transaccion: canjea los puntos (si aplica), guarda el pedido con
+     * sus productos y personalizaciones, y descuenta el inventario. Devuelve el id.
+     */
+    private function guardar($destino, $pago, $calculo, $configModel)
+    {
+        $puntos = (int) floor($calculo['total'] / 1000);
 
         $this->conn->begin_transaction();
         try {
+            // Canje de puntos: se vuelve a leer el saldo bloqueando la fila del cliente,
+            // asi dos pedidos simultaneos no pueden gastar los mismos puntos.
+            if ($calculo['puntosCanjeados'] > 0) {
+                $stmtS = $this->conn->prepare("SELECT puntos_fidelidad FROM CLIENTE WHERE id_cliente = ? FOR UPDATE");
+                $stmtS->bind_param("i", $destino['id_cliente']);
+                $stmtS->execute();
+                $saldo = $stmtS->get_result()->fetch_assoc();
+                $stmtS->close();
+                if (!$saldo || (int) $saldo['puntos_fidelidad'] < $calculo['puntosCanjeados']) {
+                    throw new Exception('Tu saldo de puntos cambió. Revisa el pedido e intenta de nuevo.');
+                }
+
+                $stmtR = $this->conn->prepare("UPDATE CLIENTE SET puntos_fidelidad = puntos_fidelidad - ? WHERE id_cliente = ?");
+                $stmtR->bind_param("ii", $calculo['puntosCanjeados'], $destino['id_cliente']);
+                $stmtR->execute();
+                $stmtR->close();
+            }
+
             $values = [
-                $idCliente, $payload['address'] ?? $cliente['direccion'],
-                $payload['lat'] ?? null, $payload['lng'] ?? null,
-                $metodoPago, $bancoDigital, $estadoPago, $fechaPago, $comprobante,
-                $calculo['subtotal'], $calculo['envio'], $calculo['descuento'], $puntos, $total,
+                $destino['id_cliente'], $destino['id_admin'], $destino['nombre'], $destino['telefono'],
+                $destino['direccion'], $destino['lat'], $destino['lng'], $destino['canal'],
+                $pago['metodo'], $pago['banco'], $pago['estado'], $pago['fecha'], $pago['comprobante'],
+                $calculo['subtotal'], $calculo['envio'], $calculo['descuento'],
+                $calculo['puntosCanjeados'], $calculo['descuentoPuntos'], $puntos, $calculo['total'],
             ];
             $stmtP = $this->conn->prepare(
                 "INSERT INTO PEDIDO
-                    (id_cliente, direccion_entrega, destino_lat, destino_lng, estado,
-                     canal_origen, metodo_pago, banco_digital, estado_pago, fecha_pago, comprobante_pago,
-                     subtotal, costo_domicilio, descuento_cumpleanos, puntos_ganados, total)
-                 VALUES (?, ?, ?, ?, 'pendiente', 'web', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    (id_cliente, id_admin_registro, nombre_contacto, telefono_contacto,
+                     direccion_entrega, destino_lat, destino_lng, estado, canal_origen,
+                     metodo_pago, banco_digital, estado_pago, fecha_pago, comprobante_pago,
+                     subtotal, costo_domicilio, descuento_cumpleanos,
+                     puntos_canjeados, descuento_puntos, puntos_ganados, total)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
             $stmtP->bind_param(tiposDe($values), ...$values);
             $stmtP->execute();
@@ -171,14 +251,14 @@ class PedidoService
                 $ingredienteModel->descontarPorReceta($lineasDescuento, $idPedido);
             }
 
-            // Los puntos y el total gastado se suman al ENTREGAR (confirmarEntrega).
+            // Los puntos ganados y el total gastado se suman al ENTREGAR (confirmarEntrega).
             $this->conn->commit();
         } catch (Exception $e) {
             $this->conn->rollback();
             throw $e;
         }
 
-        return $this->pedidoModel->buscar($idPedido, 'client', $idCliente);
+        return $idPedido;
     }
 
     private function buscarCliente($idCliente)
@@ -191,11 +271,29 @@ class PedidoService
         return $row ?: null;
     }
 
+    /** Cliente activo con ese celular (comparando solo digitos, con o sin el 57), o null. */
+    private function buscarClientePorTelefono($telefono)
+    {
+        if ($telefono === '') {
+            return null;
+        }
+        $stmt = $this->conn->prepare(
+            "SELECT * FROM CLIENTE
+             WHERE activo = 1 AND REGEXP_REPLACE(telefono, '[^0-9]', '') IN (?, CONCAT('57', ?))
+             LIMIT 1"
+        );
+        $stmt->bind_param("ss", $telefono, $telefono);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $row ?: null;
+    }
+
     /**
      * Recalcula en el servidor items, precios, descuento y total.
      * El precio de cada insumo extra = costo unitario + margen de ganancia de Ajustes.
      */
-    private function calcular($cliente, $payload, $configModel)
+    private function calcular($cliente, $payload, $configModel, $usarPuntos = false)
     {
         $items = $payload['items'] ?? [];
         if (empty($items)) {
@@ -254,14 +352,30 @@ class PedidoService
         }
 
         $envio = (float) $configModel->tarifaDomicilio();
-        $descuento = $this->descuentoCumpleanos($cliente, $subtotal);
+        $descuento = $cliente ? $this->descuentoCumpleanos($cliente, $subtotal) : 0.0;
+
+        // Canje de puntos: solo sobre los productos (no sobre el domicilio) y solo
+        // si el cliente alcanza el minimo configurado en Ajustes.
+        $puntosCanjeados = 0;
+        $descuentoPuntos = 0.0;
+        if ($usarPuntos && $cliente) {
+            $reglas = $configModel->reglasPuntos();
+            $saldo = (int) $cliente['puntos_fidelidad'];
+            if ($reglas['valor'] > 0 && $saldo > 0 && $saldo >= $reglas['minimo']) {
+                $maximoPorMonto = (int) floor(($subtotal - $descuento) / $reglas['valor']);
+                $puntosCanjeados = max(0, min($saldo, $maximoPorMonto));
+                $descuentoPuntos = round($puntosCanjeados * $reglas['valor'], 2);
+            }
+        }
 
         return [
-            'items'     => $resueltos,
-            'subtotal'  => $subtotal,
-            'envio'     => $envio,
-            'descuento' => $descuento,
-            'total'     => round($subtotal - $descuento + $envio, 2),
+            'items'           => $resueltos,
+            'subtotal'        => $subtotal,
+            'envio'           => $envio,
+            'descuento'       => $descuento,
+            'puntosCanjeados' => $puntosCanjeados,
+            'descuentoPuntos' => $descuentoPuntos,
+            'total'           => round($subtotal - $descuento - $descuentoPuntos + $envio, 2),
         ];
     }
 
@@ -285,7 +399,7 @@ class PedidoService
         if (!$cliente) {
             throw new InvalidArgumentException('Cliente no encontrado.');
         }
-        return $this->calcular($cliente, $payload, $configModel)['total'];
+        return $this->calcular($cliente, $payload, $configModel, !empty($payload['usePoints']))['total'];
     }
 
     /** Producto oculto que sirve de base para las hamburguesas del creador interactivo. Se crea una sola vez. */
@@ -530,15 +644,17 @@ class PedidoService
             $stmtU->execute();
             $stmtU->close();
 
-            // Puntos de fidelidad y total gastado del cliente.
-            $puntos = (int) $row['puntos_ganados'];
-            $total = (float) $row['total'];
-            $stmtC = $this->conn->prepare(
-                "UPDATE CLIENTE SET puntos_fidelidad = puntos_fidelidad + ?, total_gastado = total_gastado + ? WHERE id_cliente = ?"
-            );
-            $stmtC->bind_param("idi", $puntos, $total, $row['id_cliente']);
-            $stmtC->execute();
-            $stmtC->close();
+            // Puntos de fidelidad y total gastado del cliente (un invitado no tiene cuenta).
+            if ($row['id_cliente'] !== null) {
+                $puntos = (int) $row['puntos_ganados'];
+                $total = (float) $row['total'];
+                $stmtC = $this->conn->prepare(
+                    "UPDATE CLIENTE SET puntos_fidelidad = puntos_fidelidad + ?, total_gastado = total_gastado + ? WHERE id_cliente = ?"
+                );
+                $stmtC->bind_param("idi", $puntos, $total, $row['id_cliente']);
+                $stmtC->execute();
+                $stmtC->close();
+            }
 
             $this->conn->commit();
         } catch (Exception $e) {
@@ -547,12 +663,52 @@ class PedidoService
         }
 
         // Notificacion push al cliente; si falla, la entrega ya quedo confirmada.
+        if ($row['id_cliente'] === null) {
+            return;
+        }
         try {
             $pushService = new PushNotificationService();
             $pushService->notificarPedidoEntregado($idPedido, (int) $row['id_cliente']);
         } catch (Throwable $e) {
             error_log('No se pudo enviar la notificacion push de entrega: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * El admin corrige la direccion de un pedido que aun no se entrega. Las
+     * coordenadas se borran para que el mapa del domiciliario vuelva a ubicarla.
+     */
+    public function cambiarDireccion($idPedido, $direccion)
+    {
+        $direccion = trim((string) $direccion);
+        if ($direccion === '') {
+            throw new InvalidArgumentException('La dirección es obligatoria.');
+        }
+
+        $stmt = $this->conn->prepare(
+            "UPDATE PEDIDO SET direccion_entrega = ?, destino_lat = NULL, destino_lng = NULL
+             WHERE id_pedido = ? AND estado IN ('pendiente', 'en_preparacion', 'listo', 'en_camino')"
+        );
+        $stmt->bind_param("si", $direccion, $idPedido);
+        $stmt->execute();
+        $cambiadas = $stmt->affected_rows;
+        $stmt->close();
+
+        if ($cambiadas === 0 && $this->pedidoModel->buscarCrudo($idPedido)['direccion_entrega'] !== $direccion) {
+            throw new Exception('Este pedido ya fue entregado y no se puede cambiar su dirección.');
+        }
+    }
+
+    /** Coordenadas del destino que el domiciliario ubico en el mapa (solo de su pedido en curso). */
+    public function guardarDestino($idPedido, $idDomiciliario, $lat, $lng)
+    {
+        $stmt = $this->conn->prepare(
+            "UPDATE PEDIDO SET destino_lat = ?, destino_lng = ?
+             WHERE id_pedido = ? AND id_domiciliario = ? AND estado IN ('listo', 'en_camino')"
+        );
+        $stmt->bind_param("ddis", $lat, $lng, $idPedido, $idDomiciliario);
+        $stmt->execute();
+        $stmt->close();
     }
 
     private function transicion($idPedido, $desdeValidos, $hacia)

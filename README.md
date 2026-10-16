@@ -21,7 +21,7 @@ Corre 100% en local con **`localhost`**, sin dominios `.test` obligatorios y sin
     /paginas     Una vista por pantalla (landing, login, admin, cliente, cocina, domiciliario...)
     /json        Funciones que convierten filas de MySQL al JSON que espera React
 /config          database.php (.env + conexion $conn), app.php, rutas.php (API), paginas.php (paginas)
-/database        schema.sql (esquema completo) y seed.sql (datos demo opcionales)
+/database        schema.sql (esquema completo), seed.sql (datos demo opcionales) y migraciones/ (cambios para bases ya instaladas)
 /documentacion.md Documentacion de cada archivo del proyecto, con la misma estructura de carpetas
 /docs            Documentacion anterior y baseline de verificacion (docs/baseline)
 /public          Punto de entrada unico (index.php) + build compilado (assets/main.js, assets/main.css)
@@ -137,6 +137,11 @@ install.bat
 
 5. **Primer Administrador** (opcional si ya cargaste `seed.sql`): `php bin\create-admin.php`
 
+> **¿Ya tenías la base de datos instalada?** No vuelvas a ejecutar `schema.sql` (la borra). Para agregar las columnas del pedido manual, el canje de puntos y los datos del ticket, ejecuta una sola vez:
+> ```powershell
+> "C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe" -u root --default-character-set=utf8mb4 hamburguer_copiway < database\migraciones\001_pedido_manual_puntos_ticket.sql
+> ```
+
 ## Cómo abrir el sitio
 
 ### A) Vhost de Laragon: `http://copiwaypro.test/`
@@ -204,9 +209,9 @@ Todas las rutas que cambian datos (`POST`, `PUT`, `PATCH`, `DELETE`) exigen el t
 - `POST /api/auth/forgot-password/request|reset`
 - `GET/POST/PUT/DELETE /api/products`, `/api/ingredients`, `/api/inventory`; `PATCH /api/inventory/{id}/stock`; `GET /api/inventory-logs`
 - `POST /api/uploads/product-image`
-- `GET/POST/PUT/DELETE /api/staff` (baja lógica), `PATCH /api/staff/{id}/location`
+- `GET/POST/PUT /api/staff` (la baja es `PUT` con `active: false`), `DELETE /api/staff/{id}?role=...` (borrado permanente, solo sin historial), `PATCH /api/staff/{id}/location`
 - `GET/PUT /api/clients`, `PUT /api/clients/{id}/password`, `/api/clients/{id}/notifications`
-- `GET/POST /api/orders`, `PATCH /api/orders/{id}/preparing|ready|take|release|accept|deliver|review`
+- `GET/POST /api/orders`, `POST /api/orders/manual` (pedido por llamada/WhatsApp del admin), `PATCH /api/orders/{id}/preparing|ready|take|release|accept|deliver|review|address|destination`
 - `POST /api/payments/prepare`, `POST /api/payments/transactions`, `GET /api/payments/transactions/{id}` (pasarela de prueba)
 - `GET/PUT /api/settings`, `POST/DELETE /api/settings/categories`
 - `GET /api/cash-closing/preview`, `POST/GET /api/cash-closing`, `GET /api/dashboard`
@@ -230,5 +235,4 @@ Este proyecto reemplaza por completo el backend original (Firebase/Firestore) po
 - Pon `APP_DEBUG=false` y `APP_ENV=production` en `.env`, y un `APP_KEY` propio.
 - Sirve el sitio por HTTPS (las cookies de sesión se marcan `secure` automáticamente si `HTTPS`/`X-Forwarded-Proto` lo indican).
 - Ya están cubiertos: CSRF en todas las rutas que cambian datos, límite de intentos de login, máximo 5 intentos por código de recuperación, y el PIN de entrega visible solo para el cliente.
-- Revisa la sección **"Observaciones encontradas al documentar"** de [documentacion.md/README.md](documentacion.md/README.md): lista comportamientos actuales que conviene corregir (por ejemplo, la ubicación GPS del domiciliario y el pedido manual del administrador).
-- `docs/baseline/FUNCIONES_Y_VALIDACIONES.md` tiene el checklist de paridad funcional de la migración (algunos de sus pendientes ya fueron resueltos).
+- La sección **"Observaciones encontradas al documentar"** de [documentacion.md/README.md](documentacion.md/README.md) registra las fallas que se corrigieron y los pendientes conocidos (cancelar pedidos y pasarela de pagos real).

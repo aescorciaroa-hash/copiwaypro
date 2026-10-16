@@ -28,8 +28,8 @@ class Caja
     public function pedidosDelTurno()
     {
         $stmt = $this->conn->prepare(
-            "SELECT p.*, c.nombre AS cliente_nombre FROM PEDIDO p
-             JOIN CLIENTE c ON c.id_cliente = p.id_cliente
+            "SELECT p.*, COALESCE(c.nombre, p.nombre_contacto) AS cliente_nombre FROM PEDIDO p
+             LEFT JOIN CLIENTE c ON c.id_cliente = p.id_cliente
              WHERE p.estado = 'entregado' AND p.id_reporte IS NULL"
         );
         $stmt->execute();
@@ -124,8 +124,8 @@ class Caja
         $stmtA->close();
 
         $stmtP = $this->conn->prepare(
-            "SELECT p.id_pedido, p.total, p.metodo_pago, c.nombre AS cliente
-             FROM PEDIDO p JOIN CLIENTE c ON c.id_cliente = p.id_cliente
+            "SELECT p.id_pedido, p.total, p.metodo_pago, COALESCE(c.nombre, p.nombre_contacto) AS cliente
+             FROM PEDIDO p LEFT JOIN CLIENTE c ON c.id_cliente = p.id_cliente
              WHERE p.id_reporte = ?"
         );
         $stmtP->bind_param("s", $idReporte);

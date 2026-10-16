@@ -23,11 +23,15 @@ PEDIDO (uno)                       ← dirección, estado, total, pago, PIN...
 
 ## La constante `BASE`
 Un SELECT con **JOIN** que trae el pedido junto con:
-- el nombre y teléfono del **cliente** (`JOIN CLIENTE`),
+- el nombre y teléfono del **cliente** (`LEFT JOIN CLIENTE`). Si el pedido es de un **cliente
+  invitado** (pedido manual de alguien sin cuenta, `id_cliente` vacío), se usan el nombre y el
+  celular que dictó por teléfono (`nombre_contacto`, `telefono_contacto`). Eso lo hace
+  `COALESCE(c.nombre, p.nombre_contacto)`: "el primero que no esté vacío",
 - el nombre, teléfono, placa y vehículo del **domiciliario** (`LEFT JOIN DOMICILIARIO`),
 - el nombre del **ayudante de cocina** (`LEFT JOIN AYUDANTE_COCINA`).
 
-`LEFT JOIN` = "tráelo si existe". Un pedido nuevo todavía no tiene domiciliario, y aun así debe aparecer.
+`LEFT JOIN` = "tráelo si existe". Un pedido nuevo todavía no tiene domiciliario, y un pedido de un
+invitado no tiene cliente registrado, y aun así deben aparecer.
 
 ## Métodos
 | Método | Qué hace |

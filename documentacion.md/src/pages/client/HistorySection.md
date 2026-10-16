@@ -34,4 +34,4 @@ detallado y **volver a pedir** lo mismo con un clic.
 | Datos del domiciliario | Si el pedido tuvo domiciliario. |
 | Caja de calificación | Estrellas 1–5, etiquetas rápidas y comentario. Solo para pedidos entregados (PHP también lo exige). |
 | Botones | Ver recibo y "Pedir de nuevo". |
-| Ventana de recibo | Estado, dirección, productos con personalizaciones, subtotal, domicilio, descuento, total y los puntos ganados. |
+| Ventana de recibo | Estado, dirección, productos con personalizaciones, subtotal, domicilio, descuento de cumpleaños, puntos canjeados (si los usó), total y los puntos ganados. |

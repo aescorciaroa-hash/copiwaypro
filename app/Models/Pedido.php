@@ -7,12 +7,15 @@ class Pedido
 {
     private $conn;
 
-    private const BASE = "SELECT p.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono,
+    // LEFT JOIN: un pedido manual de un cliente invitado no tiene fila en CLIENTE;
+    // en ese caso se muestran el nombre y el celular que dicto por telefono.
+    private const BASE = "SELECT p.*, COALESCE(c.nombre, p.nombre_contacto) AS cliente_nombre,
+                                 COALESCE(c.telefono, p.telefono_contacto) AS cliente_telefono,
                                  d.nombre AS domiciliario_nombre, d.telefono AS domiciliario_telefono,
                                  d.placa AS domiciliario_placa, d.tipo_vehiculo AS domiciliario_vehiculo,
                                  a.nombre AS ayudante_nombre
                           FROM PEDIDO p
-                          JOIN CLIENTE c ON c.id_cliente = p.id_cliente
+                          LEFT JOIN CLIENTE c ON c.id_cliente = p.id_cliente
                           LEFT JOIN DOMICILIARIO d ON d.id_domiciliario = p.id_domiciliario
                           LEFT JOIN AYUDANTE_COCINA a ON a.id_ayudante = p.id_ayudante";
 

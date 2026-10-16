@@ -157,7 +157,7 @@ export default function StaffSection({
       setConfirmModal({
         isOpen: true,
         title: 'Eliminar Empleado Permanentemente',
-        message: `¿Estás seguro de eliminar por completo el registro de "${emp.name}"? Esta acción borrará permanentemente sus credenciales.`,
+        message: `¿Estás seguro de eliminar por completo el registro de "${emp.name}"? Esta acción borrará permanentemente sus credenciales. Solo es posible si nunca ha preparado ni entregado un pedido; si ya tiene historial, usa "Dar de baja".`,
         confirmText: 'Sí, eliminar',
         cancelText: 'Cancelar',
         type: 'danger',

@@ -56,6 +56,10 @@ Con `APP_DEBUG=true` (en el `.env`), los errores de la API traen el mensaje real
 | "Este pedido ya no está disponible para reparto" | Otro domiciliario lo tomó primero. |
 | "PIN incorrecto" | El PIN de entrega no coincide. El cliente lo ve en "Órdenes Activas". |
 | "Ya se generó un cierre de caja hoy" | Solo se permite un cierre por día por admin. |
+| "Tu saldo de puntos cambió..." | Mientras el cliente pagaba, su saldo de puntos bajó (por ejemplo, pagó otro pedido al tiempo). Que revise el pedido e intente de nuevo. |
+| "Este colaborador ya tiene pedidos en su historial y no se puede eliminar" | Solo se puede eliminar a quien nunca preparó ni repartió un pedido. Usa **Dar de baja**. |
+| "Este pedido ya fue entregado y no se puede cambiar su dirección" | La dirección solo se corrige mientras el pedido está en curso. |
+| `Unknown column 'puntos_canjeados'` (u otra columna nueva) | La base de datos es anterior a la migración 001. Ejecútala (ver [Instalación](02-instalacion.md)). |
 
 ## React: cambié algo y no se ve
 1. ¿Ejecutaste `npm run build`?
@@ -77,7 +81,7 @@ Ver [Notificaciones y correo](11-notificaciones-y-correo.md). Lo más común: no
 `composer install`, faltan las claves en el `.env`, o en Windows falta `OPENSSL_CONF`.
 
 ## Comportamientos conocidos (no son errores de configuración)
-Estos ya existían en el sistema y están anotados en la sección 4 de [el índice principal](../README.md):
-- La ubicación GPS del domiciliario no se guarda.
-- El pedido manual del administrador no se crea (aunque la pantalla diga que sí).
-- Cambiar la dirección de un pedido desde el admin no se guarda.
+- No hay pantalla para **cancelar** un pedido (el estado existe en la base de datos).
+- La **pasarela de pagos** es de prueba: no cobra dinero real (ver [Pagos](10-pagos.md)).
+- Si el domiciliario no da permiso de ubicación, su mapa simula el recorrido, pero esa posición no
+  se envía: el mapa del administrador muestra la última ubicación real que tenga.

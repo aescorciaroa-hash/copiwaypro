@@ -18,7 +18,8 @@ con el **PIN** que le dice el cliente.
 | → `releaseOrder` | `PATCH /api/orders/{id}/release` → `PedidoService::liberarPedido()` | Soltarlo. |
 | → `updateOrderStatus(id, 'En Camino')` | `PATCH /api/orders/{id}/accept` → `PedidoService::aceptarEntrega()` | Iniciar la ruta. |
 | → `confirmDelivery(id, pin)` | `PATCH /api/orders/{id}/deliver` → `PedidoService::confirmarEntrega()` | Entregar con PIN. |
-| → `updateStaff(...)` | `PUT /api/staff/{id}` | Enviar ubicación GPS y pedido actual. ⚠️ Esa ruta es solo para admin; ver la observación en `documentacion.md/app/Controllers/StaffController.md`. |
+| → `updateDriverLocation(id, [lat, lng])` | `PATCH /api/staff/{id}/location` → `Personal::actualizarUbicacion()` | Enviar su ubicación GPS real (como máximo cada 10 s). |
+| → `saveOrderDestination(id, [lat, lng])` | `PATCH /api/orders/{id}/destination` → `PedidoService::guardarDestino()` | Guardar el destino que ubicó en el mapa, para que el admin vea la ruta. |
 | → servicio externo | **Nominatim** (OpenStreetMap) | Convertir la dirección del pedido en coordenadas. |
 | → servicio externo | **OSRM** | Calcular el camino en carro para dibujarlo. |
 | → servicio externo | **WhatsApp** (`wa.me`) | Escribirle al cliente. |
@@ -32,7 +33,7 @@ con el **PIN** que le dice el cliente.
 | `acceptedOrders` | Ids de pedidos que tomó en esta sesión. |
 | `activeRoute` | El pedido con la ruta en curso (o `null`). |
 | `mapCenter` | Centro del mapa. Empieza en Neiva `[2.9273, -75.2818]`. |
-| `destCoords` | Coordenadas del destino (las encuentra Nominatim). |
+| `destCoords` | Coordenadas del destino: las del pedido si ya están guardadas (`lat`, `lng`); si no, las encuentra Nominatim. |
 | `showPinModal`, `pinTargetOrder`, `pinInput`, `pinError` | Ventana para escribir el PIN de entrega. |
 | `toastData`, `confirmModal` | Avisos y ventana de confirmación. |
 
@@ -58,8 +59,20 @@ Pedidos "Listos" o "En Camino". Si está desconectado, solo los suyos.
 | `renderMap()` | Dibuja el mapa: el domiciliario, el destino y la ruta. |
 
 ## Efectos
-1. **Buscar el destino:** cuando cambia `activeRoute`, consulta Nominatim con la dirección + ", Neiva, Huila" y guarda las coordenadas.
-2. **GPS:** con `navigator.geolocation.watchPosition(...)` sigue la ubicación real y la envía con `updateStaff`. Si el GPS no funciona, **simula** el movimiento cada 2 segundos acercándose un 2 % al destino.
+1. **Buscar el destino:** cuando cambia el pedido de `activeRoute` o su dirección. Si el pedido ya
+   tiene coordenadas guardadas, las usa; si no, consulta Nominatim con la dirección + ", Neiva, Huila"
+   y las guarda en el pedido con `saveOrderDestination`.
+2. **Dirección corregida por el admin:** cuando llegan los pedidos por `/api/sync`, compara la
+   dirección del pedido en curso. Si cambió, actualiza la ruta y muestra el aviso **"Dirección
+   Actualizada"** con la nueva dirección.
+3. **GPS:** con `navigator.geolocation.watchPosition(...)` sigue la ubicación real y la envía con
+   `updateDriverLocation` (como máximo cada 10 segundos, porque el GPS puede reportar varias veces por
+   segundo). Si el GPS no funciona o no hay permiso, **simula** el movimiento cada 2 segundos
+   acercándose un 2 % al destino, pero esa posición inventada **solo mueve el mapa de este celular**:
+   no se envía al servidor.
+
+El pedido en curso del domiciliario (`currentOrderId`) ya no se envía desde aquí: lo calcula PHP
+(`Personal::comoJsonDomicilio()`) con el pedido "en_camino" que tiene asignado.
 
 ## Componentes internos (al inicio del archivo)
 | Componente | Qué hace |

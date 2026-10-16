@@ -39,6 +39,7 @@ set MYSQL=C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin
 | `"%MYSQL%\mysql.exe" -u root hamburguer_copiway` | Entrar a la base de datos para escribir consultas. |
 | `"%MYSQL%\mysql.exe" -u root --default-character-set=utf8mb4 < database\schema.sql` | ⚠️ Crear la base desde cero (borra la anterior). |
 | `"%MYSQL%\mysql.exe" -u root --default-character-set=utf8mb4 hamburguer_copiway < database\seed.sql` | Cargar los datos de ejemplo. |
+| `"%MYSQL%\mysql.exe" -u root --default-character-set=utf8mb4 hamburguer_copiway < database\migraciones\001_pedido_manual_puntos_ticket.sql` | Actualizar una base que ya existía (pedido manual, puntos y ticket). Una sola vez; no borra datos. |
 | `"%MYSQL%\mysqldump.exe" -u root --routines --triggers hamburguer_copiway > respaldo.sql` | Hacer un respaldo. |
 | `"%MYSQL%\mysql.exe" -u root --default-character-set=utf8mb4 hamburguer_copiway < respaldo.sql` | Restaurar un respaldo. |
 

@@ -35,6 +35,16 @@ CREATE TABLE CONFIGURACION_SISTEMA (
     -- la "bolsa de empaque global" que hoy useStore.addOrder descuenta por nombre parcial.
     -- Si se rechaza, se puede seguir emparejando por nombre como hace el frontend hoy.
     id_ingrediente_bolsa_global  INT UNSIGNED NULL,
+    -- Programa de puntos: cuanto vale 1 punto al pagar y desde cuantos puntos se puede canjear.
+    valor_punto                  DECIMAL(10,2) NOT NULL DEFAULT 10,
+    minimo_puntos_canje          INT          NOT NULL DEFAULT 100,
+    -- Datos del negocio que se imprimen en el ticket de cocina (editables en Ajustes).
+    negocio_nombre               VARCHAR(120) NOT NULL DEFAULT 'COPIWAY PRO',
+    negocio_nit                  VARCHAR(30)  NOT NULL DEFAULT '900.123.456-7',
+    negocio_direccion            VARCHAR(255) NOT NULL DEFAULT 'Cra 43 # 79-115, Barranquilla',
+    negocio_telefono             VARCHAR(30)  NOT NULL DEFAULT '(300) 123-4567',
+    negocio_instagram            VARCHAR(80)  NOT NULL DEFAULT '@copiway_pro',
+    negocio_web                  VARCHAR(120) NOT NULL DEFAULT 'www.copiway.com',
     creado_en                    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_en               DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -253,10 +263,15 @@ CREATE TABLE REPORTE_CAJA (
 -- numero_pedido sobraba y se elimino.
 CREATE TABLE PEDIDO (
     id_pedido            INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    id_cliente           INT UNSIGNED NOT NULL,
+    -- NULL = cliente invitado: pedido manual (llamada/WhatsApp) de alguien sin cuenta.
+    id_cliente           INT UNSIGNED NULL,
     id_domiciliario      INT UNSIGNED NULL,
     id_ayudante          INT UNSIGNED NULL,
     id_reporte           INT UNSIGNED NULL,       -- se asigna al archivar en el cierre de caja (regla 11)
+    -- Pedido manual: administrador que lo registro y datos de contacto que dicto el cliente.
+    id_admin_registro    INT UNSIGNED NULL,
+    nombre_contacto      VARCHAR(120) NULL,
+    telefono_contacto    VARCHAR(20)  NULL,
     direccion_entrega    VARCHAR(255) NOT NULL,
     destino_lat          DECIMAL(10,7),
     destino_lng          DECIMAL(10,7),
@@ -275,6 +290,8 @@ CREATE TABLE PEDIDO (
     subtotal             DECIMAL(10,2) NOT NULL DEFAULT 0,
     costo_domicilio      DECIMAL(10,2) NOT NULL DEFAULT 0,
     descuento_cumpleanos DECIMAL(10,2) NOT NULL DEFAULT 0,
+    puntos_canjeados     INT          NOT NULL DEFAULT 0,   -- puntos que el cliente uso para pagar
+    descuento_puntos     DECIMAL(10,2) NOT NULL DEFAULT 0,  -- puntos_canjeados x valor_punto
     puntos_ganados       INT          NOT NULL DEFAULT 0,
     total                DECIMAL(10,2) NOT NULL DEFAULT 0,
     creado_en            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -283,6 +300,7 @@ CREATE TABLE PEDIDO (
     FOREIGN KEY (id_domiciliario) REFERENCES DOMICILIARIO(id_domiciliario),
     FOREIGN KEY (id_ayudante) REFERENCES AYUDANTE_COCINA(id_ayudante),
     FOREIGN KEY (id_reporte) REFERENCES REPORTE_CAJA(id_reporte),
+    FOREIGN KEY (id_admin_registro) REFERENCES ADMINISTRADOR(id_admin),
     INDEX idx_pedido_estado (estado),
     INDEX idx_pedido_fecha (fecha_hora)
 );

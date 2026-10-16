@@ -24,13 +24,13 @@ Cliente      ──(se registra solo en /register)
 | Pestaña | Puede |
 |---|---|
 | Tablero Analítico | Ver ventas, gráficas, productos más vendidos y el estado de la operación. |
-| Comandas Activas | Ver todos los pedidos, el mapa, soltar un pedido de un domiciliario. |
+| Comandas Activas | Ver todos los pedidos y el mapa, soltar un pedido de un domiciliario, **corregir la dirección** de un pedido en curso y registrar un **pedido manual** (llamada o WhatsApp). |
 | Rutas & Zonas | Ver la flota y los pedidos en reparto en el mapa. |
 | Gestión de Menú | Crear, editar, ocultar y eliminar productos; recetas; categorías; fotos. |
 | Inventario Express | Registrar insumos, sumar stock, ver el historial. |
-| Equipo y Personal | Crear, editar y dar de baja a cocina y domiciliarios; asignar PIN; exportar a Excel. |
+| Equipo y Personal | Crear, editar y dar de baja a cocina y domiciliarios; eliminar a quien no tiene historial; asignar PIN; exportar a Excel. |
 | Directorio Clientes | Ver los clientes, sus pedidos y puntos. |
-| Ajustes y Caja | Horario, tarifa de domicilio, margen de ganancia, abrir/cerrar la tienda, pausa de emergencia y **cierre de caja**. |
+| Ajustes y Caja | Horario, tarifa de domicilio, margen de ganancia, programa de puntos, datos del negocio del ticket, abrir/cerrar la tienda, pausa de emergencia y **cierre de caja**. |
 
 ### Ayudante de cocina (`/kitchen`)
 - Ve los pedidos en 3 columnas: **Pendientes → En preparación → Listos**.
@@ -46,10 +46,12 @@ Cliente      ──(se registra solo en /register)
 - Le escribe al cliente por WhatsApp (el teléfono del cliente solo aparece cuando va en camino).
 - **Entrega** escribiendo el PIN que le dice el cliente.
 - Puede ponerse **Disponible** o **Desconectado**.
+- Su celular envía su ubicación GPS cada 10 segundos para el mapa del administrador.
+- Si el administrador corrige la dirección del pedido, su ruta se actualiza y recibe un aviso.
 
 ### Cliente (`/client`)
 - Ve el menú, personaliza productos, arma su hamburguesa en el **Creador Interactivo**.
-- Paga en efectivo o digital.
+- Paga en efectivo o digital, y puede **usar sus puntos** para pagar una parte.
 - Sigue sus pedidos en vivo y ve el **PIN de entrega**.
 - Califica los pedidos entregados y vuelve a pedir con un clic.
 - Edita su perfil y su contraseña, y activa las notificaciones.

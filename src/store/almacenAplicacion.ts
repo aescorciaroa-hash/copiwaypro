@@ -114,7 +114,14 @@ export interface Order {
   subtotal?: number;
   shipping?: number;
   discount?: number;
+  /** Puntos que el cliente canjeó en este pedido y su valor en pesos. */
+  pointsRedeemed?: number;
+  pointsDiscount?: number;
   pointsEarned?: number;
+  /** Por dónde llegó: 'web', 'llamada' o 'whatsapp'. */
+  channel?: 'web' | 'llamada' | 'whatsapp';
+  /** Pedido manual de alguien sin cuenta de cliente. */
+  isGuest?: boolean;
   time?: string;
   readyAt?: string | null;
   paymentTransactionId?: string;
@@ -168,7 +175,30 @@ export interface StoreConfig {
   isPaused?: boolean;
   shippingRate: number;
   profitMargin?: number;
+  /** Valor en pesos de 1 punto al canjearlo, y mínimo de puntos para poder canjear. */
+  pointValue?: number;
+  minPointsToRedeem?: number;
+  /** Datos del negocio que se imprimen en el ticket de cocina. */
+  business?: BusinessInfo;
   categories?: string[];
+}
+
+export interface BusinessInfo {
+  name: string;
+  nit: string;
+  address: string;
+  phone: string;
+  instagram: string;
+  website: string;
+}
+
+/** Pedido por llamada o WhatsApp que registra el administrador (se paga en efectivo al entregar). */
+export interface ManualOrderInput {
+  clientName: string;
+  clientPhone: string;
+  address: string;
+  channel: 'llamada' | 'whatsapp';
+  items: OrderItem[];
 }
 
 // Antes traia 8 categorias de ejemplo ("Hamburguesas de Pan", "Perros
@@ -210,9 +240,18 @@ interface AppState {
   deleteStaff: (id: string, role?: string) => Promise<void>;
 
   setOrders: (orders: Order[]) => void;
-  addOrder: (order: Order) => Promise<void>;
+  /** usePoints: el cliente quiere pagar parte del pedido con sus puntos. */
+  addOrder: (order: Order, usePoints?: boolean) => Promise<void>;
+  /** Pedido manual del administrador; devuelve el pedido creado (con su número real). */
+  addManualOrder: (input: ManualOrderInput) => Promise<Order>;
   /** Pide al servidor monto, referencia y firma para iniciar el pago digital (pasarela de prueba). */
-  prepareOnlinePayment: (order: Pick<Order, 'items' | 'address'>) => Promise<DatosCheckout>;
+  prepareOnlinePayment: (order: Pick<Order, 'items' | 'address'>, usePoints?: boolean) => Promise<DatosCheckout>;
+  /** El admin corrige la dirección de un pedido en curso (se guarda en el servidor). */
+  updateOrderAddress: (id: string, address: string) => Promise<void>;
+  /** El domiciliario guarda las coordenadas del destino que ubicó en su mapa. */
+  saveOrderDestination: (id: string, coords: [number, number]) => Promise<void>;
+  /** El domiciliario envía su ubicación GPS real. */
+  updateDriverLocation: (id: string, coords: [number, number]) => Promise<void>;
   updateOrderStatus: (id: string, status: Order['status']) => Promise<void>;
   takeOrder: (id: string) => Promise<void>;
   releaseOrder: (id: string) => Promise<void>;
@@ -334,30 +373,51 @@ export const useStore = create<AppState>()((set, get) => ({
     set(state => ({ staff: state.staff.map(s => (s.id === id && s.role === updated.role) ? updated : s) }));
   },
   deleteStaff: async (id, role) => {
-    // Soft delete en el servidor (se conserva el historial, regla de negocio 10).
-    // role se manda para desambiguar el mismo id entre las dos tablas de staff
-    // (ver comentario de updateStaff arriba y Personal::eliminarSuave en el backend).
+    // Borrado permanente: el servidor solo lo permite si el colaborador no tiene
+    // historial de pedidos (si lo tiene responde 409 y hay que darlo de baja).
+    // role es obligatorio: el mismo id puede existir en cocina y en domicilio
+    // (ver comentario de updateStaff arriba y Personal::eliminarPermanente).
     await api.delete(`/staff/${id}${role ? `?role=${encodeURIComponent(role)}` : ''}`);
-    set(state => ({ staff: state.staff.map(s => (s.id === id && (!role || s.role === role)) ? { ...s, active: false } : s) }));
+    set(state => ({ staff: state.staff.filter(s => !(s.id === id && (!role || s.role === role))) }));
   },
 
   setOrders: (orders) => set({ orders, ordersSynced: true }),
-  addOrder: async (order) => {
+  addOrder: async (order, usePoints = false) => {
     const payload = {
       items: (order.items || []).map(toApiOrderItem),
       address: order.address,
       paymentMethod: order.paymentMethod === 'online' ? 'online' : 'cash',
       bank: order.paymentMethod === 'online' ? order.digitalBank : undefined,
       paymentTransactionId: order.paymentMethod === 'online' ? order.paymentTransactionId : undefined,
+      usePoints,
     };
     const created = await api.post<Order>('/orders', payload);
     set(state => ({ orders: [created, ...state.orders] }));
   },
-  prepareOnlinePayment: async (order) => {
+  addManualOrder: async (input) => {
+    const created = await api.post<Order>('/orders/manual', {
+      ...input,
+      items: input.items.map(toApiOrderItem),
+    });
+    set(state => ({ orders: [created, ...state.orders] }));
+    return created;
+  },
+  prepareOnlinePayment: async (order, usePoints = false) => {
     return api.post<DatosCheckout>('/payments/prepare', {
       items: (order.items || []).map(toApiOrderItem),
       address: order.address,
+      usePoints,
     });
+  },
+  updateOrderAddress: async (id, address) => {
+    const updated = await api.patch<Order>(`/orders/${encodeURIComponent(id)}/address`, { address });
+    set(state => ({ orders: state.orders.map(o => o.id === id ? updated : o) }));
+  },
+  saveOrderDestination: async (id, coords) => {
+    await api.patch(`/orders/${encodeURIComponent(id)}/destination`, { lat: coords[0], lng: coords[1] });
+  },
+  updateDriverLocation: async (id, coords) => {
+    await api.patch(`/staff/${encodeURIComponent(id)}/location`, { lat: coords[0], lng: coords[1] });
   },
   updateOrderStatus: async (id, status) => {
     const endpoint = STATUS_TO_ENDPOINT[status];

@@ -7,7 +7,7 @@ import { ArrowLeft,
  } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore, Order, Product } from '../store/almacenAplicacion';
-import { orderCode } from '../lib/format';
+import { orderCode, modificacionesDe } from '../lib/format';
 import { CustomBurgerThumb } from './client/ingredientArt';
 import { soundFx } from '../utils/audio';
 import { api, ApiError, irA } from '../servicios/api';
@@ -17,7 +17,9 @@ type KitchenOrderStatus = 'Pendiente' | 'En Preparación' | 'Listos' | 'Pagado';
 export default function KitchenDashboard() {
   const { theme, toggleTheme } = useTheme();
   
-  const { orders, updateOrderStatus, inventory, staff, products } = useStore();
+  const { orders, updateOrderStatus, inventory, staff, products, storeConfig } = useStore();
+  // Datos del negocio para el ticket (se editan en Ajustes del administrador).
+  const negocio = storeConfig.business;
 
   const [time, setTime] = useState(new Date());
   const [printError, setPrintError] = useState<string | null>(null);
@@ -661,10 +663,10 @@ export default function KitchenDashboard() {
                   <div className="w-14 h-14 bg-gray-900 dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-gray-900 mb-3 shadow-sm">
                      <Utensils className="w-7 h-7" />
                   </div>
-                  <h3 className="font-black text-lg tracking-tight">COPIWAY PRO</h3>
-                  <p className="text-xs text-gray-500 dark:text-stone-400 mt-1">NIT: 900.123.456-7</p>
-                  <p className="text-xs text-gray-500 dark:text-stone-400">Cra 43 # 79-115, Barranquilla</p>
-                  <p className="text-xs text-gray-500 dark:text-stone-400">Tel: (300) 123-4567</p>
+                  <h3 className="font-black text-lg tracking-tight">{negocio?.name || 'COPIWAY PRO'}</h3>
+                  {negocio?.nit && <p className="text-xs text-gray-500 dark:text-stone-400 mt-1">NIT: {negocio.nit}</p>}
+                  {negocio?.address && <p className="text-xs text-gray-500 dark:text-stone-400">{negocio.address}</p>}
+                  {negocio?.phone && <p className="text-xs text-gray-500 dark:text-stone-400">Tel: {negocio.phone}</p>}
                   <span className="text-[10px] font-bold text-brand-orange bg-brand-orange/10 px-3 py-1 rounded-full mt-3">DOCUMENTO EQUIVALENTE POS</span>
                 </div>
 
@@ -743,6 +745,18 @@ export default function KitchenDashboard() {
                     <span className="text-gray-500 dark:text-stone-400">Tarifa de envío</span>
                     <span className="font-semibold">${(previewOrder.shipping || (previewOrder.total - (previewOrder.subtotal || previewOrder.items.reduce((acc, item) => acc + (item.finalPrice || item.price || 0) * (item.quantity || 1), 0))) || 0).toLocaleString('es-CO')}</span>
                   </div>
+                  {(previewOrder.discount || 0) > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 dark:text-stone-400">Descuento cumpleaños</span>
+                      <span className="font-semibold">-${(previewOrder.discount || 0).toLocaleString('es-CO')}</span>
+                    </div>
+                  )}
+                  {(previewOrder.pointsDiscount || 0) > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 dark:text-stone-400">Puntos canjeados ({previewOrder.pointsRedeemed})</span>
+                      <span className="font-semibold">-${(previewOrder.pointsDiscount || 0).toLocaleString('es-CO')}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center font-black text-lg pt-2.5 mt-1 border-t border-dashed border-gray-200 dark:border-stone-700 text-brand-orange">
                     <span>Total a Pagar</span>
                     <span>${(previewOrder.total || 0).toLocaleString('es-CO')}</span>
@@ -752,8 +766,8 @@ export default function KitchenDashboard() {
                 {/* Footer */}
                 <div className="pt-2 pb-2 text-center text-xs text-gray-500 dark:text-stone-400 space-y-1.5">
                   <p className="font-bold text-gray-700 dark:text-stone-300">¡Gracias por su preferencia!</p>
-                  <p>Síguenos en IG: @copiway_pro</p>
-                  <p>www.copiway.com</p>
+                  {negocio?.instagram && <p>Síguenos en IG: {negocio.instagram}</p>}
+                  {negocio?.website && <p>{negocio.website}</p>}
 
                   {/* Barcode Simulation */}
                   <div className="flex justify-center items-center h-10 mt-4 opacity-70">
@@ -831,6 +845,7 @@ function OrderCard({ order, products, onMove, onPrint, isReady = false }: { orde
           {order.items.map((item, idx) => {
             const catProduct = products.find(p => p.id === (item.productId || item.id) || p.name.toLowerCase() === (item.name || '').toLowerCase());
             const itemImage = item.product?.image || catProduct?.image;
+            const modifications = modificacionesDe(item);
             return (
             <li key={idx}>
               <div className="bg-gray-50 dark:bg-stone-800/30 rounded-2xl p-4 flex items-start gap-4 border border-gray-100 dark:border-stone-800/50">
@@ -852,11 +867,11 @@ function OrderCard({ order, products, onMove, onPrint, isReady = false }: { orde
                   <span className="font-bold text-gray-900 dark:text-white text-[16px] leading-tight block mb-1">{item.name}</span>
                   
                   {/* HU-30: Alertas visuales (SIN/EXTRA) */}
-                  {item.modifications && item.modifications.length > 0 && (
+                  {modifications.length > 0 && (
                     <ul className="mt-2 space-y-1">
-                      {item.modifications.map((mod: string, mIdx: number) => {
-                        const isSin = mod.toUpperCase().includes('SIN');
-                        const isExtra = mod.toUpperCase().includes('EXTRA');
+                      {modifications.map(({ texto: mod, tipo }, mIdx) => {
+                        const isSin = tipo === 'sin';
+                        const isExtra = tipo === 'extra';
                         const textColor = isSin ? 'text-red-600 dark:text-red-400 font-bold' : isExtra ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-gray-600 dark:text-gray-400 font-medium';
                         return (
                           <li key={mIdx} className={`text-[13px] italic flex items-center gap-1.5 ${textColor}`}>

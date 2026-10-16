@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, Banknote, Check, CheckCircle2, CreditCard, Landmark, Lock, MapPin, RotateCcw, ShoppingBag, Smartphone, Wallet } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Banknote, Check, CheckCircle2, CreditCard, Gift, Landmark, Lock, MapPin, RotateCcw, ShoppingBag, Smartphone, Wallet } from 'lucide-react';
 
 import { formatCOP } from '../../lib/format';
 import { StoreConfig } from '../../store/almacenAplicacion';
@@ -26,13 +26,26 @@ interface CheckoutSectionProps {
   storeConfig: StoreConfig;
   handleCheckoutSubmit: () => void;
   simulationStep: string;
+  pointsRedemption: PointsRedemption;
+}
+
+/** Canje de puntos en el checkout (el servidor vuelve a calcularlo al pagar). */
+export interface PointsRedemption {
+  available: number;
+  minimum: number;
+  pointValue: number;
+  canRedeem: boolean;
+  use: boolean;
+  setUse: (use: boolean) => void;
+  redeemed: number;
+  discount: number;
 }
 
 export default function CheckoutSection({
   setActiveTab, userProfile, setUserProfile, cart, cartSubtotal, FLAT_SHIPPING_RATE,
   isBirthday, birthdayDiscount, cartTotal, paymentMethod, setPaymentMethod, digitalBank,
   setDigitalBank, paymentPhone, setPaymentPhone, paymentStatus, isStoreOpen, storeConfig,
-  handleCheckoutSubmit, simulationStep,
+  handleCheckoutSubmit, simulationStep, pointsRedemption,
 }: CheckoutSectionProps) {
   return (
     <div className="space-y-6">
@@ -202,6 +215,29 @@ export default function CheckoutSection({
               ))}
             </div>
 
+            {/* Canje de puntos */}
+            <div className={`rounded-[16px] border p-4 ${pointsRedemption.use ? 'border-brand-orange bg-brand-orange/5' : 'border-gray-100 dark:border-stone-800'}`}>
+              <label className={`flex items-start gap-3 ${pointsRedemption.canRedeem ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}>
+                <input
+                  type="checkbox"
+                  className="mt-1 accent-[#ff7a00] w-4 h-4"
+                  checked={pointsRedemption.use}
+                  disabled={!pointsRedemption.canRedeem || paymentStatus === 'processing'}
+                  onChange={e => pointsRedemption.setUse(e.target.checked)}
+                />
+                <span className="flex-1 min-w-0">
+                  <span className="flex items-center gap-1.5 text-sm font-bold text-gray-900 dark:text-white">
+                    <Gift className="w-4 h-4 text-brand-orange" /> Usar mis puntos
+                  </span>
+                  <span className="block text-xs text-gray-500 dark:text-stone-400 mt-0.5">
+                    {pointsRedemption.canRedeem
+                      ? `Tienes ${pointsRedemption.available} puntos (1 punto = ${formatCOP(pointsRedemption.pointValue)}).`
+                      : `Tienes ${pointsRedemption.available} puntos. Podrás canjearlos desde ${pointsRedemption.minimum} puntos.`}
+                  </span>
+                </span>
+              </label>
+            </div>
+
             <div className="border-t border-gray-100 dark:border-stone-800 pt-4 space-y-2">
               <div className="flex justify-between items-center text-[15px]">
                 <span className="text-gray-500 font-medium">Subtotal</span>
@@ -215,6 +251,12 @@ export default function CheckoutSection({
                 <div className="flex justify-between items-center text-[15px] text-[#10b981]">
                   <span className="font-medium">Descuento Cumpleaños</span>
                   <span className="font-bold">-{formatCOP(birthdayDiscount)}</span>
+                </div>
+              )}
+              {pointsRedemption.discount > 0 && (
+                <div className="flex justify-between items-center text-[15px] text-[#10b981]">
+                  <span className="font-medium">Puntos canjeados ({pointsRedemption.redeemed})</span>
+                  <span className="font-bold">-{formatCOP(pointsRedemption.discount)}</span>
                 </div>
               )}
             </div>

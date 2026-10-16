@@ -28,7 +28,8 @@ Describen qué campos tiene cada cosa. Coinciden con lo que arman las funciones 
 | `Order`, `OrderItem` | Pedido y sus productos | `pedido_a_json()`, `Pedido::itemsDe()` |
 | `Ingredient` | Extra para personalizar | `ingrediente_a_catalogo()` |
 | `Client`, `Notification` | Cliente y sus avisos | `cliente_a_json()`, `notificacion_a_json()` |
-| `StoreConfig` | Ajustes de la tienda | `Configuracion::obtener()` |
+| `StoreConfig`, `BusinessInfo` | Ajustes de la tienda (incluye `pointValue`, `minPointsToRedeem` y los datos del negocio en `business`) | `Configuracion::obtener()` |
+| `ManualOrderInput` | Lo que se envía en un pedido manual: `clientName`, `clientPhone`, `address`, `channel`, `items` | — (lo recibe `OrderController` `storeManual`) |
 | `ProductComponent`, `NamedRef` | Piezas pequeñas (ingrediente de receta, referencia `{id, name}`) | — |
 
 ## El estado (los datos guardados)
@@ -57,10 +58,14 @@ Describen qué campos tiene cada cosa. Coinciden con lo que arman las funciones 
 | `updateInventoryStock` | `PATCH /inventory/{id}/stock` | `adjustStock` | `InventorySection.tsx` |
 | `deleteInventoryItem` | `DELETE /inventory/{id}` | `destroy` | `InventorySection.tsx` |
 | `addStaff` | `POST /staff` | StaffController `store` | `admin/StaffSection.tsx` |
-| `updateStaff` | `PUT /staff/{id}` | `update` | `StaffSection.tsx`, `DeliveryDashboard.tsx` (ver nota) |
-| `deleteStaff` | `DELETE /staff/{id}?role=` | `destroy` | `StaffSection.tsx` |
-| `addOrder` | `POST /orders` | OrderController `store` | `ClientDashboard.tsx` |
-| `prepareOnlinePayment` | `POST /payments/prepare` | PaymentController `prepare` | `ClientDashboard.tsx` |
+| `updateStaff` | `PUT /staff/{id}` | `update` | `StaffSection.tsx` (editar y **Dar de baja**) |
+| `deleteStaff` | `DELETE /staff/{id}?role=` | `destroy` | `StaffSection.tsx` (borrado permanente; si PHP lo permite, lo quita de la lista) |
+| `updateDriverLocation` | `PATCH /staff/{id}/location` | `updateLocation` | `DeliveryDashboard.tsx` (GPS) |
+| `addOrder(order, usePoints)` | `POST /orders` | OrderController `store` | `ClientDashboard.tsx` |
+| `addManualOrder` | `POST /orders/manual` | `storeManual` | `AdminDashboard.tsx` (devuelve el pedido creado) |
+| `updateOrderAddress` | `PATCH /orders/{id}/address` | `updateAddress` | `AdminDashboard.tsx` |
+| `saveOrderDestination` | `PATCH /orders/{id}/destination` | `updateDestination` | `DeliveryDashboard.tsx` |
+| `prepareOnlinePayment(order, usePoints)` | `POST /payments/prepare` | PaymentController `prepare` | `ClientDashboard.tsx` |
 | `updateOrderStatus` | `PATCH /orders/{id}/preparing·ready·accept·deliver` | OrderController | Cocina, Domiciliario, Admin |
 | `takeOrder` | `PATCH /orders/{id}/take` | `take` | `DeliveryDashboard.tsx` |
 | `releaseOrder` | `PATCH /orders/{id}/release` | `release` | `DeliveryDashboard.tsx`, `admin/OrdersSection.tsx` |
@@ -76,8 +81,8 @@ Acciones que **no** llaman a PHP (solo cambian el estado local): `addInventoryLo
 `addClient`, `deleteClient`. Los comentarios del código explican por qué (por ejemplo, los pedidos no
 se borran, se archivan en el cierre de caja).
 
-**Nota:** `DeliveryDashboard.tsx` usa `updateStaff` para enviar el GPS, pero `PUT /staff/{id}` es solo
-para admin (ver la observación en `documentacion.md/app/Controllers/StaffController.md`).
+`usePoints` (en `addOrder` y `prepareOnlinePayment`) le dice al servidor que el cliente quiere pagar
+parte con sus puntos. Se envía en los dos para que el monto de la pasarela y el del pedido coincidan.
 
 ## Código explicado
 ```ts

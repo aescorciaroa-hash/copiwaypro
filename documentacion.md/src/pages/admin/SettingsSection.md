@@ -2,8 +2,8 @@
 
 ## ¿Para qué sirve?
 Es la pestaña **"Ajustes y Caja"**: el admin cambia la tarifa del domicilio, el horario, abre o cierra
-la tienda a mano, activa la **pausa de emergencia**, cambia el margen de ganancia y genera el
-**cierre de caja**.
+la tienda a mano, activa la **pausa de emergencia**, cambia el margen de ganancia, configura el
+**programa de puntos**, edita los **datos del negocio** del ticket y genera el **cierre de caja**.
 
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
@@ -12,7 +12,7 @@ la tienda a mano, activa la **pausa de emergencia**, cambia el margen de gananci
 | → `updateStoreConfig({...})` | almacén → `PUT /api/settings` → `SettingController` → `Configuracion::actualizar()` → tabla CONFIGURACION_SISTEMA | Guardar ajustes. |
 | → `setShowTimePicker('open' / 'close')` | `TimePickerModal` del padre | Elegir horario. |
 | → `handleGenerarCierre()` | del padre | Abrir el cierre de caja (ver `AdminDashboard.md`). |
-| → usa | `ToastNotification` (vía `showToast`), `formatCOP` | |
+| → usa | `ToastNotification` (vía `showToast`), `formatCOP`, `ApiError` | |
 
 ## Props
 | Prop | Qué es |
@@ -23,6 +23,16 @@ la tienda a mano, activa la **pausa de emergencia**, cambia el margen de gananci
 | `profitMarginInput` / `setProfitMarginInput` | Lo que se escribe en el margen. |
 | `setShowTimePicker`, `handleGenerarCierre`, `showToast` | Funciones del padre. |
 
+## Variables propias
+| Variable | Qué es |
+|---|---|
+| `pointValueInput`, `minPointsInput` | Lo que se escribe en "Valor de 1 punto" y "Mínimo para canjear". |
+| `businessInput` | Los datos del negocio que se están escribiendo (`name`, `nit`, `address`, `phone`, `instagram`, `website`). |
+| `CAMPOS_NEGOCIO` (constante) | La lista de esos campos con su etiqueta y un ejemplo; con ella se dibujan los 6 cuadros de texto. |
+
+Estos campos se vuelven a llenar con lo guardado **solo cuando cambia el valor guardado**: la
+sincronización de cada pocos segundos no borra lo que el admin está escribiendo.
+
 ## Ajustes y a dónde van
 | Ajuste | Llamada | Columna MySQL | Quién lo usa |
 |---|---|---|---|
@@ -31,7 +41,35 @@ la tienda a mano, activa la **pausa de emergencia**, cambia el margen de gananci
 | Pausa de emergencia (botón de pánico) | `updateStoreConfig({ isPaused })` | `pausa_emergencia_activa` | Con la pausa activa no se aceptan pedidos (403). |
 | Margen de ganancia | `updateStoreConfig({ profitMargin })` | `margen_ganancia_defecto` | Precio de los extras: `costo × (1 + margen/100)`. |
 | Horario | (en el padre, con `TimePickerModal`) | `horario_apertura`, `horario_cierre` | |
+| Programa de puntos | `guardarPuntos()` → `updateStoreConfig({ pointValue, minPointsToRedeem })` | `valor_punto`, `minimo_puntos_canje` | `PedidoService::calcular()` al canjear y el checkout del cliente. |
+| Datos del negocio | `guardarNegocio()` → `updateStoreConfig({ business })` | `negocio_nombre`, `negocio_nit`, `negocio_direccion`, `negocio_telefono`, `negocio_instagram`, `negocio_web` | El ticket de `KitchenDashboard.tsx`. El nombre es obligatorio; los campos vacíos no se imprimen. |
+
+`guardarPuntos()` y `guardarNegocio()` **esperan la respuesta** del servidor: el aviso de éxito solo
+aparece si se guardó, y si PHP rechaza los datos (por ejemplo un valor negativo → 422) muestran el
+motivo.
 
 Cada bloque tiene una **simulación** en vivo: por ejemplo, cuánto pagaría un cliente con la tarifa
-escrita, o cuánto costaría un ingrediente con el margen escrito. Hay botones de **valores rápidos**
+escrita, cuánto costaría un ingrediente con el margen escrito, o cuánto valen 100 puntos y qué
+porcentaje de lo comprado le devuelven al cliente. Hay botones de **valores rápidos**
 (presets) para elegir con un toque.
+
+## Cómo están ordenadas las tarjetas
+La pantalla tiene dos columnas (en celular se ven una debajo de otra). El orden busca que las dos
+columnas terminen más o menos a la misma altura:
+
+| Columna izquierda | Columna derecha |
+|---|---|
+| Tarifa Plana de Domicilio | Margen de Ganancia |
+| Horario de Atención | Programa de Puntos |
+| Datos del Negocio (Ticket) | Reporte de Cierre de Caja |
+| Vista Previa del Ticket | Pausa de Emergencia |
+
+## Vista Previa del Ticket
+Tarjeta que muestra el **encabezado y el pie** del ticket de cocina con lo que se está escribiendo en
+"Datos del Negocio" (`businessInput`), **antes de guardar**. Usa el mismo formato que la ventana de
+impresión de `KitchenDashboard.tsx`: nombre, NIT, dirección y teléfono arriba; "¡Gracias por su
+preferencia!", Instagram y página web abajo. Los campos vacíos no aparecen, igual que en el ticket real.
+
+Si lo escrito es distinto de lo guardado (`JSON.stringify(businessInput) !== businessGuardado`),
+muestra la etiqueta **"Sin guardar"** para recordar que falta presionar "Guardar Datos del Negocio".
+Solo es una vista: no llama a PHP.

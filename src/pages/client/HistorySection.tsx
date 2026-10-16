@@ -669,6 +669,13 @@ export default function HistorySection({
                     </div>
                   )}
 
+                  {(viewingReceiptOrder.pointsDiscount || 0) > 0 && (
+                    <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+                      <span>Puntos canjeados ({viewingReceiptOrder.pointsRedeemed})</span>
+                      <span>-{formatCOP(viewingReceiptOrder.pointsDiscount || 0)}</span>
+                    </div>
+                  )}
+
                   <div className="pt-3 border-t border-gray-200 dark:border-stone-700/60 flex justify-between items-center text-base font-bold text-gray-900 dark:text-white">
                     <span>Total pagado</span>
                     <span className="text-xl font-black text-brand-orange">

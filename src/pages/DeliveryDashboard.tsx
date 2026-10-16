@@ -79,7 +79,7 @@ const CustomZoomControl = () => {
 export default function DeliveryDashboard() {
     const { theme, toggleTheme } = useTheme();
 
-  const { orders, updateOrder, updateOrderStatus, takeOrder: takeOrderApi, releaseOrder: releaseOrderApi, staff, updateStaff, confirmDelivery } = useStore();
+  const { orders, updateOrderStatus, takeOrder: takeOrderApi, releaseOrder: releaseOrderApi, staff, confirmDelivery, updateDriverLocation, saveOrderDestination } = useStore();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null);
@@ -114,17 +114,23 @@ export default function DeliveryDashboard() {
 
   useEffect(() => {
     if (activeRoute) {
+      // Si el destino ya está ubicado (lo guardó antes este domiciliario), se usa tal cual.
+      if (activeRoute.lat != null && activeRoute.lng != null) {
+        const coords: [number, number] = [activeRoute.lat, activeRoute.lng];
+        setDestCoords(coords);
+        setMapCenter(coords);
+        return;
+      }
       const searchAddress = async () => {
         try {
           const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(activeRoute.address + ', Neiva, Huila'));
           const data = await res.json();
           if (data && data.length > 0) {
-            const coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-            setDestCoords(coords as [number, number]);
-            setMapCenter(coords as [number, number]);
-            if (loggedInUserId) {
-              updateStaff(loggedInUserId, { role: 'Domiciliario', currentOrderId: activeRoute.id, destCoords: coords as [number, number] });
-            }
+            const coords: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+            setDestCoords(coords);
+            setMapCenter(coords);
+            // Se guarda en el pedido para que el mapa del administrador muestre la ruta.
+            saveOrderDestination(activeRoute.id, coords).catch(() => {});
           }
         } catch(e) {}
       };
@@ -132,7 +138,18 @@ export default function DeliveryDashboard() {
     } else {
       setDestCoords(null);
     }
-  }, [activeRoute]);
+  }, [activeRoute?.id, activeRoute?.address, activeRoute?.lat, activeRoute?.lng]);
+
+  // Si el administrador corrige la dirección del pedido en curso, la ruta se
+  // actualiza sola y se avisa al domiciliario.
+  useEffect(() => {
+    if (!activeRoute) return;
+    const actual = orders.find(o => o.id === activeRoute.id);
+    if (actual && actual.address !== activeRoute.address) {
+      setActiveRoute(prev => prev ? { ...prev, address: actual.address, lat: actual.lat, lng: actual.lng } : prev);
+      showToast('warning', `La nueva dirección de entrega es: ${actual.address}`, 'Dirección Actualizada');
+    }
+  }, [orders]);
 
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -164,6 +181,8 @@ export default function DeliveryDashboard() {
     if (isLoggedIn && loggedInUserId) {
       let isUsingMock = false;
       let currentMockLoc: [number, number] = [2.9273, -75.2818];
+      // El GPS puede reportar varias veces por segundo: al servidor se envía como máximo cada 10 s.
+      let lastSentAt = 0;
 
       if (navigator.geolocation) {
         watchId = navigator.geolocation.watchPosition(
@@ -171,7 +190,11 @@ export default function DeliveryDashboard() {
             isUsingMock = false;
             const { latitude, longitude } = position.coords;
             setMapCenter([latitude, longitude]);
-            updateStaff(loggedInUserId, { role: 'Domiciliario', location: [latitude, longitude] });
+            const now = Date.now();
+            if (now - lastSentAt >= 10000) {
+              lastSentAt = now;
+              updateDriverLocation(loggedInUserId, [latitude, longitude]).catch(() => {});
+            }
           },
           (error) => {
             isUsingMock = true;
@@ -183,7 +206,8 @@ export default function DeliveryDashboard() {
         isUsingMock = true;
       }
 
-      // Fallback Simulator
+      // Simulador de respaldo (sin GPS o sin permiso): solo mueve el mapa de este
+      // celular; esa posición inventada NO se envía al servidor.
       simInterval = window.setInterval(() => {
         if (isUsingMock) {
            // If there is an active route and dest coords, move towards it
@@ -197,7 +221,6 @@ export default function DeliveryDashboard() {
              currentMockLoc = [2.9274, -75.2817];
            }
            setMapCenter(currentMockLoc);
-           updateStaff(loggedInUserId, { role: 'Domiciliario', location: currentMockLoc });
         }
       }, 2000);
     }
@@ -205,7 +228,7 @@ export default function DeliveryDashboard() {
       if (watchId) navigator.geolocation.clearWatch(watchId);
       if (simInterval) clearInterval(simInterval);
     };
-  }, [isLoggedIn, loggedInUserId, updateStaff, activeRoute, destCoords]);
+  }, [isLoggedIn, loggedInUserId, updateDriverLocation, activeRoute, destCoords]);
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -291,9 +314,7 @@ export default function DeliveryDashboard() {
 
     const currentDriver = staff.find(s => s.id === loggedInUserId && s.role === 'Domiciliario');
 
-    if (loggedInUserId) {
-      updateStaff(loggedInUserId, { role: 'Domiciliario', currentOrderId: orderId });
-    }
+    // El pedido en curso del domiciliario lo calcula el servidor (pedido 'en_camino' asignado).
     const order = deliveries.find(d => d.id === orderId) || orders.find(o => o.id === orderId);
     if (order) {
       setActiveRoute({
@@ -334,9 +355,6 @@ export default function DeliveryDashboard() {
       updateOrderStatus(orderId, 'Entregado');
     }
 
-    if (loggedInUserId) {
-      updateStaff(loggedInUserId, { role: 'Domiciliario', currentOrderId: '', destCoords: null });
-    }
     setAcceptedOrders(prev => prev.filter(id => id !== orderId));
     showToast('success', `El pedido #${orderId} fue entregado con éxito.`, 'Pedido Entregado');
     if (activeRoute?.id === orderId) setActiveRoute(null);

@@ -17,8 +17,11 @@ function personal_cocina_a_json($fila)
     ];
 }
 
-/** $currentOrderId ya viene resuelto por el modelo (SELECT PEDIDO en_camino). */
-function personal_domicilio_a_json($fila, $currentOrderId)
+/**
+ * $currentOrderId y $destino ya vienen resueltos por el modelo (pedido 'en_camino'
+ * del domiciliario y las coordenadas que el ubico en su mapa).
+ */
+function personal_domicilio_a_json($fila, $currentOrderId, $destino = null)
 {
     $ubicacion = null;
     if ($fila['ubicacion_lat'] !== null && $fila['ubicacion_lng'] !== null) {
@@ -36,6 +39,7 @@ function personal_domicilio_a_json($fila, $currentOrderId)
         'createdBy' => $fila['creado_por_nombre'] ?? null,
         'location' => $ubicacion,
         'currentOrderId' => $currentOrderId !== null ? (string) $currentOrderId : null,
+        'destCoords' => $destino,
         'plate' => $fila['placa'],
         'vehicle' => $fila['tipo_vehiculo'],
         'vehicleModel' => $fila['modelo_vehiculo'],

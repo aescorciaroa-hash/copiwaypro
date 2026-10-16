@@ -61,7 +61,11 @@ y de la barra inferior del celular.
 | `reviewingOrderId`, `reviewRating`, `reviewText`, `reviewTags` | Ventana de reseña. |
 | `showPushPrompt` | Mostrar el aviso "Activa las notificaciones". |
 | `FLAT_SHIPPING_RATE` | Costo del domicilio = `storeConfig.shippingRate`. |
-| `cartSubtotal`, `birthdayDiscount`, `cartTotal` | Totales del carrito: el descuento es 15 % si hoy es el cumpleaños (`isBirthday`). |
+| `cartSubtotal`, `birthdayDiscount`, `cartTotal` | Totales del carrito: el descuento es 15 % si hoy es el cumpleaños (`isBirthday`). `cartTotal = subtotal − cumpleaños − puntos + domicilio`. |
+| `usePoints` | La casilla "Usar mis puntos" del checkout. Vuelve a `false` después de cada pedido. |
+| `pointValue`, `minPointsToRedeem` | Reglas del programa de puntos (de `storeConfig`, se editan en Ajustes). |
+| `availablePoints`, `canRedeemPoints`, `redeemPoints` | Saldo del cliente, si alcanza el mínimo, y si de verdad se van a usar (casilla marcada **y** alcanza). |
+| `pointsRedeemed`, `pointsDiscount` | Puntos que se descontarían: lo menor entre el saldo y lo que cubre los productos (`(subtotal − cumpleaños) ÷ valor del punto`), y su valor en pesos. |
 
 ## Funciones principales
 | Función | Qué hace |
@@ -91,8 +95,12 @@ y de la barra inferior del celular.
 El servidor **vuelve a verificar** la transacción antes de crear el pedido (`PagoService::verificarTransaccion()`).
 
 `submitOrder` arma un objeto con id, PIN y totales calculados en el navegador, pero `addOrder` del
-almacén **solo envía** ítems, dirección, método de pago, banco y transacción: el id, el PIN y los
-totales reales los genera el servidor.
+almacén **solo envía** ítems, dirección, método de pago, banco, transacción y si usa puntos
+(`usePoints`): el id, el PIN y los totales reales los genera el servidor. `prepareOnlinePayment`
+también envía `usePoints`, para que el monto que se firma en la pasarela sea el mismo que se cobra.
+
+Después de canjear, el saldo de puntos del perfil se actualiza en la siguiente sincronización. Se
+lee con `client.points ?? ...` (y no con `||`) para que un saldo de **0** se muestre como 0.
 
 ## Efectos (`useEffect`)
 1. **Reloj** cada 15 segundos.

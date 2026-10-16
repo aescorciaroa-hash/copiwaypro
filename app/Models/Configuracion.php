@@ -31,6 +31,14 @@ class Configuracion
                 'pausa_emergencia_activa' => 0,
                 'tarifa_plana_domicilio'  => 0,
                 'margen_ganancia_defecto' => 30,
+                'valor_punto'             => 10,
+                'minimo_puntos_canje'     => 100,
+                'negocio_nombre'          => 'COPIWAY PRO',
+                'negocio_nit'             => '',
+                'negocio_direccion'       => '',
+                'negocio_telefono'        => '',
+                'negocio_instagram'       => '',
+                'negocio_web'             => '',
             ];
         }
 
@@ -46,6 +54,16 @@ class Configuracion
             'isPaused'     => (bool) $cfg['pausa_emergencia_activa'],
             'shippingRate' => (float) $cfg['tarifa_plana_domicilio'],
             'profitMargin' => (float) $cfg['margen_ganancia_defecto'],
+            'pointValue'   => (float) $cfg['valor_punto'],
+            'minPointsToRedeem' => (int) $cfg['minimo_puntos_canje'],
+            'business'     => [
+                'name'      => $cfg['negocio_nombre'],
+                'nit'       => $cfg['negocio_nit'],
+                'address'   => $cfg['negocio_direccion'],
+                'phone'     => $cfg['negocio_telefono'],
+                'instagram' => $cfg['negocio_instagram'],
+                'website'   => $cfg['negocio_web'],
+            ],
             'categories'   => $categorias,
         ];
     }
@@ -57,6 +75,13 @@ class Configuracion
             'openTime' => 'horario_apertura', 'closeTime' => 'horario_cierre',
             'isOpen' => 'tienda_abierta_manual', 'isPaused' => 'pausa_emergencia_activa',
             'shippingRate' => 'tarifa_plana_domicilio', 'profitMargin' => 'margen_ganancia_defecto',
+            'pointValue' => 'valor_punto', 'minPointsToRedeem' => 'minimo_puntos_canje',
+        ];
+
+        // Los datos del negocio llegan agrupados en 'business' (ver obtener()).
+        $mapaNegocio = [
+            'name' => 'negocio_nombre', 'nit' => 'negocio_nit', 'address' => 'negocio_direccion',
+            'phone' => 'negocio_telefono', 'instagram' => 'negocio_instagram', 'website' => 'negocio_web',
         ];
 
         $sets = [];
@@ -73,6 +98,15 @@ class Configuracion
             }
             $sets[] = "{$columna} = ?";
             $values[] = $valor;
+        }
+
+        $negocio = is_array($campos['business'] ?? null) ? $campos['business'] : [];
+        foreach ($mapaNegocio as $clave => $columna) {
+            if (!array_key_exists($clave, $negocio)) {
+                continue;
+            }
+            $sets[] = "{$columna} = ?";
+            $values[] = trim((string) $negocio[$clave]);
         }
 
         if (empty($sets)) {
@@ -171,6 +205,16 @@ class Configuracion
     public function idIngredienteBolsaGlobal()
     {
         return $this->get('id_ingrediente_bolsa_global')['id_ingrediente_bolsa_global'] ?: null;
+    }
+
+    /** Programa de puntos: valor en pesos de 1 punto y minimo de puntos para canjear. */
+    public function reglasPuntos()
+    {
+        $cfg = $this->get('valor_punto, minimo_puntos_canje');
+        return [
+            'valor'  => (float) $cfg['valor_punto'],
+            'minimo' => (int) $cfg['minimo_puntos_canje'],
+        ];
     }
 
     /** % de ganancia que el admin configura en Ajustes (ej. 30). */

@@ -51,12 +51,15 @@ El domiciliario solo ve el teléfono si el pedido es **suyo** y va **En Camino**
 | Campo de React | Sale de |
 |---|---|
 | `id` | `'#ORD-' . id_pedido` |
-| `client`, `clientPhone` | nombre y teléfono del cliente |
+| `client`, `clientPhone` | nombre y teléfono del cliente (en un pedido de invitado, los que dictó por teléfono) |
 | `driverName`, `driverPhone`, `driverPlate`, `driverVehicle` | datos del domiciliario |
 | `preparedBy` | nombre del ayudante de cocina |
 | `total`, `subtotal`, `shipping`, `discount` | montos (convertidos a número) |
+| `pointsRedeemed`, `pointsDiscount` | puntos que el cliente canjeó en este pedido y cuánto descontaron en pesos |
 | `pointsEarned` | puntos que da el pedido |
 | `lat`, `lng` | ubicación de entrega (para el mapa) |
 | `time` | `date('H:i', strtotime(fecha_hora))` → solo la hora, ej: `"14:30"` |
 | `paymentMethod` | `efectivo` → `'cash'`, `digital` → `'online'` |
 | `paymentStatus` | `aprobado` → `'Pagado'`; si no, la primera letra en mayúscula (`ucfirst`) |
+| `channel` | por dónde llegó: `canal_origen` (`web`, `llamada` o `whatsapp`) |
+| `isGuest` | `true` si es un pedido manual de alguien sin cuenta (`id_cliente` vacío) |

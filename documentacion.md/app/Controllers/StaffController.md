@@ -1,27 +1,29 @@
 # app/Controllers/StaffController.php
 
 ## ¿Para qué sirve?
-Maneja el **personal**: ayudantes de cocina y domiciliarios. El admin los crea, edita y da de baja.
-También tiene la ruta para guardar la ubicación GPS del domiciliario (ver la observación al final).
+Maneja el **personal**: ayudantes de cocina y domiciliarios. El admin los crea, edita, da de baja y
+elimina (solo si no tienen historial). También tiene la ruta con la que el domiciliario guarda su
+ubicación GPS.
 
 ## ¿Con qué se conecta?
 | Ruta | `$action` | Quién | React |
 |---|---|---|---|
 | `GET /api/staff` | `index` | admin | Llega por `/api/sync` (clave `staff`) |
 | `POST /api/staff` | `store` | admin | `almacenAplicacion.ts` ← `admin/StaffSection.tsx` |
-| `PUT /api/staff/{id}` | `update` | admin | `almacenAplicacion.ts` (`updateStaff`) ← `StaffSection.tsx` |
-| `DELETE /api/staff/{id}?role=...` | `destroy` | admin | `almacenAplicacion.ts` ← `StaffSection.tsx` |
-| `PATCH /api/staff/{id}/location` | `updateLocation` | domiciliario | Ninguna pantalla la usa hoy (ver la observación al final) |
+| `PUT /api/staff/{id}` | `update` | admin | `almacenAplicacion.ts` (`updateStaff`) ← `StaffSection.tsx` (también **Dar de baja**, con `active: false`) |
+| `DELETE /api/staff/{id}?role=...` | `destroy` | admin | `almacenAplicacion.ts` (`deleteStaff`) ← `StaffSection.tsx` (botón **Eliminar**) |
+| `PATCH /api/staff/{id}/location` | `updateLocation` | domiciliario | `almacenAplicacion.ts` (`updateDriverLocation`) ← `DeliveryDashboard.tsx` |
 
 - **Modelo:** `Personal` (tablas AYUDANTE_COCINA y DOMICILIARIO).
-- **Mapa del admin:** la ubicación guardada aquí la muestra `admin/MapSection.tsx`.
+- **Mapa del admin:** la ubicación guardada aquí la muestran `admin/MapSection.tsx` y
+  `admin/OrdersSection.tsx`, junto con el pedido en curso y su destino.
 
 ## Variables importantes
 | Variable | Para qué sirve |
 |---|---|
 | `$vehiculos` | Lista de vehículos válidos: `moto`, `bicicleta`, `carro`, `a_pie`. |
 | `$datos['role']` | `'Ayudante de cocina'` o `'Domiciliario'`: dice en qué tabla se guarda. |
-| `$_GET['role']` | En `destroy`: indica la tabla, porque el mismo número de id puede existir en las dos tablas. |
+| `$_GET['role']` | En `destroy`: indica la tabla, porque el mismo número de id puede existir en las dos tablas. Es **obligatorio**. |
 | `$datos['pin']` | PIN de 4 dígitos con el que entran cocina y domiciliario. |
 
 ## La función `buscarEnPersonal($personalModel, $id)`
@@ -32,12 +34,14 @@ para responder con el miembro ya guardado. Si no lo encuentra, devuelve solo `['
 - **`index`**: lista cocina + domiciliarios.
 - **`store`**: valida nombre, correo, contraseña (mínimo 8), rol, vehículo y PIN (`preg_match('/^\d{4}$/', ...)` = exactamente 4 dígitos). Revisa que el correo no exista. Crea y responde **201**.
 - **`update`**: valida solo los campos que llegan. Si no encuentra a la persona → **404**.
-- **`destroy`**: **no borra**, la desactiva (`activo = 0`) para no perder el historial de pedidos.
-- **`updateLocation`**: solo el propio domiciliario (`Auth::id()` igual al `{id}`). Valida `lat` y `lng` (números) y los guarda.
+- **`destroy`**: **borra de verdad** a la persona, pero solo si nunca preparó, repartió ni fue
+  liquidada en un pedido (`Personal::eliminarPermanente`). Respuestas:
+  - sin `role` → **422**
+  - tiene historial → **409** con el mensaje "...usa Dar de baja para quitarle el acceso"
+  - no existe → **404**
 
-## Observación (comportamiento actual, no se cambió)
-`DeliveryDashboard.tsx` envía la ubicación GPS del domiciliario con `updateStaff()`, que hace
-`PUT /api/staff/{id}`. Esa ruta es **solo para admin**, así que el servidor le responde **403** al
-domiciliario y la ubicación no se guarda. La ruta pensada para eso es `PATCH /api/staff/{id}/location`
-(`updateLocation`), pero React no la llama. Si se quiere que el mapa del admin muestre la ubicación
-real, habría que cambiar React para que use esa ruta.
+  Para quitarle el acceso a alguien con historial se usa **Dar de baja** (`update` con `active: false`),
+  que pone `activo = 0` y conserva su historial.
+- **`updateLocation`**: solo el propio domiciliario (`Auth::id()` igual al `{id}`). Valida `lat` y `lng`
+  (números) y los guarda. React la llama como máximo cada 10 segundos y solo con la posición real
+  del GPS (nunca con la posición simulada).

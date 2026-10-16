@@ -63,6 +63,11 @@ Dónde: `app/Views/json/pedido.php`, `app/Views/json/producto.php`, `Auth::usuar
 - El total **siempre** lo calcula el servidor.
 - Los pagos digitales llevan una **firma** (HMAC con `APP_KEY`): si alguien cambia el monto en el navegador, la firma no coincide.
 - Una transacción solo se puede usar en **un** pedido.
+- **Canje de puntos:** el saldo se vuelve a leer y se descuenta dentro de la misma transacción que
+  crea el pedido, con la fila del cliente bloqueada (`FOR UPDATE`). Dos pedidos al mismo tiempo no
+  pueden gastar los mismos puntos, y si el pedido falla (por ejemplo, sin stock) los puntos no se pierden.
+- **Pedido manual y cambio de dirección:** solo el administrador (`POST /api/orders/manual`,
+  `PATCH /api/orders/{id}/address`). El domiciliario solo puede guardar el destino de **sus** pedidos.
 
 ## Archivos subidos
 Las fotos se revisan por su **contenido real** (no por el nombre), solo se aceptan JPG, PNG, WEBP y

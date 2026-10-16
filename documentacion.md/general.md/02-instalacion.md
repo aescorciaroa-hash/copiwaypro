@@ -28,6 +28,17 @@ Esta guía es para instalar el proyecto **en un computador nuevo**. Si ya lo tie
 6. `npm install` (descarga las librerías de React).
 7. `npm run build` (compila React a `public/assets/`).
 
+## Ya tenía el sistema instalado (actualizar la base de datos)
+Si tu base de datos se creó antes de que existieran el pedido manual, el canje de puntos y los datos
+del negocio en el ticket, **no vuelvas a ejecutar `schema.sql`** (borraría tus datos). Ejecuta solo
+la migración, una vez:
+
+```powershell
+"C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe" -u root --default-character-set=utf8mb4 hamburguer_copiway < database\migraciones\001_pedido_manual_puntos_ticket.sql
+```
+Si responde `Duplicate column name`, ya estaba aplicada. Detalle en
+[la migración 001](../database/migraciones/001_pedido_manual_puntos_ticket.md).
+
 ## Opción B: instalación paso a paso
 Ejecuta esto en una terminal dentro de `C:\laragon\www\copiwaypro`:
 

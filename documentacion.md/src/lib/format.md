@@ -1,8 +1,8 @@
 # src/lib/format.ts
 
 ## ¿Para qué sirve?
-Funciones pequeñas para **mostrar datos bonitos**: dinero en pesos, el código del pedido y el
-nombre del vehículo.
+Funciones pequeñas para **mostrar datos bonitos**: dinero en pesos, el código del pedido, el
+nombre del vehículo y las personalizaciones de un producto (SIN / EXTRA).
 
 ## ¿Con qué se conecta?
 | Función | La usan |
@@ -11,6 +11,7 @@ nombre del vehículo.
 | `orderCode` | `KitchenDashboard.tsx`, `DeliveryDashboard.tsx`, `ClientDashboard.tsx`, `admin/OverviewSection.tsx`, `client/ActiveOrdersSection.tsx`, `client/HistorySection.tsx` |
 | `vehicleWithModel` | `AdminDashboard.tsx`, `admin/MapSection.tsx`, `admin/OrdersSection.tsx`, `DeliveryDashboard.tsx`, `client/HistorySection.tsx` |
 | `vehicleLabel` | Lo usa `vehicleWithModel` aquí mismo |
+| `modificacionesDe` | `KitchenDashboard.tsx` (tarjetas), `admin/OrdersSection.tsx` (comandas activas), `AdminDashboard.tsx` (detalle del pedido) |
 
 ## Funciones
 ### `orderCode(id)`
@@ -33,3 +34,16 @@ Usa la tabla `VEHICLE_LABELS`; si el valor no está, pone la primera letra en ma
 
 ### `vehicleWithModel(vehicle, model)`
 `("moto", "GIXXER 155")` → `"Moto - GIXXER 155"`. Si no hay modelo, solo `"Moto"`.
+
+### `modificacionesDe(item)`
+Arma la lista de personalizaciones de un producto del pedido, a partir de lo que envía el servidor
+(`removed` y `extras`):
+| Viene en | Se muestra | `tipo` (color) |
+|---|---|---|
+| `removed` | `SIN Cebolla` | `'sin'` (rojo) |
+| `extras` de un producto normal | `EXTRA Queso` | `'extra'` (verde) |
+| `extras` de la "Hamburguesa Personalizada" | `Carne` (tal cual) | `'ingrediente'` (gris) |
+
+En la hamburguesa del Creador Interactivo, `extras` es la receta completa que armó el cliente, no un
+adicional; por eso no se le pone "EXTRA". Las pantallas eligen el color con `tipo`, no buscando la
+palabra "SIN" dentro del texto (así un ingrediente como "Salsa Insignia" no se pinta de rojo).

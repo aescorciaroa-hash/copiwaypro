@@ -49,14 +49,19 @@ class Personal
 
     public function comoJsonDomicilio($row)
     {
-        $stmt = $this->conn->prepare("SELECT id_pedido FROM PEDIDO WHERE id_domiciliario = ? AND estado = 'en_camino' LIMIT 1");
+        $stmt = $this->conn->prepare(
+            "SELECT id_pedido, destino_lat, destino_lng FROM PEDIDO WHERE id_domiciliario = ? AND estado = 'en_camino' LIMIT 1"
+        );
         $stmt->bind_param("i", $row['id_domiciliario']);
         $stmt->execute();
         $pedido = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
         $pedidoActual = $pedido ? '#ORD-' . $pedido['id_pedido'] : null;
-        return personal_domicilio_a_json($row, $pedidoActual);
+        $destino = ($pedido && $pedido['destino_lat'] !== null && $pedido['destino_lng'] !== null)
+            ? [(float) $pedido['destino_lat'], (float) $pedido['destino_lng']]
+            : null;
+        return personal_domicilio_a_json($row, $pedidoActual, $destino);
     }
 
     /** Crea un ayudante de cocina o un domiciliario segun $d['role']. */
@@ -187,36 +192,48 @@ class Personal
     }
 
     /**
-     * Baja logica (activo = 0). Con $rol va directo a la tabla correcta;
-     * sin el, prueba primero cocina y luego domicilio. Devuelve 'kitchen', 'delivery' o null.
+     * Borra de verdad a un miembro del personal, solo si nunca preparo, repartio
+     * ni fue liquidado en un pedido (para no romper el historial ni los reportes).
+     * Quien ya tiene historial se da de baja (activo = 0) con actualizar().
+     * Devuelve true si lo borro, false si no existe; lanza Exception si tiene historial.
      */
-    public function eliminarSuave($id, $rol = null)
+    public function eliminarPermanente($id, $rol)
     {
         if ($rol === 'Ayudante de cocina') {
-            return $this->darDeBaja('AYUDANTE_COCINA', 'id_ayudante', $id) ? 'kitchen' : null;
-        }
-        if ($rol === 'Domiciliario') {
-            return $this->darDeBaja('DOMICILIARIO', 'id_domiciliario', $id) ? 'delivery' : null;
+            $tabla = 'AYUDANTE_COCINA';
+            $idCol = 'id_ayudante';
+            $historial = ["SELECT COUNT(*) AS total FROM PEDIDO WHERE id_ayudante = ?"];
+        } elseif ($rol === 'Domiciliario') {
+            $tabla = 'DOMICILIARIO';
+            $idCol = 'id_domiciliario';
+            $historial = [
+                "SELECT COUNT(*) AS total FROM PEDIDO WHERE id_domiciliario = ?",
+                "SELECT COUNT(*) AS total FROM LIQUIDACION_DOMICILIARIO WHERE id_domiciliario = ?",
+            ];
+        } else {
+            throw new InvalidArgumentException('Indica el rol del colaborador que quieres eliminar.');
         }
 
-        if ($this->darDeBaja('AYUDANTE_COCINA', 'id_ayudante', $id)) {
-            return 'kitchen';
+        if (!$this->existe($tabla, $idCol, $id)) {
+            return false;
         }
-        if ($this->darDeBaja('DOMICILIARIO', 'id_domiciliario', $id)) {
-            return 'delivery';
-        }
-        return null;
-    }
 
-    /** Pone activo = 0. Devuelve true si cambio alguna fila. */
-    private function darDeBaja($tabla, $idCol, $id)
-    {
-        $stmt = $this->conn->prepare("UPDATE {$tabla} SET activo = 0 WHERE {$idCol} = ?");
+        foreach ($historial as $sql) {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("s", $id);
+            $stmt->execute();
+            $cuenta = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if ((int) $cuenta['total'] > 0) {
+                throw new Exception('Este colaborador ya tiene pedidos en su historial y no se puede eliminar. Usa "Dar de baja" para quitarle el acceso.');
+            }
+        }
+
+        $stmt = $this->conn->prepare("DELETE FROM {$tabla} WHERE {$idCol} = ?");
         $stmt->bind_param("s", $id);
         $stmt->execute();
-        $afectadas = $stmt->affected_rows;
         $stmt->close();
-        return $afectadas > 0;
+        return true;
     }
 
     public function actualizarUbicacion($id, $lat, $lng)
@@ -226,8 +243,8 @@ class Personal
         );
         $stmt->bind_param("dds", $lat, $lng, $id);
         $stmt->execute();
-        $afectadas = $stmt->affected_rows;
         $stmt->close();
-        return $afectadas > 0;
+        // affected_rows es 0 si llega la misma posicion en el mismo segundo: se revisa que exista.
+        return $this->existe('DOMICILIARIO', 'id_domiciliario', $id);
     }
 }

@@ -41,6 +41,9 @@ En **Ajustes y Caja**. Se guardan en la tabla `CONFIGURACION_SISTEMA` (una sola 
 | Pausa de emergencia | `pausa_emergencia_activa` | Detener los pedidos de inmediato (ej: se acabó el gas). |
 | Tarifa de domicilio | `tarifa_plana_domicilio` | Lo que se cobra por envío en cada pedido. |
 | Margen de ganancia | `margen_ganancia_defecto` | Porcentaje que se suma al costo de cada ingrediente extra para calcular su precio. |
+| Valor de 1 punto | `valor_punto` | Pesos que descuenta cada punto cuando el cliente los canjea (por defecto $10, o sea el 1 % de lo comprado). |
+| Mínimo para canjear | `minimo_puntos_canje` | Desde cuántos puntos el cliente puede usarlos (por defecto 100). |
+| Datos del negocio | `negocio_nombre`, `negocio_nit`, `negocio_direccion`, `negocio_telefono`, `negocio_instagram`, `negocio_web` | Lo que se imprime en el ticket de cocina. El nombre es obligatorio; los vacíos no se imprimen. |
 | Categorías del menú | tabla `CATEGORIA` | Se administran en **Gestión de Menú**. |
 
 **La tienda acepta pedidos solo si:** está abierta a mano **y** no está en pausa **y** la hora actual

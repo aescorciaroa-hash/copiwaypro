@@ -2,7 +2,7 @@
 
 Estas guías explican el sistema **por temas** (cómo instalarlo, cómo arrancarlo, cómo funciona, qué
 hace cada rol...). Si quieres el detalle de un archivo en particular, está en el resto de la carpeta
-`documentacion.md/` (ver [el índice principal](../README.md)).
+`Documentacion.md/` (ver [el índice principal](../README.md)).
 
 ## Orden recomendado para leer
 

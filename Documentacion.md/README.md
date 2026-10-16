@@ -5,9 +5,9 @@ con las demás. Las carpetas tienen **la misma estructura que el proyecto**:
 
 | Archivo del proyecto | Su documentación |
 |---|---|
-| `models/Cliente.php` | `documentacion.md/models/Cliente.md` |
-| `src/pages/Login.tsx` | `documentacion.md/src/pages/Login.md` |
-| `config/rutas.php` | `documentacion.md/config/rutas.md` |
+| `models/Cliente.php` | `Documentacion.md/models/Cliente.md` |
+| `src/pages/Login.tsx` | `Documentacion.md/src/pages/Login.md` |
+| `config/rutas.php` | `Documentacion.md/config/rutas.md` |
 
 Cada documento tiene las mismas partes:
 - **¿Para qué sirve?**: la explicación corta.

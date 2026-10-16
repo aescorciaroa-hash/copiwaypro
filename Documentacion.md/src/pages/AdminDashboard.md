@@ -12,7 +12,7 @@ manual, ajustar horario y alertas de pedidos nuevos.
 | ← la abre | `main.tsx` con `data-pagina="admin"` (`views/paginas/admin.php`). Solo rol `admin`. | |
 | → muestra | `admin/OverviewSection`, `OrdersSection`, `MapSection`, `MenuSection`, `InventorySection`, `StaffSection`, `ClientsSection`, `SettingsSection` | Las secciones. |
 | → lee del almacén | `products`, `inventory`, `inventoryLogs`, `staff`, `orders`, `ordersSynced`, `clients`, `storeConfig` | Llegan por `/api/sync`. |
-| → acciones del almacén | productos, inventario, personal, categorías, ajustes, estados de pedidos, `addManualOrder` (pedido manual), `updateOrderAddress` (cambiar dirección) | Ver la tabla de `documentacion.md/src/store/almacenAplicacion.md`. |
+| → acciones del almacén | productos, inventario, personal, categorías, ajustes, estados de pedidos, `addManualOrder` (pedido manual), `updateOrderAddress` (cambiar dirección) | Ver la tabla de `Documentacion.md/src/store/almacenAplicacion.md`. |
 | → usa | `modificacionesDe` (`lib/format.ts`) | SIN / EXTRA de cada producto en el detalle del pedido. |
 | → llama directo a | `GET /api/cash-closing/preview`, `POST /api/cash-closing`, `GET /api/orders`, `POST /api/auth/logout` | Cierre de caja y salir. |
 | → usa | `generateCierrePDF` (`utils/generarCierrePdf.ts`) | El PDF del cierre. |

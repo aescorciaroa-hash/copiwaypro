@@ -7,9 +7,9 @@ Sistema para un restaurante de hamburguesas a domicilio con cinco roles: Cliente
 
 Corre en local con Laragon en **`http://localhost/copiwaypro/`**.
 
-> 📘 **Guías generales** (instalar, arrancar, cómo funciona, roles, pedidos, seguridad, problemas comunes...): [documentacion.md/general.md/README.md](documentacion.md/general.md/README.md).
+> 📘 **Guías generales** (instalar, arrancar, cómo funciona, roles, pedidos, seguridad, problemas comunes...): [Documentacion.md/general.md/README.md](Documentacion.md/general.md/README.md).
 >
-> 📚 **Documentación archivo por archivo:** [documentacion.md/README.md](documentacion.md/README.md). Explica qué hace cada archivo, con qué se conecta y para qué sirve cada variable.
+> 📚 **Documentación archivo por archivo:** [Documentacion.md/README.md](Documentacion.md/README.md). Explica qué hace cada archivo, con qué se conecta y para qué sirve cada variable.
 
 ## Estructura
 
@@ -26,7 +26,7 @@ Corre en local con Laragon en **`http://localhost/copiwaypro/`**.
 /public          index.php (punto de entrada unico) + el frontend compilado (assets/main.js, assets/main.css)
 /sql             schema.sql (crea la base), seed.sql (datos de ejemplo), create-admin.php (crear el primer admin)
 /src             Frontend en React
-/documentacion.md Documentacion de cada archivo, con la misma estructura de carpetas
+/Documentacion.md Documentacion de cada archivo, con la misma estructura de carpetas
 ```
 
 ## Cómo está escrito el PHP
@@ -198,7 +198,7 @@ Las rutas que cambian datos (`POST`, `PUT`, `PATCH`, `DELETE`) exigen el token C
 - `GET /api/push/public-key`, `POST /api/push/subscribe|unsubscribe`
 - `GET /api/sync`: datos actualizados para la pantalla (responde `304` si nada cambió)
 
-La lista completa, con el controlador y los roles de cada ruta, está en `config/rutas.php` y en [documentacion.md/config/rutas.md](documentacion.md/config/rutas.md).
+La lista completa, con el controlador y los roles de cada ruta, está en `config/rutas.php` y en [Documentacion.md/config/rutas.md](Documentacion.md/config/rutas.md).
 
 ## Antes de publicar en un servidor real
 
@@ -206,4 +206,4 @@ La lista completa, con el controlador y los roles de cada ruta, está en `config
 - En `config/app.php` pon `'debug' => false` y `'entorno' => 'production'`.
 - Cambia `CLAVE_FIRMA` en `models/PagoService.php` por un texto largo al azar.
 - Usa HTTPS (las cookies de sesión se marcan `secure` solas si la conexión es HTTPS).
-- La sección **"Observaciones encontradas al documentar"** de [documentacion.md/README.md](documentacion.md/README.md) lista las fallas corregidas y los pendientes conocidos.
+- La sección **"Observaciones encontradas al documentar"** de [Documentacion.md/README.md](Documentacion.md/README.md) lista las fallas corregidas y los pendientes conocidos.

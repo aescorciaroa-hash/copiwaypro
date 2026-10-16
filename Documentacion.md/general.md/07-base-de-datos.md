@@ -5,7 +5,7 @@
 - **Estructura:** `sql/schema.sql` (23 tablas). **Datos de ejemplo:** `sql/seed.sql`.
 - **Conexión:** `config/database.php` (`$host`, `$user`, `$password`, `$bd`, `$port`).
 
-Detalle tabla por tabla en [documentacion.md/sql/schema.md](../sql/schema.md).
+Detalle tabla por tabla en [Documentacion.md/sql/schema.md](../sql/schema.md).
 
 ## Las tablas por grupos
 ```

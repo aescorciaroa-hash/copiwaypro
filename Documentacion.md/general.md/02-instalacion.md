@@ -57,7 +57,7 @@ traen PIN: el administrador se lo asigna desde **Equipo y Personal** (ver [Roles
 php sql\create-admin.php
 ```
 Te pregunta los datos del **Programador** (quien crea administradores) y después los del
-**Administrador**. Detalle en [documentacion.md/sql/create-admin.md](../sql/create-admin.md).
+**Administrador**. Detalle en [Documentacion.md/sql/create-admin.md](../sql/create-admin.md).
 
 ## Comprobar que todo quedó bien
 | Prueba | Resultado esperado |

@@ -13,7 +13,7 @@ npm install
 | → crea | `node_modules/` | Las librerías descargadas. |
 | → `package-lock.json` | (archivo generado) | Versiones exactas instaladas. No se edita a mano. |
 | → usa | `vite.config.ts` | Configuración de `npm run dev` y `npm run build`. |
-| ← lo ejecuta | `install.bat` | `npm install` y `npm run build`. |
+| ← lo usas tú | La terminal | `npm install` y `npm run build`. |
 
 ## Comandos (`scripts`)
 | Comando | Qué hace |

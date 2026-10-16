@@ -11,11 +11,11 @@
 
 ## Quién crea a quién
 ```
-Programador  ──(php bin/create-admin.php)──►  Administrador
+Programador  ──(php sql/create-admin.php)──►  Administrador
 Administrador ──(panel → Equipo y Personal)──►  Ayudante de cocina y Domiciliario
 Cliente      ──(se registra solo en /register)
 ```
-- El **administrador no se puede registrar** desde la web: la única forma es `bin/create-admin.php`.
+- El **administrador no se puede registrar** desde la web: la única forma es `sql/create-admin.php`.
 - El **personal** lo crea el administrador, con contraseña y **PIN de 4 dígitos**.
 - El **cliente** se registra solo y debe aceptar el tratamiento de datos (Habeas Data). El sistema guarda la fecha y su IP.
 
@@ -76,5 +76,5 @@ petición (el sistema vuelve a revisar la cuenta en cada una).
 
 ## Bloqueo por intentos
 Después de **5 intentos fallidos en 15 minutos** (por correo o por IP), el login responde
-"Demasiados intentos fallidos" hasta que pase el tiempo. Se configura en el `.env`
+"Demasiados intentos fallidos" hasta que pase el tiempo. Se configura con las constantes de `models/IntentoLogin.php`
 (ver [Configuración](08-configuracion.md)).

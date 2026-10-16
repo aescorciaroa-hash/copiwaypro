@@ -17,7 +17,7 @@ actualizan los datos guardados.
 | → usa | `lib/pasarela.ts` (tipo `DatosCheckout`) | Pago digital. |
 
 ## Las "interfaces" (la forma de cada dato)
-Describen qué campos tiene cada cosa. Coinciden con lo que arman las funciones de `app/Views/json/` en PHP:
+Describen qué campos tiene cada cosa. Coinciden con lo que arman las funciones de `views/json/` en PHP:
 
 | Interface | Qué es | La arma en PHP |
 |---|---|---|

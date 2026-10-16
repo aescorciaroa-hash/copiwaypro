@@ -10,8 +10,8 @@ No genera código: solo **describe tipos** (`.d.ts` = archivo de declaraciones).
 ## ¿Con qué se conecta?
 | Dirección | Archivo |
 |---|---|
-| Las variables las crea | `app/Views/layouts/cabecera.php` (`<script>window.__APP_BASE__=...;window.__DATOS__=...;</script>`) |
-| Los datos los arma | `app/Controllers/PaginaController.php` (`$datos`) |
+| Las variables las crea | `views/layouts/cabecera.php` (`<script>window.__APP_BASE__=...;window.__DATOS__=...;</script>`) |
+| Los datos los arma | `controllers/PaginaController.php` (`$datos`) |
 | Las leen | `servicios/api.ts` (`__APP_BASE__`, `__DATOS__.csrfToken`), `components/SyncDatos.tsx` (`__DATOS__.settings`) |
 
 ## Código explicado

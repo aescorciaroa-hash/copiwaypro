@@ -31,7 +31,7 @@ const PAGINAS: Record<string, ComponentType> = {
 };
 ```
 `Record<string, ComponentType>` = un objeto cuyas claves son texto y cuyos valores son componentes.
-Las claves **deben coincidir** con el `$pagina` de cada vista PHP (`app/Views/paginas/*.php`).
+Las claves **deben coincidir** con el `$pagina` de cada vista PHP (`views/paginas/*.php`).
 
 ```tsx
 const nombrePagina =

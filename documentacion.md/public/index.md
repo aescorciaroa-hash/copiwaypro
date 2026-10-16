@@ -8,12 +8,12 @@ router.
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
 |---|---|---|
-| ← lo llama | `.htaccess` (Apache) o `public/server-router.php` (start.bat) | Toda dirección que no sea un archivo real termina aquí. |
+| ← lo llama | `.htaccess` (Apache de Laragon) | Toda dirección que no sea un archivo real termina aquí. |
 | → usa | `vendor/autoload.php` | Carga PHPMailer y web-push (librerías de Composer). |
-| → usa | `config/database.php` | Crea `$conn` y la función `env()`. |
+| → usa | `config/database.php` | Crea `$conn`. |
 | → usa | `config/app.php` | Devuelve `$config` (zona horaria, etc.). |
-| → usa | `app/Core/helpers.php` | Funciones de ayuda y el router. |
-| → usa | `app/Core/Session.php`, `app/Core/Auth.php` | Sesión y usuario conectado. |
+| → usa | `config/helpers.php` | Funciones de ayuda y el router. |
+| → usa | `config/Session.php`, `models/Auth.php` | Sesión y usuario conectado. |
 | → envía a | `despacharRuta()` / `despacharPagina()` | Deciden qué controlador responde. |
 
 ## Variables importantes
@@ -41,9 +41,9 @@ if (is_file(__DIR__ . '/../vendor/autoload.php')) {
 ```php
 require_once __DIR__ . '/../config/database.php';
 $config = require __DIR__ . '/../config/app.php';
-require_once __DIR__ . '/../app/Core/helpers.php';
-require_once __DIR__ . '/../app/Core/Session.php';
-require_once __DIR__ . '/../app/Core/Auth.php';
+require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/../config/Session.php';
+require_once __DIR__ . '/../models/Auth.php';
 ```
 - `database.php` crea la conexión `$conn` a MySQL.
 - `app.php` **devuelve** un arreglo de configuración, por eso se guarda en `$config`.

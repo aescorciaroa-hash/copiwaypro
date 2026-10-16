@@ -7,7 +7,7 @@ historia, testimonios, el formulario de contacto y un mapa con la ubicación.
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
 |---|---|---|
-| ← la abre | `src/main.tsx` cuando `data-pagina="landing"` (`app/Views/paginas/landing.php`) | |
+| ← la abre | `src/main.tsx` cuando `data-pagina="landing"` (`views/paginas/landing.php`) | |
 | → usa | `Navbar.tsx` y `Footer.tsx` | Barra superior y pie. |
 | → lee del almacén | `products`, `storeConfig`, `orders` (`useStore()`) | El menú, las categorías y las reseñas. Llegan por `/api/sync` (`SyncDatos.tsx`). |
 | → usa | `formatCOP` (`lib/format.ts`) | Precios. |

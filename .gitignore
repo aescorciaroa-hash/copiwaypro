@@ -7,8 +7,6 @@ coverage/
 .env*
 !.env.example
 vendor/
-storage/logs/*
-!storage/logs/.gitkeep
 public/assets/
 public/index.html
 public/uploads/

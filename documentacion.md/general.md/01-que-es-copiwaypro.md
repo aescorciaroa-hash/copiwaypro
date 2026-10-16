@@ -27,8 +27,8 @@ para atender público). CopiwayPRO es el sistema que maneja todo el negocio:
 | Parte | Tecnología | Carpeta |
 |---|---|---|
 | Pantallas | React 19 + TypeScript + Tailwind CSS (compilado con Vite) | `src/` |
-| Servidor | PHP 8 sin framework | `app/`, `config/`, `public/` |
-| Base de datos | MySQL 8 | `database/` |
+| Servidor | PHP 8 sin framework, estructura MVC | `config/`, `controllers/`, `models/`, `views/`, `public/` |
+| Base de datos | MySQL 8 | `sql/` |
 | Entorno local | Laragon (Apache + PHP + MySQL) | — |
 | Librerías extra | PHPMailer (correo), web-push (notificaciones), Leaflet (mapas), Recharts (gráficas), jsPDF (PDF) | `vendor/`, `node_modules/` |
 

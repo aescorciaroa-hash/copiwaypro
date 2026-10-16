@@ -16,7 +16,7 @@ Dónde: `Auth.php`, `Cliente.php`, `Personal.php`, `Usuario.php`, `CodigoVerific
 - Al iniciar sesión se **cambia el identificador** (`session_regenerate_id`) para evitar robos de sesión.
 - En **cada petición** se vuelve a revisar la cuenta en la base de datos: si fue desactivada, la sesión se cierra en ese momento.
 
-Dónde: `app/Core/Session.php`, `app/Core/Auth.php`, `requiereSesion()` en `helpers.php`.
+Dónde: `config/Session.php`, `models/Auth.php`, `requiereSesion()` en `helpers.php`.
 
 ## Permisos por rol
 Cada ruta de `config/rutas.php` dice qué roles la pueden usar. Antes de ejecutar cualquier controlador,
@@ -57,11 +57,11 @@ la tabla `INTENTO_LOGIN`.
 - Los costos y las recetas solo los recibe el administrador.
 - Las contraseñas y PIN nunca se envían.
 
-Dónde: `app/Views/json/pedido.php`, `app/Views/json/producto.php`, `Auth::usuarioActual()`.
+Dónde: `views/json/pedido.php`, `views/json/producto.php`, `Auth::usuarioActual()`.
 
 ## Precios y pagos
 - El total **siempre** lo calcula el servidor.
-- Los pagos digitales llevan una **firma** (HMAC con `APP_KEY`): si alguien cambia el monto en el navegador, la firma no coincide.
+- Los pagos digitales llevan una **firma** (HMAC con la clave `CLAVE_FIRMA` de `PagoService`): si alguien cambia el monto en el navegador, la firma no coincide.
 - Una transacción solo se puede usar en **un** pedido.
 - **Canje de puntos:** el saldo se vuelve a leer y se descuenta dentro de la misma transacción que
   crea el pedido, con la fila del cliente bloqueada (`FOR UPDATE`). Dos pedidos al mismo tiempo no
@@ -78,12 +78,12 @@ GIF de hasta 5 MB, y se guardan con un nombre al azar.
 limitan de dónde se pueden cargar scripts e imágenes, y evitan que el navegador "adivine" tipos de archivo.
 
 ## Errores
-Si `APP_DEBUG=false`, los errores muestran un mensaje genérico ("Ocurrió un error interno") y el
+Si en `config/app.php` está `'debug' => false`, los errores muestran un mensaje genérico ("Ocurrió un error interno") y el
 detalle queda solo en el log de PHP. Nunca se muestran datos de la conexión.
 
 ## Antes de ponerlo en un servidor real
-- [ ] `APP_DEBUG=false` y `APP_ENV=production`.
-- [ ] Un `APP_KEY` propio y largo.
+- [ ] En `config/app.php`: `'debug' => false` y `'entorno' => 'production'`.
+- [ ] Una `CLAVE_FIRMA` propia y larga en `models/PagoService.php`.
 - [ ] No cargar `seed.sql` (o cambiar todas sus contraseñas).
 - [ ] Usuario de MySQL con contraseña (no `root` sin clave).
 - [ ] HTTPS.

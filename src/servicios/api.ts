@@ -1,7 +1,7 @@
 // Cliente HTTP hacia la API PHP. Usa cookies de sesión (credentials:'include')
 // y un token CSRF guardado en memoria.
 
-// window.__APP_BASE__ lo inyecta app/Views/layouts/cabecera.php con la
+// window.__APP_BASE__ lo inyecta views/layouts/cabecera.php con la
 // subcarpeta real bajo la que corre el sitio (o '' si vive en la raíz). Nunca
 // hay un dominio ni una ruta fija escrita aquí.
 const BASE_URL = (window.__APP_BASE__ || '') + '/api';

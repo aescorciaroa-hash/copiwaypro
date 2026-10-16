@@ -2,12 +2,12 @@ import fs from 'fs';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig, loadEnv, Plugin} from 'vite';
+import {defineConfig, Plugin} from 'vite';
 
 // Vite siempre escribe una copia transformada de index.html en outDir (es su
 // entrada de build por defecto) -- pero esa index.html es solo la plantilla
 // de "npm run dev" y NUNCA debe servirse en produccion: no tiene data-pagina
-// ni window.__APP_BASE__/__DATOS__ (eso lo inyecta app/Views/layouts/cabecera.php).
+// ni window.__APP_BASE__/__DATOS__ (eso lo inyecta views/layouts/cabecera.php).
 // Si queda en public/, Apache puede preferirla sobre index.php al resolver el
 // directory index, rompiendo rutaBase() (login sin el prefijo de subcarpeta,
 // 404). Se borra despues de cada build para que public/ solo tenga el front
@@ -24,19 +24,10 @@ function borrarIndexHtmlDelBuild(outDir: string): Plugin {
   };
 }
 
-export default defineConfig(({mode}) => {
-  // Lee el mismo .env que usa el backend PHP (sin prefijo VITE_ obligatorio),
-  // solo para el proxy de desarrollo -- nunca queda un dominio fijo en el bundle.
-  const env = loadEnv(mode, process.cwd(), '');
-
+export default defineConfig(() => {
   return {
     base: './',
     plugins: [react(), tailwindcss(), borrarIndexHtmlDelBuild('public')],
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
-    },
     // Sin carpeta de assets estáticos propia (no hay 'public/' de origen distinta
     // del destino de build); evita que Vite trate public/ como ambas cosas a la vez.
     publicDir: false,
@@ -49,7 +40,7 @@ export default defineConfig(({mode}) => {
       rollupOptions: {
         output: {
           // Nombres FIJOS (sin hash) y un solo archivo (sin chunks ni manifest):
-          // la plantilla PHP (app/Views/layouts) referencia estos nombres
+          // la plantilla PHP (views/layouts) referencia estos nombres
           // directamente y agrega ?v=filemtime() para el cache-busting.
           entryFileNames: 'assets/main.js',
           assetFileNames: (info) => {
@@ -63,12 +54,12 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
-      // En desarrollo, las llamadas a /api/* se redirigen al backend PHP (por
-      // defecto el servidor embebido en localhost:8000 -- ver start.bat).
-      // Cambia VITE_API_PROXY_TARGET en .env si usas Apache/subcarpeta en su lugar.
+      // En desarrollo, las llamadas a /api/* se redirigen al backend PHP de
+      // Laragon (Apache). Si el proyecto vive en otra URL, define la variable de
+      // entorno VITE_API_PROXY_TARGET antes de "npm run dev".
       proxy: {
         '/api': {
-          target: env.VITE_API_PROXY_TARGET || 'http://localhost:8000',
+          target: process.env.VITE_API_PROXY_TARGET || 'http://localhost/copiwaypro',
           changeOrigin: true,
         },
       },

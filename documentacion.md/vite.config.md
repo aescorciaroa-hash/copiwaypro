@@ -11,7 +11,7 @@ Configura **Vite**, la herramienta que:
 | ← lo usan | `npm run dev` y `npm run build` (`package.json`) | |
 | → compila | `index.html` → `src/main.tsx` → todo `src/` | El punto de partida. |
 | → escribe en | `public/assets/main.js` y `main.css` | Los cargan `cabecera.php` y `pie.php`. |
-| → lee | `.env` (`VITE_API_PROXY_TARGET`) | A dónde reenviar `/api` en desarrollo. |
+| → lee | Variable de entorno `VITE_API_PROXY_TARGET` (opcional) | A dónde reenviar `/api` en desarrollo. |
 
 ## Código explicado
 
@@ -23,7 +23,7 @@ lo borra al terminar la compilación (`closeBundle`).
 ### Configuración principal
 | Opción | Qué hace |
 |---|---|
-| `loadEnv(mode, process.cwd(), '')` | Lee el `.env`. |
+| `process.env.VITE_API_PROXY_TARGET` | Lee la variable de entorno del sistema (si no existe, usa `http://localhost/copiwaypro`, el Apache de Laragon). |
 | `base: './'` | Rutas relativas (funciona en subcarpeta). |
 | `plugins: [react(), tailwindcss(), ...]` | Activa React, Tailwind y el plugin de arriba. |
 | `alias: {'@': ...}` | Permite escribir `@/src/...` en los `import`. |
@@ -39,7 +39,7 @@ Para que el navegador no use una versión vieja, el PHP agrega `?v=fecha` al fin
 
 ### `server.proxy`
 ```ts
-proxy: { '/api': { target: env.VITE_API_PROXY_TARGET || 'http://localhost:8000', changeOrigin: true } }
+proxy: { '/api': { target: process.env.VITE_API_PROXY_TARGET || 'http://localhost/copiwaypro', changeOrigin: true } }
 ```
 Con `npm run dev`, React corre en el puerto 3000 pero la API está en PHP. Esto reenvía cada llamada
 `/api/...` al servidor PHP.

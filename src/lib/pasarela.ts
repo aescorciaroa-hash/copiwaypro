@@ -1,6 +1,6 @@
 // Cliente de la pasarela de pagos de PRUEBA (mecanica tipo Wompi, sin cobrar
 // nada real). El servidor decide monto, referencia y firma; aqui solo se crea
-// la transaccion y se espera su resultado. Ver app/Services/PagoService.php.
+// la transaccion y se espera su resultado. Ver models/PagoService.php.
 
 import { api } from '../servicios/api';
 

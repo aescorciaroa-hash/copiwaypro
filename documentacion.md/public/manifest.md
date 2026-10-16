@@ -7,7 +7,7 @@ pantalla de inicio** (nombre, ícono, colores). Así funciona casi como una app 
 ## ¿Con qué se conecta?
 | Dirección | Archivo |
 |---|---|
-| ← lo enlaza | `app/Views/layouts/cabecera.php` (`<link rel="manifest" ...>`) |
+| ← lo enlaza | `views/layouts/cabecera.php` (`<link rel="manifest" ...>`) |
 | → usa | `public/favicon.svg` como ícono |
 
 ## Campos

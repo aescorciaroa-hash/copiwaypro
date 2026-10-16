@@ -21,7 +21,7 @@ puntos** y confirma el pedido.
 | `cart`, `cartSubtotal`, `FLAT_SHIPPING_RATE`, `isBirthday`, `birthdayDiscount`, `cartTotal` | Resumen del pedido. |
 | `paymentMethod` / `setPaymentMethod` | `'online'` o `'cash'`. |
 | `digitalBank` / `setDigitalBank` | `'nequi'`, `'daviplata'` o `'bancolombia'`. |
-| `paymentPhone` / `setPaymentPhone` | Celular del pago (los números de prueba están en `documentacion.md/app/Services/PagoService.md`). |
+| `paymentPhone` / `setPaymentPhone` | Celular del pago (los números de prueba están en `documentacion.md/models/PagoService.md`). |
 | `paymentStatus`, `simulationStep` | Estado del pago para mostrar en el botón. |
 | `isStoreOpen`, `storeConfig` | Si está cerrado, avisa el horario. |
 | `handleCheckoutSubmit` | Función del padre que inicia el pago. |

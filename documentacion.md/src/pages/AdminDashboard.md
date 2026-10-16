@@ -9,7 +9,7 @@ manual, ajustar horario y alertas de pedidos nuevos.
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
 |---|---|---|
-| ← la abre | `main.tsx` con `data-pagina="admin"` (`app/Views/paginas/admin.php`). Solo rol `admin`. | |
+| ← la abre | `main.tsx` con `data-pagina="admin"` (`views/paginas/admin.php`). Solo rol `admin`. | |
 | → muestra | `admin/OverviewSection`, `OrdersSection`, `MapSection`, `MenuSection`, `InventorySection`, `StaffSection`, `ClientsSection`, `SettingsSection` | Las secciones. |
 | → lee del almacén | `products`, `inventory`, `inventoryLogs`, `staff`, `orders`, `ordersSynced`, `clients`, `storeConfig` | Llegan por `/api/sync`. |
 | → acciones del almacén | productos, inventario, personal, categorías, ajustes, estados de pedidos, `addManualOrder` (pedido manual), `updateOrderAddress` (cambiar dirección) | Ver la tabla de `documentacion.md/src/store/almacenAplicacion.md`. |

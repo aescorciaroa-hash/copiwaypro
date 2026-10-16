@@ -33,7 +33,7 @@ PHP no deja saltarse pasos: por ejemplo, no se puede marcar como listo un pedido
 (responde 409 "Transición de estado no permitida").
 
 ## Paso 1: el cliente crea el pedido
-Todo pasa en `PedidoService::crear()` (`app/Services/PedidoService.php`):
+Todo pasa en `PedidoService::crear()` (`models/PedidoService.php`):
 1. **¿Tienda abierta?** Revisa el horario, el cierre manual y la pausa de emergencia. Si está cerrada → 403.
 2. **Recalcula los precios en el servidor** (nunca usa los que envía el navegador):
    - Producto normal = precio del producto + precio de los extras.

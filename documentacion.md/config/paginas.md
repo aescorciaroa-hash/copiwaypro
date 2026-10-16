@@ -2,14 +2,14 @@
 
 ## ¿Para qué sirve?
 Es la lista de **páginas** (las direcciones que se escriben en el navegador, sin `/api`).
-La usa la función `despacharPagina()` de `app/Core/helpers.php`.
+La usa la función `despacharPagina()` de `config/helpers.php`.
 
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
 |---|---|---|
-| ← lo lee | `despacharPagina()` en `app/Core/helpers.php` | Busca la página pedida y revisa el rol. |
-| → apunta a | `app/Controllers/PaginaController.php` | Todas las páginas las muestra ese controlador. |
-| → termina en | `app/Views/paginas/*.php` | El HTML que carga React. |
+| ← lo lee | `despacharPagina()` en `config/helpers.php` | Busca la página pedida y revisa el rol. |
+| → apunta a | `controllers/PaginaController.php` | Todas las páginas las muestra ese controlador. |
+| → termina en | `views/paginas/*.php` | El HTML que carga React. |
 
 ## Código explicado
 ```php
@@ -24,7 +24,7 @@ return [
 |---|---|
 | `'/admin'` | La dirección en el navegador. |
 | `'PaginaController'` | Siempre es el mismo controlador. |
-| `'admin'` | El valor de `$action` (qué página mostrar). |
+| `'admin'` | La acción: el método de `PaginaController` que se llama (qué página mostrar). |
 | `['admin']` | Quién puede entrar. `[]` = pública. |
 
 Si alguien entra a una página protegida sin sesión o con otro rol, se le **redirige a `/login`**.

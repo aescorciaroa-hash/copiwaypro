@@ -12,7 +12,7 @@ con el **PIN** que le dice el cliente.
 ## ¿Con qué se conecta?
 | Dirección | Archivo / servicio | Para qué |
 |---|---|---|
-| ← la abre | `main.tsx` con `data-pagina="delivery"` (`app/Views/paginas/domiciliario.php`) | |
+| ← la abre | `main.tsx` con `data-pagina="delivery"` (`views/paginas/domiciliario.php`) | |
 | → lee del almacén | `orders`, `staff` | Llegan por `/api/sync`. PHP solo le envía sus pedidos y los "listo" sin asignar (`Pedido::porRol()`). |
 | → `takeOrder` | `PATCH /api/orders/{id}/take` → `PedidoService::tomarPedido()` | Tomar un pedido. |
 | → `releaseOrder` | `PATCH /api/orders/{id}/release` → `PedidoService::liberarPedido()` | Soltarlo. |
@@ -83,6 +83,6 @@ El pedido en curso del domiciliario (`currentOrderId`) ya no se envía desde aqu
 
 ## Botón de WhatsApp
 Solo aparece con el pedido **En Camino** (porque PHP solo entrega el teléfono del cliente en ese
-estado, ver `app/Views/json/pedido.md`). Arma un mensaje con el nombre del cliente y el código del
+estado, ver `views/json/pedido.md`). Arma un mensaje con el nombre del cliente y el código del
 pedido y abre `https://wa.me/TELEFONO?text=MENSAJE`.
 `encodeURIComponent` convierte el texto para que funcione dentro de una dirección web.

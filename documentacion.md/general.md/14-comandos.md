@@ -5,13 +5,11 @@ Todos se ejecutan en una terminal (PowerShell o CMD) **dentro de la carpeta del 
 cd C:\laragon\www\copiwaypro
 ```
 
-## Instalar y arrancar
+## Instalar
 | Comando | Qué hace |
 |---|---|
-| `install.bat` | Instala todo (base de datos, `.env`, librerías de React y compilación). ⚠️ Recrea la base de datos. |
-| `start.bat` | Arranca el sistema sin Apache en `http://localhost:8000/`. |
 | `composer install` | Instala las librerías de PHP (correo y notificaciones) en `vendor/`. |
-| `php bin\create-admin.php` | Crea el primer administrador. |
+| `php sql\create-admin.php` | Crea el primer administrador. |
 
 ## React (frontend)
 | Comando | Qué hace |
@@ -26,7 +24,6 @@ cd C:\laragon\www\copiwaypro
 |---|---|
 | `php -v` | Versión de PHP. |
 | `php -l archivo.php` | Revisa la sintaxis de un archivo PHP. |
-| `php -S localhost:8000 -t public public\server-router.php` | Lo mismo que `start.bat`. |
 | `php -r "echo password_hash('Clave1234', PASSWORD_DEFAULT);"` | Genera el hash de una contraseña (para cambiarla a mano en MySQL). |
 
 ## MySQL
@@ -37,9 +34,8 @@ set MYSQL=C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin
 | Comando | Qué hace |
 |---|---|
 | `"%MYSQL%\mysql.exe" -u root hamburguer_copiway` | Entrar a la base de datos para escribir consultas. |
-| `"%MYSQL%\mysql.exe" -u root --default-character-set=utf8mb4 < database\schema.sql` | ⚠️ Crear la base desde cero (borra la anterior). |
-| `"%MYSQL%\mysql.exe" -u root --default-character-set=utf8mb4 hamburguer_copiway < database\seed.sql` | Cargar los datos de ejemplo. |
-| `"%MYSQL%\mysql.exe" -u root --default-character-set=utf8mb4 hamburguer_copiway < database\migraciones\001_pedido_manual_puntos_ticket.sql` | Actualizar una base que ya existía (pedido manual, puntos y ticket). Una sola vez; no borra datos. |
+| `"%MYSQL%\mysql.exe" -u root --default-character-set=utf8mb4 < sql\schema.sql` | ⚠️ Crear la base desde cero (borra la anterior). |
+| `"%MYSQL%\mysql.exe" -u root --default-character-set=utf8mb4 hamburguer_copiway < sql\seed.sql` | Cargar los datos de ejemplo. |
 | `"%MYSQL%\mysqldump.exe" -u root --routines --triggers hamburguer_copiway > respaldo.sql` | Hacer un respaldo. |
 | `"%MYSQL%\mysql.exe" -u root --default-character-set=utf8mb4 hamburguer_copiway < respaldo.sql` | Restaurar un respaldo. |
 

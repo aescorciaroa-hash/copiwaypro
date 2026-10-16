@@ -1,35 +1,32 @@
 # 8. Configuración
 
 Hay dos tipos de configuración:
-1. **El archivo `.env`**: datos técnicos (base de datos, claves, correo). Lo cambia el programador.
+1. **Datos técnicos** (base de datos, claves, correo): están escritos en el código PHP. Los cambia el programador.
 2. **Los ajustes de la tienda**: horario, tarifa, margen... Los cambia el administrador desde el panel.
 
-## 1. El archivo `.env`
-Está en la raíz del proyecto. Se crea copiando `.env.example`. **No se sube a GitHub** (tiene claves).
-Formato: `CLAVE=valor`, una por línea; las líneas con `#` son comentarios.
+## 1. Datos técnicos (en el código)
+Cada dato está en el archivo que lo usa:
 
-| Variable | Valor por defecto | Para qué |
+| Qué | Archivo | Valor por defecto |
 |---|---|---|
-| `APP_ENV` | `local` | `local` o `production`. En `local`, si el correo no sale, la recuperación de contraseña devuelve el código para probar. |
-| `APP_DEBUG` | `true` | Mostrar el detalle de los errores. **`false` en producción.** |
-| `APP_KEY` | (cámbialo) | Clave secreta para firmar los pagos. Pon un texto largo al azar. |
-| `APP_BASE_PATH` | vacío | Carpeta del proyecto. Vacío = se detecta sola (recomendado). |
-| `APP_TIMEZONE` | `America/Bogota` | Zona horaria (no viene en el ejemplo; se puede agregar). |
-| `DB_HOST`, `DB_PORT` | `127.0.0.1`, `3306` | Dónde está MySQL. |
-| `DB_NAME` | `hamburguer_copiway` | Nombre de la base de datos. |
-| `DB_USER`, `DB_PASS` | `root`, vacío | Usuario y contraseña de MySQL (así viene Laragon). |
-| `SESSION_NAME` | `copiway_session` | Nombre de la cookie de sesión. |
-| `SESSION_LIFETIME` | `120` | Minutos que dura la sesión. |
-| `RATE_LIMIT_LOGIN_MAX_ATTEMPTS` | `5` | Intentos de login fallidos permitidos. |
-| `RATE_LIMIT_LOGIN_WINDOW_MINUTES` | `15` | En cuántos minutos se cuentan. |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | vacíos | Claves para notificaciones push (ver [Notificaciones](11-notificaciones-y-correo.md)). |
-| `MAIL_HOST`, `MAIL_PORT`, `MAIL_ENCRYPTION`, `MAIL_USER`, `MAIL_PASS`, `MAIL_FROM`, `MAIL_FROM_NAME` | vacíos / `587` / `tls` | Servidor de correo (ver [Notificaciones](11-notificaciones-y-correo.md)). |
-| `VITE_API_PROXY_TARGET` | `http://localhost:8000` | Solo para `npm run dev`: a dónde enviar las llamadas `/api`. |
+| Conexión a MySQL: `$host`, `$user`, `$password`, `$bd`, `$port` | `config/database.php` | `127.0.0.1`, `root`, vacío, `hamburguer_copiway`, `3306` (así viene Laragon) |
+| `'entorno'` | `config/app.php` | `'local'`. En `local`, si el correo no sale, la recuperación de contraseña devuelve el código para probar. |
+| `'debug'` | `config/app.php` | `true`: muestra el detalle de los errores. **`false` en producción.** |
+| `'zona_horaria'` | `config/app.php` | `'America/Bogota'` |
+| `'ruta_base'` | `config/app.php` | vacío = la carpeta del proyecto se detecta sola (recomendado). |
+| `NOMBRE`, `DURACION_MINUTOS` (sesión) | `config/Session.php` | `'copiway_session'`, `120` minutos |
+| `MAXIMO_INTENTOS`, `VENTANA_MINUTOS` (login) | `models/IntentoLogin.php` | `5` intentos fallidos en `15` minutos |
+| `CLAVE_FIRMA` (pagos) | `models/PagoService.php` | Cámbiala por un texto largo al azar. |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `models/PushNotificationService.php` | Claves para notificaciones push (ver [Notificaciones](11-notificaciones-y-correo.md)). |
+| `HOST`, `PUERTO`, `CIFRADO`, `USUARIO`, `CLAVE`, `REMITENTE`, `REMITENTE_NOMBRE` | `models/CorreoService.php` | Servidor de correo (ver [Notificaciones](11-notificaciones-y-correo.md)). Vacíos = no se envían correos. |
 
-**¿Cómo lo lee PHP?** `config/database.php` lee `.env.example` y encima `.env`, y cualquier archivo
-puede pedir un valor con `env('NOMBRE', 'valor por defecto')`.
+Las constantes de una clase se leen con `self::NOMBRE` dentro de la clase. El arreglo de
+`config/app.php` queda en la variable `$config` (la carga `public/index.php`).
 
-Los cambios en el `.env` se aplican al recargar la página (no hay que reiniciar nada).
+Para `npm run dev`, el destino del proxy `/api` se cambia con la variable de entorno
+`VITE_API_PROXY_TARGET` (por defecto `http://localhost/copiwaypro`).
+
+Los cambios se aplican al recargar la página (no hay que reiniciar nada).
 
 ## 2. Ajustes de la tienda (panel del administrador)
 En **Ajustes y Caja**. Se guardan en la tabla `CONFIGURACION_SISTEMA` (una sola fila).

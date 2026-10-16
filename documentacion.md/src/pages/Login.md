@@ -7,7 +7,7 @@ cada usuario a su panel según su rol.
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
 |---|---|---|
-| ← la abre | `main.tsx` con `data-pagina="login"` (`app/Views/paginas/login.php`) | |
+| ← la abre | `main.tsx` con `data-pagina="login"` (`views/paginas/login.php`) | |
 | → usa | `useForm` (`hooks/useForm.ts`) | Validar el formulario. |
 | → llama a | `api.post('/auth/login')` → `AuthController.php` acción `login` → `Auth::intentarLogin()` | Iniciar sesión. |
 | → usa | `irA()` de `servicios/api.ts` | Ir al panel. |

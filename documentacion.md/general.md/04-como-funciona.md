@@ -4,7 +4,7 @@
 ```
 ┌──────────────────────┐      ┌──────────────────────┐      ┌──────────────┐
 │  NAVEGADOR (React)   │ ───► │   SERVIDOR (PHP)     │ ───► │    MySQL     │
-│  src/                │ ◄─── │   app/ config/       │ ◄─── │  23 tablas   │
+│  src/                │ ◄─── │   controllers/ models│ ◄─── │  23 tablas   │
 │  lo que ve el usuario│ JSON │   reglas del negocio │      │  los datos   │
 └──────────────────────┘      └──────────────────────┘      └──────────────┘
 ```
@@ -24,7 +24,7 @@ Ejemplo: el administrador abre `/copiwaypro/admin`.
 4. despacharPagina()    → busca '/admin' en config/paginas.php → solo rol 'admin'
                           ¿hay sesión de admin? si no, redirige a /login
 5. PaginaController.php → arma $datos (usuario, rol, token CSRF, ajustes de la tienda)
-6. app/Views/paginas/admin.php → $pagina = 'admin' + cabecera.php + pie.php
+6. views/paginas/admin.php → $pagina = 'admin' + cabecera.php + pie.php
 7. El navegador recibe un HTML casi vacío con:
      <div id="app" data-pagina="admin">
      window.__DATOS__ = { usuario, rol, csrfToken, settings }
@@ -43,11 +43,11 @@ Ejemplo: el administrador cambia el precio de un producto.
 4. public/index.php         → la ruta empieza con /api → despacharRuta()
 5. despacharRuta()          → busca 'PUT /api/products/{id}' en config/rutas.php
                                revisa el token CSRF y que el rol sea 'admin'
-                               pone $_GET['action'] = 'update' y $_GET['id'] = '6'
-                               carga app/Controllers/ProductController.php
-6. ProductController.php    → if ($action === 'update') → valida el precio
-7. app/Models/Producto.php  → UPDATE PRODUCTO SET precio = ? WHERE id_producto = ?
-8. app/Views/json/producto.php → convierte la fila (precio, nombre...) al JSON de React (price, name...)
+                               pone $_GET['accion'] = 'update' y $_GET['id'] = '6'
+                               carga controllers/ProductController.php
+6. ProductController.php    → $controller->update() → valida el precio
+7. models/Producto.php  → UPDATE PRODUCTO SET precio = ? WHERE id_producto = ?
+8. views/json/producto.php → convierte la fila (precio, nombre...) al JSON de React (price, name...)
 9. responderJson(...)       → React recibe el producto actualizado y redibuja la lista
 ```
 
@@ -62,19 +62,19 @@ SyncDatos.tsx (en todas las pantallas)
 - Si no hay cambios por un rato, pregunta cada 6 s; si la pestaña está oculta, cada 20 s.
 - Cada rol recibe solo lo suyo: el cliente sus pedidos, el domiciliario los suyos y los disponibles, el admin todo.
 
-Detalle en [SyncController](../app/Controllers/SyncController.md) y [SyncDatos](../src/components/SyncDatos.md).
+Detalle en [SyncController](../controllers/SyncController.md) y [SyncDatos](../src/components/SyncDatos.md).
 
 ## 4. Quién hace qué en PHP
 | Pieza | Carpeta | Trabajo | Ejemplo |
 |---|---|---|---|
 | Punto de entrada | `public/index.php` | Prepara todo y reparte. | — |
-| Router | `app/Core/helpers.php` | Decide qué controlador atiende. | `despacharRuta()` |
+| Router | `config/helpers.php` | Decide qué controlador atiende. | `despacharRuta()` |
 | Rutas | `config/rutas.php` | Lista de direcciones y roles. | `'PUT /api/products/{id}'` |
-| Controlador | `app/Controllers/` | Recibe, valida y responde. | `ProductController.php` |
-| Modelo | `app/Models/` | Habla con MySQL. | `Producto.php` |
-| Service | `app/Services/` | Reglas grandes del negocio. | `PedidoService.php` (crear pedidos) |
-| Vista JSON | `app/Views/json/` | Traduce MySQL → React. | `producto_a_json()` |
-| Sesión y usuario | `app/Core/Session.php`, `Auth.php` | Quién está conectado. | `Auth::id()` |
+| Controlador | `controllers/` | Recibe, valida y responde. | `ProductController.php` |
+| Modelo | `models/` | Habla con MySQL. | `Producto.php` |
+| Service | `models/` | Reglas grandes del negocio. | `PedidoService.php` (crear pedidos) |
+| Vista JSON | `views/json/` | Traduce MySQL → React. | `producto_a_json()` |
+| Sesión y usuario | `config/Session.php`, `Auth.php` | Quién está conectado. | `Auth::id()` |
 
 ## 5. Quién hace qué en React
 | Pieza | Carpeta | Trabajo |

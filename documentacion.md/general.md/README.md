@@ -15,7 +15,7 @@ hace cada rol...). Si quieres el detalle de un archivo en particular, está en e
 | 5 | [Roles y usuarios](05-roles-y-usuarios.md) | Qué puede hacer cada rol y cómo se crean las cuentas. |
 | 6 | [El ciclo de un pedido](06-ciclo-de-un-pedido.md) | Desde el carrito hasta el cierre de caja. |
 | 7 | [Base de datos](07-base-de-datos.md) | Las tablas, cómo se relacionan, respaldos. |
-| 8 | [Configuración](08-configuracion.md) | El archivo `.env` y los ajustes de la tienda. |
+| 8 | [Configuración](08-configuracion.md) | Dónde está cada dato técnico y los ajustes de la tienda. |
 | 9 | [Seguridad](09-seguridad.md) | Contraseñas, sesiones, CSRF, PIN, permisos. |
 | 10 | [Pagos de prueba](10-pagos.md) | Cómo funciona la pasarela y los números para probar. |
 | 11 | [Notificaciones y correo](11-notificaciones-y-correo.md) | Push al celular y correo de recuperación. |

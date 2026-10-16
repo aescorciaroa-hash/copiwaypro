@@ -14,3 +14,4 @@ return [
     '/kitchen' => ['PaginaController', 'kitchen', ['kitchen']],
     '/delivery' => ['PaginaController', 'delivery', ['delivery']],
 ];
+?>

@@ -15,7 +15,7 @@ dar de baja y eliminar.
 | Ver / editar | `handleOpenStaffModal(persona)` | ventana en `AdminDashboard.tsx` | |
 
 Siempre se envía el **rol** porque el mismo número de id puede existir en las dos tablas
-(ver `documentacion.md/app/Models/Personal.md`).
+(ver `documentacion.md/models/Personal.md`).
 
 ## Props
 | Prop | Qué es |

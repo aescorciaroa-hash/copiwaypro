@@ -29,15 +29,15 @@ tocarla, se abre el sistema directamente en la ventana para calificar el pedido.
    ```powershell
    php -r "require 'vendor/autoload.php'; print_r(Minishlink\WebPush\VAPID::createVapidKeys());"
    ```
-3. Copiar las claves en el `.env`:
-   ```
-   VAPID_PUBLIC_KEY=...
-   VAPID_PRIVATE_KEY=...
-   VAPID_SUBJECT=mailto:tu-correo@ejemplo.com
+3. Copiar las claves en las constantes de `models/PushNotificationService.php`:
+   ```php
+   const VAPID_PUBLIC_KEY = '...';
+   const VAPID_PRIVATE_KEY = '...';
+   const VAPID_SUBJECT = 'mailto:tu-correo@ejemplo.com';
    ```
 4. **Solo en Windows con Apache/Laragon:** definir la variable de entorno de Windows `OPENSSL_CONF`
    apuntando al `openssl.cnf` de tu PHP (ej: `C:\laragon\bin\php\php-8.3.8-nts-Win32-vs16-x64\extras\ssl\openssl.cnf`)
-   y reiniciar Laragon. `start.bat` ya lo hace solo.
+   y reiniciar Laragon.
 
 ### Requisitos del navegador
 Las notificaciones push necesitan `localhost` o **HTTPS**. Funcionan en Chrome, Edge y Firefox; en
@@ -51,25 +51,25 @@ Envía el **código de 6 dígitos** para recuperar la contraseña.
 
 ### Configurarlo
 1. `composer install` (instala PHPMailer).
-2. Poner los datos del servidor de correo en el `.env`. Ejemplo con **Gmail**:
+2. Poner los datos del servidor de correo en las constantes de `models/CorreoService.php`. Ejemplo con **Gmail**:
+   ```php
+   const HOST = 'smtp.gmail.com';
+   const PUERTO = 587;
+   const CIFRADO = 'tls';
+   const USUARIO = 'tucuenta@gmail.com';
+   const CLAVE = 'xxxx xxxx xxxx xxxx';
+   const REMITENTE = 'tucuenta@gmail.com';
+   const REMITENTE_NOMBRE = 'CopiwayPRO';
    ```
-   MAIL_HOST=smtp.gmail.com
-   MAIL_PORT=587
-   MAIL_ENCRYPTION=tls
-   MAIL_USER=tucuenta@gmail.com
-   MAIL_PASS=xxxx xxxx xxxx xxxx
-   MAIL_FROM=tucuenta@gmail.com
-   MAIL_FROM_NAME=CopiwayPRO
-   ```
-   Con Gmail, `MAIL_PASS` **no es tu contraseña normal**: es una **contraseña de aplicación** (se crea en
+   Con Gmail, `CLAVE` **no es tu contraseña normal**: es una **contraseña de aplicación** (se crea en
    la cuenta de Google → Seguridad → Verificación en dos pasos → Contraseñas de aplicaciones).
 
 ### Probar sin correo
-Si el correo no está configurado y `APP_ENV=local`, la respuesta de `POST /api/auth/forgot-password/request`
+Si el correo no está configurado y en `config/app.php` está `'entorno' => 'local'`, la respuesta de `POST /api/auth/forgot-password/request`
 trae el código en `debugCode`. Para verlo: en el navegador **F12 → Red (Network)** → la petición
 `request` → **Respuesta**.
 
 ### Si no llega el correo
 - Revisa la carpeta de spam.
 - Revisa el log de PHP (`C:\laragon\tmp\php_errors.log`): ahí queda "No se pudo enviar el correo a ...".
-- Verifica que `MAIL_HOST` y `MAIL_FROM` no estén vacíos.
+- Verifica que `HOST` y `REMITENTE` (en `models/CorreoService.php`) no estén vacíos.

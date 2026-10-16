@@ -8,7 +8,7 @@
 | Errores de React | Navegador → **F12 → Consola** |
 | ¿MySQL está encendido? | Laragon debe mostrar MySQL en verde |
 
-Con `APP_DEBUG=true` (en el `.env`), los errores de la API traen el mensaje real y el `trace`.
+Con `'debug' => true` (en `config/app.php`), los errores de la API traen el mensaje real y el `trace`.
 
 ---
 
@@ -18,7 +18,6 @@ Con `APP_DEBUG=true` (en el `.env`), los errores de la API traen el mensaje real
 | 404 en `http://localhost/login` | Falta la carpeta en la dirección | Usa `http://localhost/copiwaypro/login`. |
 | Aparece la página de Laragon con la lista de proyectos | Abriste `http://localhost/` | Agrega `/copiwaypro/`. |
 | "No se puede acceder a este sitio" | Apache apagado | Laragon → **Iniciar todo**. |
-| Con `start.bat`, 404 en todo | Abriste otra dirección | Usa `http://localhost:8000/`. |
 
 ## Pantalla en blanco
 | Causa | Solución |
@@ -30,8 +29,8 @@ Con `APP_DEBUG=true` (en el `.env`), los errores de la API traen el mensaje real
 ## "Ocurrió un error interno" o un JSON con `"error"`
 | Mensaje | Causa | Solución |
 |---|---|---|
-| `Ocurrio un error interno. Intenta de nuevo mas tarde.` (al abrir cualquier página) | No conecta con MySQL | Enciende MySQL en Laragon y revisa `DB_*` en el `.env`. |
-| `Class "X" not found` | Falta un `require_once` del archivo de esa clase, o el archivo cambió de nombre | Agrega `require_once __DIR__ . '/../Models/X.php';` en el archivo que la usa. |
+| `Error de Conexion: ...` (al abrir cualquier página) | No conecta con MySQL | Enciende MySQL en Laragon y revisa las variables de `config/database.php`. |
+| `Class "X" not found` | Falta un `require_once` del archivo de esa clase, o el archivo cambió de nombre | Agrega `require_once __DIR__ . '/../models/X.php';` en el archivo que la usa. |
 | `Call to undefined function ...` | Se usa una función que no existe o no está cargada | Revisa el nombre y que `helpers.php` esté cargado. |
 | `Unknown column ...` | La base de datos no tiene esa columna | Importa de nuevo `schema.sql` o agrega la columna con `ALTER TABLE`. |
 
@@ -44,7 +43,7 @@ Con `APP_DEBUG=true` (en el `.env`), los errores de la API traen el mensaje real
 | "Usuario o PIN incorrectos" escribiendo solo el usuario | Hay dos cuentas con el mismo usuario y distinto dominio | Escribe el correo completo. |
 | Entras y te saca al login | La sesión venció o la cuenta fue desactivada | Vuelve a iniciar sesión. |
 | Error **419** | El token de seguridad venció | Recarga la página (normalmente `api.ts` lo arregla solo). |
-| Olvidé la contraseña del admin | — | Crea otro con `php bin\create-admin.php` o cambia el hash en MySQL: `UPDATE ADMINISTRADOR SET contrasena = '<hash>' WHERE correo = '...';` (el hash se genera con `php -r "echo password_hash('NuevaClave123', PASSWORD_DEFAULT);"`). |
+| Olvidé la contraseña del admin | — | Crea otro con `php sql\create-admin.php` o cambia el hash en MySQL: `UPDATE ADMINISTRADOR SET contrasena = '<hash>' WHERE correo = '...';` (el hash se genera con `php -r "echo password_hash('NuevaClave123', PASSWORD_DEFAULT);"`). |
 
 ## Problemas con pedidos
 | Mensaje | Causa |
@@ -78,7 +77,7 @@ Necesitan internet (OpenStreetMap). Revisa la conexión o F12 → Consola.
 
 ## No llegan las notificaciones ni el correo
 Ver [Notificaciones y correo](11-notificaciones-y-correo.md). Lo más común: no se ejecutó
-`composer install`, faltan las claves en el `.env`, o en Windows falta `OPENSSL_CONF`.
+`composer install`, faltan las claves en `models/PushNotificationService.php` o los datos en `models/CorreoService.php`, o en Windows falta `OPENSSL_CONF`.
 
 ## Comportamientos conocidos (no son errores de configuración)
 - No hay pantalla para **cancelar** un pedido (el estado existe en la base de datos).

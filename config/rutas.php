@@ -104,3 +104,4 @@ return [
     'POST /api/push/unsubscribe' => ['PushController', 'unsubscribe', ['client']],
 
 ];
+?>

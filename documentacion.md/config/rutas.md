@@ -2,13 +2,13 @@
 
 ## ¿Para qué sirve?
 Es la **lista de todas las direcciones de la API** y a qué controlador va cada una.
-La usa la función `despacharRuta()` de `app/Core/helpers.php`.
+La usa la función `despacharRuta()` de `config/helpers.php`.
 
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
 |---|---|---|
-| ← lo lee | `despacharRuta()` en `app/Core/helpers.php` | Busca qué ruta coincide con la petición. |
-| → apunta a | los archivos de `app/Controllers/` | Cada ruta dice qué controlador cargar y qué `$action` usar. |
+| ← lo lee | `despacharRuta()` en `config/helpers.php` | Busca qué ruta coincide con la petición. |
+| → apunta a | los archivos de `controllers/` | Cada ruta dice qué controlador cargar y qué método llamar. |
 | ← la llama | `src/servicios/api.ts` (React) | Las funciones de React hacen `fetch` a estas mismas direcciones. |
 
 ## Cómo se lee una ruta
@@ -19,8 +19,8 @@ La usa la función `despacharRuta()` de `app/Core/helpers.php`.
 |---|---|
 | `PUT` | Método HTTP (GET = leer, POST = crear, PUT = editar, PATCH = editar una parte, DELETE = borrar). |
 | `/api/products/{id}` | La dirección. `{id}` es un valor que cambia (ej: `/api/products/6`). |
-| `'ProductController'` | Archivo que se carga: `app/Controllers/ProductController.php`. |
-| `'update'` | El valor que tendrá `$action` dentro del controlador. |
+| `'ProductController'` | Archivo que se carga: `controllers/ProductController.php`. |
+| `'update'` | La acción: queda en `$_GET['accion']` y el controlador llama a su método `update()`. |
 | `['admin']` | Roles que pueden usarla. `[]` = cualquiera, aunque no haya iniciado sesión. |
 
 Dentro del controlador, `{id}` llega como `$_GET['id']`.

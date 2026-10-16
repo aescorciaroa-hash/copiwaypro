@@ -1,12 +1,12 @@
 <?php
 /**
- * Configuracion general de la app (necesita database.php cargado antes para usar env()).
+ * Configuracion general de la app.
  */
 
 return [
-    'nombre' => 'CopiwayPRO',
-    'entorno' => env('APP_ENV', 'production'),
-    'debug' => env('APP_DEBUG', false),
-    'zona_horaria' => env('APP_TIMEZONE', 'America/Bogota'),
-    'ruta_base' => env('APP_BASE_PATH', ''),
+    'entorno' => 'local',              // 'local' o 'production'
+    'debug' => true,                   // true muestra el detalle de los errores (false en produccion)
+    'zona_horaria' => 'America/Bogota',
+    'ruta_base' => '',                 // ej. '/copiwaypro'. Vacio = se detecta sola (recomendado)
 ];
+?>

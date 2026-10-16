@@ -5,7 +5,7 @@ con las demás. Las carpetas tienen **la misma estructura que el proyecto**:
 
 | Archivo del proyecto | Su documentación |
 |---|---|
-| `app/Models/Cliente.php` | `documentacion.md/app/Models/Cliente.md` |
+| `models/Cliente.php` | `documentacion.md/models/Cliente.md` |
 | `src/pages/Login.tsx` | `documentacion.md/src/pages/Login.md` |
 | `config/rutas.php` | `documentacion.md/config/rutas.md` |
 
@@ -16,13 +16,13 @@ Cada documento tiene las mismas partes:
 - **Código explicado**: las partes del código, con ejemplos.
 
 Algunas carpetas tienen además un `README.md` que explica lo que tienen en común todos sus archivos
-(por ejemplo, [app/Controllers/README.md](app/Controllers/README.md) explica la forma de un controlador).
+(por ejemplo, [controllers/README.md](controllers/README.md) explica la forma de un controlador).
 
 ---
 
 ## 📘 Guías generales (empieza aquí)
-Si es la primera vez, lee primero las guías por tema en [general/](general/README.md):
-[qué es](general/01-que-es-copiwaypro.md) · [instalación](general/02-instalacion.md) · [arrancar el sistema](general/03-arrancar-el-sistema.md) · [cómo funciona](general/04-como-funciona.md) · [roles](general/05-roles-y-usuarios.md) · [ciclo de un pedido](general/06-ciclo-de-un-pedido.md) · [base de datos](general/07-base-de-datos.md) · [configuración](general/08-configuracion.md) · [seguridad](general/09-seguridad.md) · [pagos](general/10-pagos.md) · [notificaciones y correo](general/11-notificaciones-y-correo.md) · [hacer cambios](general/12-como-hacer-cambios.md) · [problemas comunes](general/13-problemas-comunes.md) · [comandos](general/14-comandos.md)
+Si es la primera vez, lee primero las guías por tema en [general.md/](general.md/README.md):
+[qué es](general.md/01-que-es-copiwaypro.md) · [instalación](general.md/02-instalacion.md) · [arrancar el sistema](general.md/03-arrancar-el-sistema.md) · [cómo funciona](general.md/04-como-funciona.md) · [roles](general.md/05-roles-y-usuarios.md) · [ciclo de un pedido](general.md/06-ciclo-de-un-pedido.md) · [base de datos](general.md/07-base-de-datos.md) · [configuración](general.md/08-configuracion.md) · [seguridad](general.md/09-seguridad.md) · [pagos](general.md/10-pagos.md) · [notificaciones y correo](general.md/11-notificaciones-y-correo.md) · [hacer cambios](general.md/12-como-hacer-cambios.md) · [problemas comunes](general.md/13-problemas-comunes.md) · [comandos](general.md/14-comandos.md)
 
 El resto de esta carpeta documenta **cada archivo** del proyecto.
 
@@ -33,15 +33,15 @@ El resto de esta carpeta documenta **cada archivo** del proyecto.
 | Parte | Hecha con | Carpeta | Qué hace |
 |---|---|---|---|
 | **Frontend** (lo que se ve) | React + TypeScript | `src/` | Pantallas, botones, formularios. Se compila con `npm run build` a `public/assets/`. |
-| **Backend** (lo que hay detrás) | PHP | `app/`, `config/`, `public/` | Recibe peticiones, valida, consulta MySQL y responde **JSON**. |
-| **Base de datos** | MySQL | `database/` | Guarda todo. |
+| **Backend** (lo que hay detrás) | PHP (MVC) | `config/`, `controllers/`, `models/`, `views/`, `public/` | Recibe peticiones, valida, consulta MySQL y responde **JSON**. |
+| **Base de datos** | MySQL | `sql/` | Guarda todo. |
 
 ### Cuando abres una página (ej: `/admin`)
 ```
-Navegador ──► .htaccess ──► public/index.php ──► despacharPagina()  (app/Core/helpers.php)
+Navegador ──► .htaccess ──► public/index.php ──► despacharPagina()  (config/helpers.php)
                                                     │  lee config/paginas.php y revisa el rol
                                                     ▼
-                                         PaginaController.php ──► app/Views/paginas/admin.php
+                                         PaginaController.php ──► views/paginas/admin.php
                                                     │                 cabecera.php + pie.php
                                                     ▼
                                     HTML con <div id="app" data-pagina="admin">
@@ -56,10 +56,10 @@ MenuSection.tsx ──► store/almacenAplicacion.ts (updateProduct)
                 ──► servicios/api.ts  PUT /api/products/6  { "price": 16000 }
                 ──► public/index.php ──► despacharRuta()   lee config/rutas.php,
                                                            revisa CSRF y rol "admin",
-                                                           pone $_GET['action']='update', $_GET['id']='6'
-                ──► app/Controllers/ProductController.php   if ($action === 'update')
-                ──► app/Models/Producto.php                 UPDATE en MySQL
-                ──► app/Views/json/producto.php             fila → JSON de React
+                                                           pone $_GET['accion']='update', $_GET['id']='6'
+                ──► controllers/ProductController.php   $controller->update()
+                ──► models/Producto.php                 UPDATE en MySQL
+                ──► views/json/producto.php             fila → JSON de React
                 ──► responderJson(...) ──► React actualiza la pantalla
 ```
 
@@ -75,7 +75,6 @@ nuevos se guardan en `store/almacenAplicacion.ts` y todas las pantallas se actua
 ### Raíz del proyecto
 | Archivo | Para qué |
 |---|---|
-| [.env.example](.env.example.md) | Plantilla de la configuración privada (base de datos, claves, correo). |
 | [.gitignore](.gitignore.md) | Qué no se sube a GitHub. |
 | [.htaccess](.htaccess.md) | Reglas de Apache: todo va a `public/index.php`. |
 | [composer.json](composer.md) | Librerías de PHP (PHPMailer, web-push). |
@@ -83,69 +82,60 @@ nuevos se guardan en `store/almacenAplicacion.ts` y todas las pantallas se actua
 | [vite.config.ts](vite.config.md) | Configuración de la compilación de React. |
 | [tsconfig.json](tsconfig.md) | Configuración de TypeScript. |
 | [index.html](index.md) | Página solo para `npm run dev`. |
-| [install.bat](install.md) | Instala todo de una vez. |
-| [start.bat](start.md) | Arranca el proyecto sin Apache. |
 
 ### public/
 | Archivo | Para qué |
 |---|---|
 | [index.php](public/index.md) | **Punto de entrada** de toda la app. |
-| [server-router.php](public/server-router.md) | Router para `start.bat`. |
 | [.htaccess](public/.htaccess.md) | Reglas de Apache dentro de `public/`. |
 | [sw.js](public/sw.md) | Service Worker: muestra las notificaciones push. |
 | [manifest.json](public/manifest.md) | Para instalar la app en el celular. |
 | [Imágenes e íconos](public/imagenes.md) | Favicons y carpetas que se generan. |
 
 ### config/
-[database.php](config/database.md) (lee el `.env` y crea `$conn`) · [app.php](config/app.md) ·
-[rutas.php](config/rutas.md) (rutas de la API) · [paginas.php](config/paginas.md) (páginas)
+[database.php](config/database.md) (crea `$conn`) · [app.php](config/app.md) (ajustes generales) ·
+[rutas.php](config/rutas.md) (rutas de la API) · [paginas.php](config/paginas.md) (páginas) ·
+[helpers.php](config/helpers.md) (funciones de ayuda y el router) · [Session.php](config/Session.md)
 
-### database/
-[schema.sql](database/schema.md) (las 23 tablas) · [seed.sql](database/seed.md) (datos de ejemplo) ·
-[migraciones/001](database/migraciones/001_pedido_manual_puntos_ticket.md) (columnas nuevas para una base que ya existe)
+### sql/
+[schema.sql](sql/schema.md) (las 23 tablas) · [seed.sql](sql/seed.md) (datos de ejemplo) ·
+[create-admin.php](sql/create-admin.md) (crear el primer administrador por consola)
 
-### bin/
-[create-admin.php](bin/create-admin.md) — crear el primer administrador por consola.
-
-### app/Core/
-[helpers.php](app/Core/helpers.md) (funciones de ayuda y el router) · [Session.php](app/Core/Session.md) ·
-[Auth.php](app/Core/Auth.md)
-
-### app/Controllers/ — [cómo funciona un controlador](app/Controllers/README.md)
+### controllers/ — [cómo funciona un controlador](controllers/README.md)
 | Controlador | Rutas |
 |---|---|
-| [AuthController](app/Controllers/AuthController.md) | `/api/auth/...` login, registro, recuperar contraseña |
-| [PaginaController](app/Controllers/PaginaController.md) | Las páginas (`/`, `/login`, `/admin`...) |
-| [ProductController](app/Controllers/ProductController.md) | `/api/products` |
-| [IngredientController](app/Controllers/IngredientController.md) | `/api/ingredients` |
-| [InventoryController](app/Controllers/InventoryController.md) | `/api/inventory`, `/api/inventory-logs` |
-| [ClientController](app/Controllers/ClientController.md) | `/api/clients` |
-| [StaffController](app/Controllers/StaffController.md) | `/api/staff` |
-| [OrderController](app/Controllers/OrderController.md) | `/api/orders` |
-| [PaymentController](app/Controllers/PaymentController.md) | `/api/payments` |
-| [CashClosingController](app/Controllers/CashClosingController.md) | `/api/cash-closing` |
-| [DashboardController](app/Controllers/DashboardController.md) | `/api/dashboard` |
-| [SettingController](app/Controllers/SettingController.md) | `/api/settings` |
-| [SyncController](app/Controllers/SyncController.md) | `/api/sync` |
-| [PushController](app/Controllers/PushController.md) | `/api/push` |
-| [UploadController](app/Controllers/UploadController.md) | `/api/uploads/product-image` |
+| [AuthController](controllers/AuthController.md) | `/api/auth/...` login, registro, recuperar contraseña |
+| [PaginaController](controllers/PaginaController.md) | Las páginas (`/`, `/login`, `/admin`...) |
+| [ProductController](controllers/ProductController.md) | `/api/products` |
+| [IngredientController](controllers/IngredientController.md) | `/api/ingredients` |
+| [InventoryController](controllers/InventoryController.md) | `/api/inventory`, `/api/inventory-logs` |
+| [ClientController](controllers/ClientController.md) | `/api/clients` |
+| [StaffController](controllers/StaffController.md) | `/api/staff` |
+| [OrderController](controllers/OrderController.md) | `/api/orders` |
+| [PaymentController](controllers/PaymentController.md) | `/api/payments` |
+| [CashClosingController](controllers/CashClosingController.md) | `/api/cash-closing` |
+| [DashboardController](controllers/DashboardController.md) | `/api/dashboard` |
+| [SettingController](controllers/SettingController.md) | `/api/settings` |
+| [SyncController](controllers/SyncController.md) | `/api/sync` |
+| [PushController](controllers/PushController.md) | `/api/push` |
+| [UploadController](controllers/UploadController.md) | `/api/uploads/product-image` |
 
-### app/Models/ — [cómo funciona un modelo](app/Models/README.md)
-[Cliente](app/Models/Cliente.md) · [Producto](app/Models/Producto.md) · [Ingrediente](app/Models/Ingrediente.md) ·
-[Pedido](app/Models/Pedido.md) · [Personal](app/Models/Personal.md) · [Configuracion](app/Models/Configuracion.md) ·
-[Caja](app/Models/Caja.md) · [Panel](app/Models/Panel.md) · [Usuario](app/Models/Usuario.md) ·
-[CodigoVerificacion](app/Models/CodigoVerificacion.md) · [IntentoLogin](app/Models/IntentoLogin.md) ·
-[PushSuscripcion](app/Models/PushSuscripcion.md)
+### models/ — [cómo funciona un modelo](models/README.md)
+[Cliente](models/Cliente.md) · [Producto](models/Producto.md) · [Ingrediente](models/Ingrediente.md) ·
+[Pedido](models/Pedido.md) · [Personal](models/Personal.md) · [Configuracion](models/Configuracion.md) ·
+[Caja](models/Caja.md) · [Panel](models/Panel.md) · [Usuario](models/Usuario.md) ·
+[CodigoVerificacion](models/CodigoVerificacion.md) · [IntentoLogin](models/IntentoLogin.md) ·
+[PushSuscripcion](models/PushSuscripcion.md) · [Auth](models/Auth.md) (iniciar y cerrar sesión)
 
-### app/Services/
-[PedidoService](app/Services/PedidoService.md) (crear pedidos, estados, entrega) ·
-[CajaService](app/Services/CajaService.md) (cierre de caja) · [PagoService](app/Services/PagoService.md) (pagos de prueba) ·
-[CorreoService](app/Services/CorreoService.md) · [PushNotificationService](app/Services/PushNotificationService.md)
+Servicios (las reglas grandes, también en `models/`):
+[PedidoService](models/PedidoService.md) (crear pedidos, estados, entrega) ·
+[CajaService](models/CajaService.md) (cierre de caja) · [PagoService](models/PagoService.md) (pagos de prueba) ·
+[CorreoService](models/CorreoService.md) · [PushNotificationService](models/PushNotificationService.md)
 
-### app/Views/
-- json/ — [qué son](app/Views/json/README.md): [cliente](app/Views/json/cliente.md) · [ingrediente](app/Views/json/ingrediente.md) · [pedido](app/Views/json/pedido.md) · [personal](app/Views/json/personal.md) · [producto](app/Views/json/producto.md)
-- layouts/: [cabecera](app/Views/layouts/cabecera.md) · [pie](app/Views/layouts/pie.md)
-- paginas/ — [las 8 páginas](app/Views/paginas/README.md): [admin](app/Views/paginas/admin.md) · [cliente](app/Views/paginas/cliente.md) · [cocina](app/Views/paginas/cocina.md) · [domiciliario](app/Views/paginas/domiciliario.md) · [landing](app/Views/paginas/landing.md) · [login](app/Views/paginas/login.md) · [recuperar](app/Views/paginas/recuperar.md) · [registro](app/Views/paginas/registro.md)
+### views/
+- json/ — [qué son](views/json/README.md): [cliente](views/json/cliente.md) · [ingrediente](views/json/ingrediente.md) · [pedido](views/json/pedido.md) · [personal](views/json/personal.md) · [producto](views/json/producto.md)
+- layouts/: [cabecera](views/layouts/cabecera.md) · [pie](views/layouts/pie.md)
+- paginas/ — [las 8 páginas](views/paginas/README.md): [admin](views/paginas/admin.md) · [cliente](views/paginas/cliente.md) · [cocina](views/paginas/cocina.md) · [domiciliario](views/paginas/domiciliario.md) · [landing](views/paginas/landing.md) · [login](views/paginas/login.md) · [recuperar](views/paginas/recuperar.md) · [registro](views/paginas/registro.md)
 
 ### src/ (React) — [React en 5 minutos](src/README.md)
 | Carpeta | Archivos |
@@ -171,8 +161,8 @@ nuevos se guardan en `store/almacenAplicacion.ts` y todas las pantallas se actua
 | `package-lock.json` y `composer.lock` | Los genera el instalador solo: guardan la versión exacta de cada librería. No se editan a mano. |
 | `public/assets/` | Es `src/` compilado por `npm run build`. Se documenta su código fuente (`src/`). |
 | `Documentos/`, archivos `.docx` y `.xlsx` | Documentos del proyecto (requerimientos, historias de usuario), no código. |
-| `docs/` | Documentación anterior del proyecto. |
-| `README.md` (raíz) | Descripción general del proyecto: arquitectura, instalación, cómo abrir el sitio, variables del `.env` y lista de rutas. Es el resumen; esta carpeta es el detalle. |
+| [docs/MANUAL_USUARIO_Y_LOGICA.md](docs/MANUAL_USUARIO_Y_LOGICA.md) | Manual de usuario del sistema. |
+| `README.md` (raíz) | Descripción general del proyecto: arquitectura, instalación, cómo abrir el sitio, dónde se configura cada cosa y lista de rutas. Es el resumen; esta carpeta es el detalle. |
 
 ---
 
@@ -181,13 +171,13 @@ Las fallas que se habían anotado aquí ya se **corrigieron**. Se deja el regist
 
 | Dónde | Qué pasaba | Cómo quedó | Detalle |
 |---|---|---|---|
-| Ubicación GPS del domiciliario | Se enviaba con `PUT /api/staff/{id}` (solo admin) → 403, y nunca se guardaba. | Usa `PATCH /api/staff/{id}/location` cada 10 s con la posición real. La posición simulada (sin GPS) ya no se envía. | [StaffController](app/Controllers/StaffController.md), [DeliveryDashboard](src/pages/DeliveryDashboard.md) |
-| Pedido manual del admin | Usaba `POST /api/orders` (solo clientes) → 403, pero la pantalla decía "creado". | Ruta propia `POST /api/orders/manual`. Busca al cliente por celular; si no existe, queda como invitado. | [OrderController](app/Controllers/OrderController.md), [AdminDashboard](src/pages/AdminDashboard.md) |
-| Cambiar dirección de un pedido | Solo cambiaba en el navegador. | Se guarda con `PATCH /api/orders/{id}/address`; el domiciliario recibe el aviso "Dirección Actualizada". | [PedidoService](app/Services/PedidoService.md) |
-| Borrar personal | El DELETE solo desactivaba (aunque la pantalla decía "eliminado definitivamente") y sin `role` podía tocar a la persona equivocada. | Borra de verdad solo si no tiene historial; si lo tiene, responde 409 y sugiere "Dar de baja". El `role` es obligatorio. | [Personal](app/Models/Personal.md) |
+| Ubicación GPS del domiciliario | Se enviaba con `PUT /api/staff/{id}` (solo admin) → 403, y nunca se guardaba. | Usa `PATCH /api/staff/{id}/location` cada 10 s con la posición real. La posición simulada (sin GPS) ya no se envía. | [StaffController](controllers/StaffController.md), [DeliveryDashboard](src/pages/DeliveryDashboard.md) |
+| Pedido manual del admin | Usaba `POST /api/orders` (solo clientes) → 403, pero la pantalla decía "creado". | Ruta propia `POST /api/orders/manual`. Busca al cliente por celular; si no existe, queda como invitado. | [OrderController](controllers/OrderController.md), [AdminDashboard](src/pages/AdminDashboard.md) |
+| Cambiar dirección de un pedido | Solo cambiaba en el navegador. | Se guarda con `PATCH /api/orders/{id}/address`; el domiciliario recibe el aviso "Dirección Actualizada". | [PedidoService](models/PedidoService.md) |
+| Borrar personal | El DELETE solo desactivaba (aunque la pantalla decía "eliminado definitivamente") y sin `role` podía tocar a la persona equivocada. | Borra de verdad solo si no tiene historial; si lo tiene, responde 409 y sugiere "Dar de baja". El `role` es obligatorio. | [Personal](models/Personal.md) |
 | Tarjetas de la cocina y comandas del admin | Resaltaban SIN/EXTRA leyendo `modifications`, que el servidor no envía, así que no mostraban nada. | Leen `removed` y `extras` con `modificacionesDe()` de `src/lib/format.ts`. | [KitchenDashboard](src/pages/KitchenDashboard.md), [format](src/lib/format.md) |
 | Ticket de cocina | Tenía NIT, dirección y teléfono de ejemplo escritos en el código. | Se editan en **Ajustes → Datos del Negocio**. | [SettingsSection](src/pages/admin/SettingsSection.md) |
-| Puntos de fidelidad | Se acumulaban pero no se podían usar. | El cliente los canjea en el checkout; el valor y el mínimo se configuran en **Ajustes**. | [PedidoService](app/Services/PedidoService.md) |
+| Puntos de fidelidad | Se acumulaban pero no se podían usar. | El cliente los canjea en el checkout; el valor y el mínimo se configuran en **Ajustes**. | [PedidoService](models/PedidoService.md) |
 
 Pendientes conocidos (a propósito, para más adelante): no hay pantalla para **cancelar** pedidos y la
 **pasarela de pagos** es de prueba.
@@ -198,9 +188,11 @@ Pendientes conocidos (a propósito, para más adelante): no hay pantalla para **
 
 | Código | Qué significa |
 |---|---|
-| `require_once __DIR__ . '/../Models/Cliente.php';` | Carga otro archivo PHP **una sola vez**. `__DIR__` es la carpeta del archivo actual. |
-| `$action = $_GET['action'] ?? $_POST['action'] ?? '';` | `??` = "si no existe, usa el siguiente valor". |
-| `$action === 'update'` | `===` compara valor **y** tipo (más estricto que `==`). |
+| `require_once __DIR__ . '/../models/Cliente.php';` | Carga otro archivo PHP **una sola vez**. `__DIR__` es la carpeta del archivo actual. |
+| `$accion = $_GET['accion'] ?? '';` | `??` = "si no existe, usa el siguiente valor". |
+| `$accion === 'update'` | `===` compara valor **y** tipo (más estricto que `==`). |
+| `$controller->update();` | Llama al método `update()` del objeto controlador. |
+| `$this->productoModel` | Dentro de una clase, una propiedad del objeto (se declara con `private $productoModel;`). |
 | `(int) $valor`, `(float)`, `(string)`, `(bool)` | Convierte un valor a entero, decimal, texto o verdadero/falso. |
 | `$stmt = $this->conn->prepare("... WHERE id = ?");` | Prepara una consulta. El `?` se llena después (evita inyección SQL). |
 | `$stmt->bind_param("si", $nombre, $id);` | Llena los `?`. Cada letra es un tipo: `s` texto, `i` entero, `d` decimal. |

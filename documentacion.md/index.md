@@ -2,7 +2,7 @@
 
 ## ¿Para qué sirve?
 Es la página que usa **solo el modo desarrollo** (`npm run dev`). En el sistema real (Laragon) **no se
-usa**: allí el HTML lo generan `app/Views/layouts/cabecera.php` y `pie.php`.
+usa**: allí el HTML lo generan `views/layouts/cabecera.php` y `pie.php`.
 
 ## ¿Con qué se conecta?
 | Dirección | Archivo |

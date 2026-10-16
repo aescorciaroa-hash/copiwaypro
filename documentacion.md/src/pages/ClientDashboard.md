@@ -10,7 +10,7 @@ Este archivo guarda **los datos y la lógica**; cada sección es un archivo apar
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
 |---|---|---|
-| ← la abre | `main.tsx` con `data-pagina="client"` (`app/Views/paginas/cliente.php`). Solo rol `client`. | |
+| ← la abre | `main.tsx` con `data-pagina="client"` (`views/paginas/cliente.php`). Solo rol `client`. | |
 | → muestra | `client/CatalogSection`, `BuilderSection`, `CartSection`, `CheckoutSection`, `ActiveOrdersSection`, `HistorySection`, `ProfileSection`, `PaymentGatewayModal` | Las secciones. |
 | → lee del almacén | `products`, `ingredients`, `inventory`, `orders`, `storeConfig`, `clients` | Llegan por `/api/sync`. |
 | → acciones del almacén | `addOrder` (`POST /api/orders`), `prepareOnlinePayment` (`POST /api/payments/prepare`), `updateOrder` (reseña), `updateClient` (perfil y carrito), `changeClientPassword` | |

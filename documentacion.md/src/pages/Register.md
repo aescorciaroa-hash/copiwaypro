@@ -7,7 +7,7 @@ la sesión iniciada y va a su panel.
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
 |---|---|---|
-| ← la abre | `main.tsx` con `data-pagina="register"` (`app/Views/paginas/registro.php`) | |
+| ← la abre | `main.tsx` con `data-pagina="register"` (`views/paginas/registro.php`) | |
 | → usa | `useForm` | Validación. |
 | → usa | `CustomDatePicker` | Fecha de nacimiento. |
 | → llama a | `api.post('/auth/register')` → `AuthController.php` acción `register` → `Cliente::crear()` | Crear la cuenta. |

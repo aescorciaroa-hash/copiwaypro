@@ -8,7 +8,7 @@ Permite a un cliente **recuperar su contraseña** (`/forgot-password`) en 2 paso
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
 |---|---|---|
-| ← la abre | `main.tsx` con `data-pagina="forgot-password"` (`app/Views/paginas/recuperar.php`) | |
+| ← la abre | `main.tsx` con `data-pagina="forgot-password"` (`views/paginas/recuperar.php`) | |
 | → usa | `useForm` (dos veces: un formulario por paso) | |
 | → paso 1 llama a | `POST /api/auth/forgot-password/request` → `AuthController` → `CodigoVerificacion::crearParaCliente()` + `CorreoService` | Enviar el código. |
 | → paso 2 llama a | `POST /api/auth/forgot-password/reset` → `AuthController` → `Cliente::actualizarContrasena()` | Cambiar la contraseña. |

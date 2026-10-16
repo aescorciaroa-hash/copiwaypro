@@ -5,10 +5,9 @@ Recetas para los cambios más comunes.
 ## Regla de oro: ¿hay que compilar?
 | Cambiaste | Hay que... |
 |---|---|
-| PHP (`app/`, `config/`) | Nada. Recarga la página. |
+| PHP (`config/`, `controllers/`, `models/`, `views/`) | Nada. Recarga la página. |
 | React (`src/`) | `npm run build` y recargar (o trabajar con `npm run dev`). |
-| `.env` | Nada. Recarga. |
-| Base de datos | Aplicar el cambio en MySQL **y** escribirlo en `database/schema.sql`. |
+| Base de datos | Aplicar el cambio en MySQL **y** escribirlo en `sql/schema.sql`. |
 
 ---
 
@@ -21,19 +20,25 @@ Ejemplo: `GET /api/products/{id}/receta` para ver la receta de un producto.
 ```
 (método y dirección → controlador, acción y roles que pueden usarla)
 
-**2. Agregar la acción** en `app/Controllers/ProductController.php`, antes del `else` final:
+**2. Agregar el método** dentro de la clase `ProductController` (`controllers/ProductController.php`):
 ```php
-elseif ($action === 'receta') {
+public function receta()
+{
     $id = $_GET['id'] ?? $_POST['id'] ?? '';
-    $producto = $productoModel->buscar($id, true);
+    $producto = $this->productoModel->buscar($id, true);
     if (!$producto) {
         responderError('Producto no encontrado.', 404);
     }
     responderJson($producto['ingredients']);
 }
 ```
+y llamarlo desde el despachador del final del archivo, antes del `else`:
+```php
+} elseif ($accion === 'receta') {
+    $controller->receta();
+```
 
-**3. Si necesitas una consulta nueva**, agrégala como método en el modelo (`app/Models/Producto.php`):
+**3. Si necesitas una consulta nueva**, agrégala como método en el modelo (`models/Producto.php`):
 ```php
 public function contarRecetas($idProducto)
 {
@@ -59,7 +64,7 @@ const receta = await api.get('/products/6/receta');
 ## Agregar un campo a un formulario (ej: "notas" del cliente)
 1. **Base de datos:** `ALTER TABLE CLIENTE ADD notas VARCHAR(255) NULL;` y agregarlo a `schema.sql`.
 2. **Modelo** (`Cliente.php`, método `actualizar()`): agregar `'notes' => 'notas'` al `$mapa`.
-3. **JSON** (`app/Views/json/cliente.php`): agregar `'notes' => $fila['notas'],`.
+3. **JSON** (`views/json/cliente.php`): agregar `'notes' => $fila['notas'],`.
 4. **React:** agregar `notes?: string` a la interface `Client` (`almacenAplicacion.ts`) y el campo en la pantalla.
 5. `npm run build`.
 
@@ -67,7 +72,7 @@ const receta = await api.get('/products/6/receta');
 
 ## Cambiar una pantalla
 1. Busca la pantalla en `src/pages/` (o la sección en `src/pages/admin/` y `src/pages/client/`). La documentación de cada una dice qué hace cada parte.
-2. Para verla mientras cambias: `start.bat` + `npm run dev` y abre `http://localhost:3000/?pagina=admin`.
+2. Para verla mientras cambias: Laragon encendido + `npm run dev` y abre `http://localhost:3000/?pagina=admin`.
 3. Al terminar: `npm run build`.
 
 Los estilos se escriben con clases de **Tailwind** dentro de `className` (`p-4`, `bg-orange-500`,
@@ -77,8 +82,9 @@ Los estilos se escriben con clases de **Tailwind** dentro de `className` (`p-4`,
 
 ## Agregar una página nueva (ej: `/reportes` para el admin)
 1. `config/paginas.php`: `'/reportes' => ['PaginaController', 'reportes', ['admin']],`
-2. `PaginaController.php`: agregar `'reportes' => 'reportes'` al arreglo `$vistas`.
-3. Crear `app/Views/paginas/reportes.php` copiando otra vista y poniendo `$pagina = 'reportes';`.
+2. `PaginaController.php`: agregar el método `public function reportes() { $this->mostrar('reportes'); }`
+   y su `elseif ($accion === 'reportes')` en el despachador del final.
+3. Crear `views/paginas/reportes.php` copiando otra vista y poniendo `$pagina = 'reportes';`.
 4. Crear `src/pages/Reportes.tsx` y registrarlo en `src/main.tsx` dentro de `PAGINAS`: `reportes: Reportes,`.
 5. `npm run build`.
 
@@ -88,11 +94,12 @@ Los estilos se escriben con clases de **Tailwind** dentro de `className` (`p-4`,
 | Regla | Ejemplo |
 |---|---|
 | Comentario de bloque al inicio del archivo | `/** Controlador de Productos (menu). */` |
-| `require_once` de lo que se usa | `require_once __DIR__ . '/../Models/Producto.php';` |
-| Controladores con `$action` e `if / elseif / else` | `if ($action === 'index') { ... } elseif (...) { ... }` |
-| Modelos con `private $conn` y `global $conn` | ver `app/Models/Cliente.php` |
+| `require_once` de lo que se usa | `require_once __DIR__ . '/../models/Producto.php';` |
+| Controladores: una clase con un método por acción y el despachador al final | `if ($accion === 'index') { $controller->index(); } elseif (...) { ... }` |
+| Modelos con `private $conn` y `global $conn` | ver `models/Cliente.php` |
 | Consultas completas: `prepare`, `bind_param`, `execute`, `get_result`, `close` | |
 | Llave `{` de clases y funciones en la línea siguiente | `class Cliente` ↵ `{` |
+| Cerrar los archivos PHP con `?>` | |
 | Respuestas con `responderJson()` / `responderError()` | `responderError('Producto no encontrado.', 404);` |
 
 ---

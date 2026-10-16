@@ -2,10 +2,10 @@
 
 - **Nombre:** `hamburguer_copiway`
 - **Motor:** MySQL 8 (InnoDB), caracteres `utf8mb4` (tildes, ñ y emojis).
-- **Estructura:** `database/schema.sql` (23 tablas). **Datos de ejemplo:** `database/seed.sql`.
-- **Conexión:** `config/database.php`, con los datos del `.env` (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`).
+- **Estructura:** `sql/schema.sql` (23 tablas). **Datos de ejemplo:** `sql/seed.sql`.
+- **Conexión:** `config/database.php` (`$host`, `$user`, `$password`, `$bd`, `$port`).
 
-Detalle tabla por tabla en [documentacion.md/database/schema.md](../database/schema.md).
+Detalle tabla por tabla en [documentacion.md/sql/schema.md](../sql/schema.md).
 
 ## Las tablas por grupos
 ```
@@ -69,15 +69,13 @@ PAGO_TRANSACCION
 ## Empezar de cero
 ⚠️ **Borra todos los datos.** Haz un respaldo antes.
 ```powershell
-"C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe" -u root --default-character-set=utf8mb4 < database\schema.sql
+"C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe" -u root --default-character-set=utf8mb4 < sql\schema.sql
 ```
 `schema.sql` empieza con `DROP DATABASE IF EXISTS hamburguer_copiway;`.
 
 ## Agregar una columna o tabla
-1. Escribe el cambio (`ALTER TABLE ...`) en un archivo nuevo de `database/migraciones/` (ej.
-   `002_...sql`) y ejecútalo en tu base. Así quien ya tenía el sistema instalado puede actualizarse
-   sin perder datos.
-2. Agrégalo también a `database/schema.sql`, para que una instalación nueva lo tenga.
-3. Usa la columna en el modelo correspondiente de `app/Models/` y, si React la necesita, en la función de `app/Views/json/`.
+1. Ejecuta el cambio (`ALTER TABLE ...`) en tu base (por ejemplo desde HeidiSQL o phpMyAdmin).
+2. Agrégalo también a `sql/schema.sql`, para que una instalación nueva lo tenga.
+3. Usa la columna en el modelo correspondiente de `models/` y, si React la necesita, en la función de `views/json/`.
 
 Más en [Cómo hacer cambios](12-como-hacer-cambios.md).

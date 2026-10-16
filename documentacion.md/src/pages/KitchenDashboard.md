@@ -12,7 +12,7 @@ imprimir la comanda y ver alertas de inventario. Suena una campana cuando llega 
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
 |---|---|---|
-| ← la abre | `main.tsx` con `data-pagina="kitchen"` (`app/Views/paginas/cocina.php`) | |
+| ← la abre | `main.tsx` con `data-pagina="kitchen"` (`views/paginas/cocina.php`) | |
 | → lee del almacén | `orders`, `inventory`, `staff`, `products`, `storeConfig` | Llegan por `/api/sync` cada pocos segundos. De `storeConfig.business` salen los datos del negocio del ticket. |
 | → usa del almacén | `updateOrderStatus()` → `PATCH /api/orders/{id}/preparing` o `/ready` → `OrderController` → `PedidoService::marcarPreparando()` / `marcarListo()` | Mover pedidos. |
 | → llama a | `POST /api/auth/login` con `pin` → `Auth::intentarLoginConPin()` | Login con PIN. |

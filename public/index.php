@@ -11,9 +11,9 @@ if (is_file(__DIR__ . '/../vendor/autoload.php')) {
 
 require_once __DIR__ . '/../config/database.php';
 $config = require __DIR__ . '/../config/app.php';
-require_once __DIR__ . '/../app/Core/helpers.php';
-require_once __DIR__ . '/../app/Core/Session.php';
-require_once __DIR__ . '/../app/Core/Auth.php';
+require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/../config/Session.php';
+require_once __DIR__ . '/../models/Auth.php';
 
 configurarManejadorErrores();
 date_default_timezone_set($config['zona_horaria']);

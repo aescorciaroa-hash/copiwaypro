@@ -3,7 +3,6 @@
  * Servicio de Pedidos: reglas del ciclo de vida del pedido
  * (checkout, cambios de estado, entrega con PIN y resena).
  */
-require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/Pedido.php';
 require_once __DIR__ . '/Configuracion.php';
 require_once __DIR__ . '/Ingrediente.php';
@@ -670,7 +669,7 @@ class PedidoService
         try {
             $pushService = new PushNotificationService();
             $pushService->notificarPedidoEntregado($idPedido, (int) $row['id_cliente']);
-        } catch (Throwable $e) {
+        } catch (Exception $e) {
             error_log('No se pudo enviar la notificacion push de entrega: ' . $e->getMessage());
         }
     }

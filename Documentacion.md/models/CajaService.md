@@ -56,3 +56,19 @@ Lo mismo, pero **guardando** dentro de una transacción:
 5. `commit()` y devuelve el reporte con `cajaModel->reporte($idReporte)`.
 
 La tabla `REPORTE_CAJA` tiene `UNIQUE (id_admin, fecha)`: un admin no puede hacer dos cierres el mismo día.
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/CajaService.php`).
+Lo cargan con `require_once`: `controllers/CashClosingController.php`. Dejan de funcionar:
+  - `GET /api/cash-closing/preview` → Admin → Ajustes y Caja: el botón "Generar cierre" no muestra la vista previa.
+  - `POST /api/cash-closing` → Admin: no se puede confirmar el cierre de caja.
+
+**Si se borra un método:** sale `Call to undefined method CajaService::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `previsualizar()` | `CashClosingController::preview()` | `GET /api/cash-closing/preview` → Admin → Ajustes y Caja: el botón "Generar cierre" no muestra la vista previa. |
+| `calcularTotales()` (privado) | `CajaService::generar()`, `CajaService::previsualizar()` | `GET /api/cash-closing/preview` → Admin → Ajustes y Caja: el botón "Generar cierre" no muestra la vista previa.<br>`POST /api/cash-closing` → Admin: no se puede confirmar el cierre de caja. |
+| `generar()` | `CashClosingController::store()` | `POST /api/cash-closing` → Admin: no se puede confirmar el cierre de caja. |
+| `__construct()` | `new CajaService()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa CajaService. |

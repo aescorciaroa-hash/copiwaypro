@@ -3,8 +3,6 @@
  * Modelo Usuario (administradores, tabla ADMINISTRADOR).
  * El rol 'programador' no entra por la web: solo se usa en sql/create-admin.php.
  */
-require_once __DIR__ . '/../config/database.php';
-
 class Usuario
 {
     private $conn;

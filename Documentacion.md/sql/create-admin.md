@@ -45,3 +45,8 @@ Escribe el error y termina el programa con `exit(1)` (1 = terminó con error).
 4. Valida: contraseña de 8 o más caracteres y que el correo/teléfono no existan.
 5. Lo crea con `nivel_acceso = 'maestro'` y `creado_por` = id del programador.
 6. Ya puede entrar por `/login`.
+
+## ¿Qué pasa si se borra?
+
+Solo se usa por consola para crear el primer administrador. Borrarlo no afecta el sistema;
+solo impide crear el primer admin en una instalación nueva (habría que insertarlo a mano en MySQL).

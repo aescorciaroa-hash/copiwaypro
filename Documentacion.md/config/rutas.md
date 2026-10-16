@@ -39,6 +39,9 @@ Es solo un atajo para no repetir la lista de los 4 roles en varias rutas.
 | `delivery` | Domiciliario |
 | `client` | Cliente |
 
+Solo existen las rutas que la pantalla de React usa de verdad. Los datos para mostrar (productos,
+inventario, pedidos, clientes, personal, ajustes) llegan todos juntos por `GET /api/sync`.
+
 ## Grupos de rutas
 | Grupo | Controlador |
 |---|---|
@@ -46,19 +49,17 @@ Es solo un atajo para no repetir la lista de los 4 roles en varias rutas.
 | `/api/settings` | SettingController |
 | `/api/products` | ProductController |
 | `/api/uploads/product-image` | UploadController |
-| `/api/ingredients` | IngredientController |
-| `/api/inventory`, `/api/inventory-logs` | InventoryController |
+| `/api/inventory` | InventoryController |
 | `/api/clients` | ClientController |
 | `/api/staff` | StaffController |
 | `/api/orders` | OrderController |
 | `/api/payments` | PaymentController |
-| `/api/cash-closing`, `/api/dashboard` | CashClosingController, DashboardController |
+| `/api/cash-closing` | CashClosingController |
 | `/api/sync` | SyncController |
 | `/api/push` | PushController |
 
-**El orden importa:** `GET /api/cash-closing/preview` va antes que `GET /api/cash-closing/{id}`.
-Si fuera al revés, la palabra `preview` se tomaría como si fuera un `{id}`. Por la misma razón,
-`POST /api/orders/manual` (pedido por llamada o WhatsApp que registra el admin) está escrita junto a
+**El orden importa:** las rutas fijas van antes que las que tienen `{id}`, para que una palabra
+como `manual` no se tome como si fuera un `{id}`. Por eso `POST /api/orders/manual` (pedido por llamada o WhatsApp que registra el admin) está escrita junto a
 `POST /api/orders` y antes de las rutas de pedidos con `{id}`.
 
 ## Rutas de pedidos y personal que más se confunden
@@ -71,3 +72,12 @@ Si fuera al revés, la palabra `preview` se tomaría como si fuera un `{id}`. Po
 | `PUT /api/staff/{id}` | admin | Editar a un colaborador, o darlo de baja (`active: false`). |
 | `DELETE /api/staff/{id}?role=...` | admin | Eliminarlo de verdad, solo si no tiene historial de pedidos. |
 | `PATCH /api/staff/{id}/location` | domiciliario | Guardar su propia ubicación GPS. |
+
+## ¿Qué pasa si se borra?
+
+| Si se borra… | Qué pasa | Error que aparece |
+|---|---|---|
+| **El archivo completo** | Ninguna ruta `/api/...` funciona: todas las pantallas se quedan sin datos y nada se guarda. Las páginas sí abren. | `Failed to open stream` (…`config/rutas.php`) |
+| Una línea (una ruta) | Solo esa acción deja de funcionar. Qué pantalla se afecta está en la ficha del controlador que aparece en la línea (sección "¿Qué pasa si se borra?"). | `Ruta no encontrada.` (404), o `Metodo no permitido.` (405) si la misma dirección existe con otro método |
+| Un rol de la lista (ej. `['admin']` → `[]`) | La ruta queda **pública**: cualquiera la puede usar sin iniciar sesión. No se ve un error, por eso es peligroso. | Ninguno |
+| `$TODOS_LOS_ROLES` | Las rutas que la usan (`GET /api/orders`, `PUT /api/clients/{id}`) quedan **públicas**: responden aunque nadie haya iniciado sesión. | `Undefined variable $TODOS_LOS_ROLES` (aviso al inicio de la respuesta) |

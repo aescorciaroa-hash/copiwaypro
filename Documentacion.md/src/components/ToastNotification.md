@@ -46,3 +46,14 @@ Cada vez que llega un aviso nuevo, programa su cierre automático. Si llega otro
 una versión vieja.
 
 `if (!toast) return null;` → sin aviso, no se dibuja nada.
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../ToastNotification"` porque lo importan: `src/pages/AdminDashboard.tsx`, `src/pages/ClientDashboard.tsx`, `src/pages/DeliveryDashboard.tsx`, `src/pages/KitchenDashboard.tsx`, `src/pages/admin/InventorySection.tsx`, `src/pages/admin/MenuSection.tsx`, `src/pages/admin/SettingsSection.tsx`, `src/pages/admin/StaffSection.tsx`, `src/pages/client/CartSection.tsx`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

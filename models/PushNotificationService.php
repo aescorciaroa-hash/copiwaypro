@@ -4,7 +4,6 @@
  * para que salgan como notificacion del sistema aunque el navegador este cerrado.
  * Usa la libreria minishlink/web-push (Composer).
  */
-require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/PushSuscripcion.php';
 
 use Minishlink\WebPush\WebPush;

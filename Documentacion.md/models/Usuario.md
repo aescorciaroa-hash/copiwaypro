@@ -27,3 +27,18 @@ El inicio de sesión de los administradores lo hace `models/Auth.php`, no este m
 
 `$creadoPor = $d['creado_por'] ?? null;` → si no viene quién lo creó, se guarda `NULL`
 (el programador inicial no tiene creador).
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/Usuario.php`).
+Lo cargan con `require_once`: `sql/create-admin.php`. Dejan de funcionar:
+  - Nada directo.
+
+**Si se borra un método:** sale `Call to undefined method Usuario::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `buscarPorCorreo()` | `Usuario::crear()` | Nada directo. |
+| `esUsado()` | — | Nada directo. |
+| `crear()` | — | Nada directo. |
+| `__construct()` | `new Usuario()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa Usuario. |

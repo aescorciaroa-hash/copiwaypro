@@ -3,8 +3,6 @@
  * Modelo Caja (REPORTE_CAJA, LIQUIDACION_DOMICILIARIO y DETALLE_AUDITORIA).
  * Solo consultas; los calculos del cierre estan en CajaService.
  */
-require_once __DIR__ . '/../config/database.php';
-
 class Caja
 {
     private $conn;
@@ -181,19 +179,6 @@ class Caja
             'insumosConsumidos'  => $insumos,
             'orders'             => $ordenes,
         ];
-    }
-
-    public function historialDeAdmin($idAdmin)
-    {
-        $stmt = $this->conn->prepare(
-            "SELECT id_reporte, fecha, total_ventas, total_efectivo, total_digital
-             FROM REPORTE_CAJA WHERE id_admin = ? ORDER BY fecha DESC"
-        );
-        $stmt->bind_param("s", $idAdmin);
-        $stmt->execute();
-        $data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-        return $data;
     }
 }
 ?>

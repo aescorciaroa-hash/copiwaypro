@@ -40,3 +40,8 @@ Las contraseñas están guardadas como **hash** (`$2y$10$...`), igual que lo har
 | `SET @id_admin = LAST_INSERT_ID();` | Guarda en una variable de MySQL el id recién creado, para usarlo en los siguientes INSERT (ej: `creado_por = @id_admin`). |
 | `NOW()` | Fecha y hora actual. |
 | `INSERT ... SELECT ...` | Inserta filas a partir del resultado de una consulta. |
+
+## ¿Qué pasa si se borra?
+
+Solo trae datos de ejemplo. Borrarlo no afecta el sistema; solo impide cargar los usuarios y
+productos de prueba en una instalación nueva.

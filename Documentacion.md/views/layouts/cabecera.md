@@ -28,10 +28,10 @@ Su trabajo más importante es **pasarle datos de PHP a React** sin hacer una pet
 
 ## Código explicado
 ```php
-$verCss = @filemtime($rutaAssets . '/main.css') ?: time();
+$verCss = filemtime($rutaAssets . '/main.css');
 ```
-- `filemtime` devuelve la fecha de modificación del archivo. El `@` oculta el aviso si el archivo no existe.
-- `?: time()` → si no existe, usa la hora actual.
+- `filemtime` devuelve la fecha de modificación del archivo. Si `public/assets/main.css` no existe
+  (falta `npm run build`), PHP muestra el aviso `filemtime(): stat failed`.
 - Se agrega como `?v=...` al final de la dirección del CSS: cuando cambia el CSS, cambia el número, y el
   navegador descarga el nuevo en vez de usar el que tenía guardado.
 
@@ -59,3 +59,13 @@ Dice que la respuesta es HTML. `?>` cierra el PHP y empieza el HTML normal.
 - React se "monta" dentro de este div.
 - `data-pagina` le dice qué pantalla mostrar. `htmlspecialchars` escapa caracteres especiales.
 - El div **no se cierra aquí**: lo cierra `pie.php`.
+
+## ¿Qué pasa si se borra?
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | Ninguna página abre: todas las vistas de `views/paginas/` la cargan (`Failed to open stream` …`cabecera.php`). |
+| El `<link ... main.css>` | Las páginas salen sin estilos. |
+| `window.__APP_BASE__` | React no sabe la carpeta del proyecto: las llamadas a la API van a la dirección equivocada (404). |
+| `window.__DATOS__` | React no recibe el usuario, el token CSRF ni los ajustes: no se puede guardar nada. |
+| `<div id="app" data-pagina="...">` | React no tiene dónde dibujar: página en blanco. |

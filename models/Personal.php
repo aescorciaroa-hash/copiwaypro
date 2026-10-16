@@ -2,8 +2,6 @@
 /**
  * Modelo Personal: ayudantes de cocina (AYUDANTE_COCINA) y domiciliarios (DOMICILIARIO).
  */
-require_once __DIR__ . '/../config/database.php';
-
 class Personal
 {
     private $conn;

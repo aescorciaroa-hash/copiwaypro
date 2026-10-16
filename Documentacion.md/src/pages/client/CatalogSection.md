@@ -33,3 +33,14 @@ del último pedido y, al tocar un producto, abre la ventana para personalizarlo.
 | `filteredCatalog` | Productos de la categoría elegida. Si un producto no tiene categoría, se adivina por su nombre. |
 
 Es la misma lógica de categorías que `Landing.tsx`.
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../CatalogSection"` porque lo importan: `src/pages/ClientDashboard.tsx`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

@@ -24,7 +24,7 @@ Ejemplo: `GET /api/products/{id}/receta` para ver la receta de un producto.
 ```php
 public function receta()
 {
-    $id = $_GET['id'] ?? $_POST['id'] ?? '';
+    $id = $_GET['id'];
     $producto = $this->productoModel->buscar($id, true);
     if (!$producto) {
         responderError('Producto no encontrado.', 404);

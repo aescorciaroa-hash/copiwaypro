@@ -22,3 +22,4 @@ hace cada rol...). Si quieres el detalle de un archivo en particular, está en e
 | 12 | [Cómo hacer cambios](12-como-hacer-cambios.md) | Agregar una ruta, cambiar una pantalla, compilar. |
 | 13 | [Problemas comunes](13-problemas-comunes.md) | Errores frecuentes y cómo solucionarlos. |
 | 14 | [Comandos útiles](14-comandos.md) | Todos los comandos en un solo lugar. |
+| 15 | [Si algo deja de funcionar](15-si-algo-deja-de-funcionar.md) | Cómo encontrar lo que se borró a partir del mensaje de error. |

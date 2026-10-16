@@ -35,7 +35,6 @@ Consultas de los **clientes** (tabla `CLIENTE`) y de sus **notificaciones** (tab
 | `correoOTelefonoExiste($correo, $telefono)` | `SELECT COUNT(*)`: ¿ya hay alguien con ese correo o teléfono? | `true` / `false` |
 | `comoJson($row)` | Arma el JSON del cliente: cuenta sus pedidos (`COUNT(*)`), busca la fecha del último (`MAX(fecha_hora)`) y trae sus notificaciones. Después llama a `cliente_a_json()`. | arreglo |
 | `notificacionesDe($idCliente)` | Sus notificaciones, de la más nueva a la más vieja. Con un `foreach` convierte cada fila con `notificacion_a_json()`. | arreglo |
-| `marcarNotificacionLeida($idCliente, $idNotificacion)` | `UPDATE ... SET leida = 1`, solo si la notificación es de ese cliente. | `true` si cambió algo |
 | `actualizar($id, $campos)` | Cambia solo los campos enviados (ver abajo). | — |
 | `crear($d)` | Inserta un cliente nuevo. | id nuevo (`insert_id`) |
 | `actualizarContrasena($id, $hash)` | Guarda una nueva contraseña ya cifrada. | — |
@@ -80,3 +79,33 @@ $stmt->bind_param("ssssssss", $d['name'], $d['phone'], ...);
 return $this->conn->insert_id;
 ```
 8 `?` → 8 letras `s`. Al final devuelve el id que MySQL le asignó al cliente nuevo.
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/Cliente.php`).
+Lo cargan con `require_once`: `controllers/AuthController.php`, `controllers/ClientController.php`, `controllers/SyncController.php`. Dejan de funcionar:
+  - `POST /api/auth/login` → Nadie puede iniciar sesión (pantalla de login y PIN de cocina/domiciliario).
+  - `POST /api/auth/logout` → El botón "Cerrar sesión" de todos los paneles deja de funcionar.
+  - `GET /api/auth/csrf` → React no recibe el token CSRF: ningún formulario puede guardar (todo responde 419).
+  - `POST /api/auth/register` → No se pueden crear cuentas de cliente (pantalla "Crear cuenta").
+  - `POST /api/auth/forgot-password/request` → No llega el código para recuperar la contraseña.
+  - `POST /api/auth/forgot-password/reset` → No se puede cambiar la contraseña con el código.
+  - `PUT /api/clients/{id}` → Cliente → Mi Perfil (y el carrito/tema guardado): no se guardan los cambios. Admin → Clientes: no se puede editar un cliente.
+  - `PUT /api/clients/{id}/password` → Cliente → Mi Perfil: no se puede cambiar la contraseña.
+  - … y 1 más: `GET /api/sync`.
+
+**Si se borra un método:** sale `Call to undefined method Cliente::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `listar()` | `SyncController::index()` | `GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `buscar()` | `ClientController::update()`, `SyncController::index()` | `PUT /api/clients/{id}` → Cliente → Mi Perfil (y el carrito/tema guardado): no se guardan los cambios. Admin → Clientes: no se puede editar un cliente.<br>`GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `buscarCrudo()` | `AuthController::register()`, `ClientController::changePassword()`, `Cliente::buscar()` | `POST /api/auth/register` → No se pueden crear cuentas de cliente (pantalla "Crear cuenta").<br>`PUT /api/clients/{id}` → Cliente → Mi Perfil (y el carrito/tema guardado): no se guardan los cambios. Admin → Clientes: no se puede editar un cliente.<br>`PUT /api/clients/{id}/password` → Cliente → Mi Perfil: no se puede cambiar la contraseña.<br>`GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `buscarIdPorCorreo()` | `AuthController::forgotPasswordRequest()` | `POST /api/auth/forgot-password/request` → No llega el código para recuperar la contraseña. |
+| `correoOTelefonoExiste()` | `AuthController::register()` | `POST /api/auth/register` → No se pueden crear cuentas de cliente (pantalla "Crear cuenta"). |
+| `comoJson()` | `Cliente::buscar()`, `Cliente::listar()` | `PUT /api/clients/{id}` → Cliente → Mi Perfil (y el carrito/tema guardado): no se guardan los cambios. Admin → Clientes: no se puede editar un cliente.<br>`GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `notificacionesDe()` | `Cliente::comoJson()` | `PUT /api/clients/{id}` → Cliente → Mi Perfil (y el carrito/tema guardado): no se guardan los cambios. Admin → Clientes: no se puede editar un cliente.<br>`GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `actualizar()` | `ClientController::update()` | `PUT /api/clients/{id}` → Cliente → Mi Perfil (y el carrito/tema guardado): no se guardan los cambios. Admin → Clientes: no se puede editar un cliente. |
+| `crear()` | `AuthController::register()` | `POST /api/auth/register` → No se pueden crear cuentas de cliente (pantalla "Crear cuenta"). |
+| `actualizarContrasena()` | `AuthController::forgotPasswordReset()`, `ClientController::changePassword()` | `POST /api/auth/forgot-password/reset` → No se puede cambiar la contraseña con el código.<br>`PUT /api/clients/{id}/password` → Cliente → Mi Perfil: no se puede cambiar la contraseña. |
+| `__construct()` | `new Cliente()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa Cliente. |

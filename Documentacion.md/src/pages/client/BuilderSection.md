@@ -42,3 +42,14 @@ ingredientes, y la ve dibujada en pantalla (pan arriba, rellenos, pan abajo y un
 | Quitar una capa | `setBuilderStack(builderStack.filter((_, i) => i !== sIdx))` (quita la de esa posición). |
 | Vaciar todo | `setBuilderStack([])` |
 | Agregar al carrito | Si se está editando, reemplaza ese ítem; si no, agrega uno nuevo con `isCustom: true`, la lista de capas y el precio total (suma de los precios de cada capa). Después va a la pestaña del carrito. El botón se deshabilita si no hay capas o si alguna está agotada. |
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../BuilderSection"` porque lo importan: `src/pages/ClientDashboard.tsx`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

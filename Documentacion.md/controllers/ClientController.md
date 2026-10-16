@@ -7,12 +7,8 @@ Perfil"), el cambio de contraseña y las notificaciones.
 ## ¿Con qué se conecta?
 | Ruta | Método | Quién | React |
 |---|---|---|---|
-| `GET /api/clients` | `index` | admin | Llega por `/api/sync` (clave `clients`) → `admin/ClientsSection.tsx` |
-| `GET /api/clients/{id}` | `show` | dueño o admin | — |
 | `PUT /api/clients/{id}` | `update` | dueño o admin | `almacenAplicacion.ts` (`updateClient`) ← `ClientDashboard.tsx` (perfil y carrito) y `context/ThemeContext.tsx` (tema claro/oscuro) |
 | `PUT /api/clients/{id}/password` | `changePassword` | solo el cliente | `almacenAplicacion.ts` (`changeClientPassword`) ← `ClientDashboard.tsx` |
-| `GET /api/clients/{id}/notifications` | `notifications` | dueño o admin | — |
-| `PATCH /api/clients/{id}/notifications/{notifId}/read` | `markNotificationRead` | dueño o admin | — |
 
 - **Modelo:** `Cliente`.
 - **Auth:** para saber si quien pide es el dueño de la cuenta o un admin.
@@ -39,8 +35,6 @@ if (!$esPropio && !$esAdmin) {
 - Sin sesión → **401**. Con sesión pero sin permiso → **403**.
 
 ## Acciones
-- **`index`**: lista todos los clientes con su resumen (pedidos, total gastado...).
-- **`show`**: un cliente. **404** si no existe.
 - **`update`**:
   ```php
   if (Auth::rol() !== 'admin') {
@@ -58,5 +52,25 @@ if (!$esPropio && !$esAdmin) {
   - Así en `$this->datos` quedan **solo** esas claves y un cliente no puede cambiarse sus puntos (`points`) ni el total gastado.
   - Si el correo nuevo ya lo usa otra cuenta → **409**.
 - **`changePassword`**: solo el propio cliente. Revisa la contraseña actual con `password_verify` y guarda la nueva cifrada con `password_hash`.
-- **`notifications`**: lista sus notificaciones.
-- **`markNotificationRead`**: marca una como leída. **404** si no existe.
+
+## ¿Qué pasa si se borra?
+
+Este archivo lo carga `cargarControlador()` (`config/helpers.php`) cuando llega una de sus rutas.
+Si algo se borra, el error aparece en la pantalla como aviso rojo y completo en
+**F12 → Red → la petición → Respuesta**.
+
+| Si se borra… | Qué deja de funcionar | Error que aparece |
+|---|---|---|
+| **El archivo completo** | Todas sus rutas: `PUT /api/clients/{id}`, `PUT /api/clients/{id}/password`. | `Failed to open stream: No such file or directory` (…`controllers/ClientController.php`) |
+| La línea `require_once __DIR__ . '/../models/Cliente.php';` | **Todas** sus rutas (el modelo se crea en el constructor, que corre en cada acción). | `Class "Cliente" not found` |
+| El método `update()` | Cliente → Mi Perfil (y el carrito/tema guardado): no se guardan los cambios. Admin → Clientes: no se puede editar un cliente. | `Call to undefined method ClientController::update()` (500) |
+| La rama `$accion === 'update'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'PUT /api/clients/{id}'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| El método `changePassword()` | Cliente → Mi Perfil: no se puede cambiar la contraseña. | `Call to undefined method ClientController::changePassword()` (500) |
+| La rama `$accion === 'changePassword'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'PUT /api/clients/{id}/password'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| El método privado `autorizarPropioOAdmin()` | `PUT /api/clients/{id}`. | `Call to undefined method ClientController::autorizarPropioOAdmin()` (500) |
+| La línea `$this->clienteModel = ...` del constructor | Las acciones que usan `$this->clienteModel`. | `Call to a member function ...() on null` o `Undefined property` |
+| La línea `$this->datos = ...` del constructor | Las acciones que usan `$this->datos`. | `Call to a member function ...() on null` o `Undefined property` |
+
+**Cómo se arregla:** volver a escribir lo que se borró. La ficha de arriba ("Código explicado") muestra cómo era.

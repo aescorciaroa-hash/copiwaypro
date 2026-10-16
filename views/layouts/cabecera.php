@@ -5,7 +5,7 @@
  */
 
 $rutaAssets = dirname(__DIR__, 2) . '/public/assets';
-$verCss = @filemtime($rutaAssets . '/main.css') ?: time();
+$verCss = filemtime($rutaAssets . '/main.css');
 
 $datosJson = json_encode($datos, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 $baseJson = json_encode(rutaBase());

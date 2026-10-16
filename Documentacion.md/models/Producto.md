@@ -72,3 +72,30 @@ $idIngrediente = $ingredienteModel->resolverOCrear($item['name'], $item['ambito'
 ```
 Busca el insumo **por nombre**. Si el admin escribió un insumo nuevo, se crea con stock 0.
 Después se inserta la línea en RECETA con su cantidad (`quantity`, por defecto 1).
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/Producto.php`).
+Lo cargan con `require_once`: `controllers/ProductController.php`, `controllers/SyncController.php`. Dejan de funcionar:
+  - `POST /api/products` → Admin → Gestión de Menú: no se pueden crear productos.
+  - `PUT /api/products/{id}` → Admin → Gestión de Menú: no se pueden editar productos.
+  - `DELETE /api/products/{id}` → Admin → Gestión de Menú: no se pueden eliminar productos.
+  - `GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan.
+
+**Si se borra un método:** sale `Call to undefined method Producto::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `listar()` | `SyncController::index()` | `GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `buscar()` | `ProductController::destroy()`, `ProductController::store()`, `ProductController::update()` | `POST /api/products` → Admin → Gestión de Menú: no se pueden crear productos.<br>`PUT /api/products/{id}` → Admin → Gestión de Menú: no se pueden editar productos.<br>`DELETE /api/products/{id}` → Admin → Gestión de Menú: no se pueden eliminar productos. |
+| `comoJson()` | `Producto::buscar()`, `Producto::listar()` | `POST /api/products` → Admin → Gestión de Menú: no se pueden crear productos.<br>`PUT /api/products/{id}` → Admin → Gestión de Menú: no se pueden editar productos.<br>`DELETE /api/products/{id}` → Admin → Gestión de Menú: no se pueden eliminar productos.<br>`GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `recetaDe()` (privado) | `Producto::comoJson()` | `POST /api/products` → Admin → Gestión de Menú: no se pueden crear productos.<br>`PUT /api/products/{id}` → Admin → Gestión de Menú: no se pueden editar productos.<br>`DELETE /api/products/{id}` → Admin → Gestión de Menú: no se pueden eliminar productos.<br>`GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `badgeAEnum()` (privado) | `Producto::actualizar()`, `Producto::crear()` | `POST /api/products` → Admin → Gestión de Menú: no se pueden crear productos.<br>`PUT /api/products/{id}` → Admin → Gestión de Menú: no se pueden editar productos. |
+| `crear()` | `ProductController::store()` | `POST /api/products` → Admin → Gestión de Menú: no se pueden crear productos. |
+| `actualizar()` | `ProductController::update()` | `PUT /api/products/{id}` → Admin → Gestión de Menú: no se pueden editar productos. |
+| `eliminar()` | `ProductController::destroy()` | `DELETE /api/products/{id}` → Admin → Gestión de Menú: no se pueden eliminar productos. |
+| `sincronizarReceta()` (privado) | `Producto::actualizar()`, `Producto::crear()` | `POST /api/products` → Admin → Gestión de Menú: no se pueden crear productos.<br>`PUT /api/products/{id}` → Admin → Gestión de Menú: no se pueden editar productos. |
+| `resolverCategoria()` (privado) | `Producto::actualizar()`, `Producto::crear()` | `POST /api/products` → Admin → Gestión de Menú: no se pueden crear productos.<br>`PUT /api/products/{id}` → Admin → Gestión de Menú: no se pueden editar productos. |
+| `__construct()` | `new Producto()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa Producto. |
+
+**Si se borra una constante** (`BADGE_A_ENUM`, `BASE`): sale `Undefined constant Producto::NOMBRE` en lo que la usa.

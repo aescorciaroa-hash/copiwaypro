@@ -63,3 +63,13 @@ El domiciliario solo ve el teléfono si el pedido es **suyo** y va **En Camino**
 | `paymentStatus` | `aprobado` → `'Pagado'`; si no, la primera letra en mayúscula (`ucfirst`) |
 | `channel` | por dónde llegó: `canal_origen` (`web`, `llamada` o `whatsapp`) |
 | `isGuest` | `true` si es un pedido manual de alguien sin cuenta (`id_cliente` vacío) |
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** `config/helpers.php` lo carga en cada petición, así que **nada funciona** (`Failed to open stream` …`views/json/pedido.php`).
+
+**Si se borra una función:** sale `Call to undefined function nombre()` en lo que la usa:
+
+| Función | La llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `pedido_a_json()` | `Pedido::formar()` | `GET /api/orders` → Admin: después de confirmar el cierre de caja no se recargan las comandas.<br>`POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.<br>`PATCH /api/orders/{id}/address` → Admin: no se puede corregir la dirección de un pedido.<br>… y 9 más: `PATCH /api/orders/{id}/destination`, `PATCH /api/orders/{id}/preparing`, `PATCH /api/orders/{id}/ready`, `PATCH /api/orders/{id}/take`, `PATCH /api/orders/{id}/release`, `PATCH /api/orders/{id}/accept`, `PATCH /api/orders/{id}/deliver`, `PATCH /api/orders/{id}/review`, `GET /api/sync`. |

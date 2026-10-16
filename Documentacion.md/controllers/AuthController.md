@@ -10,7 +10,6 @@ conectado y recuperar la contraseña.
 | `POST /api/auth/register` | `register` | `src/pages/Register.tsx` |
 | `POST /api/auth/login` | `login` | `src/pages/Login.tsx`, `KitchenDashboard.tsx`, `DeliveryDashboard.tsx` |
 | `POST /api/auth/logout` | `logout` | Los 4 paneles (botón "Cerrar sesión") |
-| `GET /api/auth/me` | `me` | (disponible para consultar la sesión) |
 | `GET /api/auth/csrf` | `csrf` | `src/components/SyncDatos.tsx` y `src/servicios/api.ts` |
 | `POST /api/auth/forgot-password/request` | `forgotPasswordRequest` | `src/pages/ForgotPassword.tsx` |
 | `POST /api/auth/forgot-password/reset` | `forgotPasswordReset` | `src/pages/ForgotPassword.tsx` |
@@ -89,3 +88,41 @@ Devuelve quién está conectado. Si no hay sesión → **401**.
 ## Acción `csrf`
 Devuelve un token CSRF sin exigir sesión. Lo necesita el visitante antes de enviar el formulario de
 login o registro.
+
+## ¿Qué pasa si se borra?
+
+Este archivo lo carga `cargarControlador()` (`config/helpers.php`) cuando llega una de sus rutas.
+Si algo se borra, el error aparece en la pantalla como aviso rojo y completo en
+**F12 → Red → la petición → Respuesta**.
+
+| Si se borra… | Qué deja de funcionar | Error que aparece |
+|---|---|---|
+| **El archivo completo** | Todas sus rutas: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/csrf`, `POST /api/auth/register`, `POST /api/auth/forgot-password/request`, `POST /api/auth/forgot-password/reset`. | `Failed to open stream: No such file or directory` (…`controllers/AuthController.php`) |
+| La línea `require_once __DIR__ . '/../models/Cliente.php';` | **Todas** sus rutas (el modelo se crea en el constructor, que corre en cada acción). | `Class "Cliente" not found` |
+| La línea `require_once __DIR__ . '/../models/CodigoVerificacion.php';` | **Todas** sus rutas (el modelo se crea en el constructor, que corre en cada acción). | `Class "CodigoVerificacion" not found` |
+| La línea `require_once __DIR__ . '/../models/IntentoLogin.php';` | **Todas** sus rutas (el modelo se crea en el constructor, que corre en cada acción). | `Class "IntentoLogin" not found` |
+| La línea `require_once __DIR__ . '/../models/CorreoService.php';` | `POST /api/auth/forgot-password/request` | `Class "CorreoService" not found` |
+| El método `register()` | No se pueden crear cuentas de cliente (pantalla "Crear cuenta"). | `Call to undefined method AuthController::register()` (500) |
+| La rama `$accion === 'register'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'POST /api/auth/register'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| El método `forgotPasswordRequest()` | No llega el código para recuperar la contraseña. | `Call to undefined method AuthController::forgotPasswordRequest()` (500) |
+| La rama `$accion === 'forgotPasswordRequest'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'POST /api/auth/forgot-password/request'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| El método `forgotPasswordReset()` | No se puede cambiar la contraseña con el código. | `Call to undefined method AuthController::forgotPasswordReset()` (500) |
+| La rama `$accion === 'forgotPasswordReset'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'POST /api/auth/forgot-password/reset'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| El método `login()` | Nadie puede iniciar sesión (pantalla de login y PIN de cocina/domiciliario). | `Call to undefined method AuthController::login()` (500) |
+| La rama `$accion === 'login'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'POST /api/auth/login'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| El método `logout()` | El botón "Cerrar sesión" de todos los paneles deja de funcionar. | `Call to undefined method AuthController::logout()` (500) |
+| La rama `$accion === 'logout'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'POST /api/auth/logout'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| El método `csrf()` | React no recibe el token CSRF: ningún formulario puede guardar (todo responde 419). | `Call to undefined method AuthController::csrf()` (500) |
+| La rama `$accion === 'csrf'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'GET /api/auth/csrf'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| La línea `$this->clienteModel = ...` del constructor | Las acciones que usan `$this->clienteModel`. | `Call to a member function ...() on null` o `Undefined property` |
+| La línea `$this->codigoModel = ...` del constructor | Las acciones que usan `$this->codigoModel`. | `Call to a member function ...() on null` o `Undefined property` |
+| La línea `$this->intentoModel = ...` del constructor | Las acciones que usan `$this->intentoModel`. | `Call to a member function ...() on null` o `Undefined property` |
+| La línea `$this->datos = ...` del constructor | Las acciones que usan `$this->datos`. | `Call to a member function ...() on null` o `Undefined property` |
+
+**Cómo se arregla:** volver a escribir lo que se borró. La ficha de arriba ("Código explicado") muestra cómo era.

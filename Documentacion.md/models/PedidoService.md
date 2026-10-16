@@ -135,8 +135,52 @@ intentan tomar el mismo pedido al mismo tiempo, solo uno lo consigue.
 2. `hash_equals($row['pin_entrega'], $pin)` compara el PIN de forma segura. Si no coincide → "PIN incorrecto."
 3. En una transacción: marca el pedido como **entregado** y el pago como **aprobado**, y le suma al
    cliente sus **puntos** y su **total gastado** (si es un invitado, no hay cuenta a la que sumarle).
-4. Si el pedido tiene cliente registrado, intenta enviar la notificación push. Está en su propio `try/catch (Throwable $e)`: si falla, solo
-   se anota en el log y la entrega queda confirmada igual.
+4. Si el pedido tiene cliente registrado, intenta enviar la notificación push. Está en su propio `try/catch (Exception $e)`: si el servidor de notificaciones
+   falla, solo se anota en el log y la entrega queda confirmada igual. Si falta una clase o un método
+   (porque se borró), el error **sí** se muestra.
 
 ## `calificar($idPedido, $puntaje, $comentario)`
 Guarda la reseña. `ON DUPLICATE KEY UPDATE`: si el pedido ya tenía reseña, la reemplaza.
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/PedidoService.php`).
+Lo cargan con `require_once`: `controllers/OrderController.php`, `controllers/PaymentController.php`. Dejan de funcionar:
+  - `GET /api/orders` → Admin: después de confirmar el cierre de caja no se recargan las comandas.
+  - `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).
+  - `POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.
+  - `PATCH /api/orders/{id}/address` → Admin: no se puede corregir la dirección de un pedido.
+  - `PATCH /api/orders/{id}/destination` → Domiciliario: no se guarda el destino que ubica en el mapa.
+  - `PATCH /api/orders/{id}/preparing` → Cocina/Admin: el pedido no pasa a "En Preparación".
+  - `PATCH /api/orders/{id}/ready` → Cocina/Admin: el pedido no pasa a "Listos".
+  - `PATCH /api/orders/{id}/take` → Domiciliario: no puede tomar un pedido listo.
+  - … y 7 más: `PATCH /api/orders/{id}/release`, `PATCH /api/orders/{id}/accept`, `PATCH /api/orders/{id}/deliver`, `PATCH /api/orders/{id}/review`, `POST /api/payments/prepare`, `POST /api/payments/transactions`, `GET /api/payments/transactions/{id}`.
+
+**Si se borra un método:** sale `Call to undefined method PedidoService::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `crear()` | `OrderController::store()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout). |
+| `crearManual()` | `OrderController::storeManual()` | `POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp. |
+| `guardar()` (privado) | `PedidoService::crear()`, `PedidoService::crearManual()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp. |
+| `buscarCliente()` (privado) | `PedidoService::cotizar()`, `PedidoService::crear()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/payments/prepare` → Cliente: el pago en línea no arranca (paso 1 de la pasarela). |
+| `buscarClientePorTelefono()` (privado) | `PedidoService::crearManual()` | `POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp. |
+| `calcular()` (privado) | `PedidoService::cotizar()`, `PedidoService::crear()`, `PedidoService::crearManual()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.<br>`POST /api/payments/prepare` → Cliente: el pago en línea no arranca (paso 1 de la pasarela). |
+| `sumarPrecios()` (privado) | `PedidoService::calcular()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.<br>`POST /api/payments/prepare` → Cliente: el pago en línea no arranca (paso 1 de la pasarela). |
+| `cotizar()` | `PaymentController::prepare()` | `POST /api/payments/prepare` → Cliente: el pago en línea no arranca (paso 1 de la pasarela). |
+| `productoPersonalizadoOculto()` (privado) | `PedidoService::calcular()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.<br>`POST /api/payments/prepare` → Cliente: el pago en línea no arranca (paso 1 de la pasarela). |
+| `resolverIngredientes()` (privado) | `PedidoService::calcular()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.<br>`POST /api/payments/prepare` → Cliente: el pago en línea no arranca (paso 1 de la pasarela). |
+| `descuentoCumpleanos()` (privado) | `PedidoService::calcular()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.<br>`POST /api/payments/prepare` → Cliente: el pago en línea no arranca (paso 1 de la pasarela). |
+| `marcarPreparando()` | `OrderController::markPreparing()` | `PATCH /api/orders/{id}/preparing` → Cocina/Admin: el pedido no pasa a "En Preparación". |
+| `marcarListo()` | `OrderController::markReady()` | `PATCH /api/orders/{id}/ready` → Cocina/Admin: el pedido no pasa a "Listos". |
+| `registrarAyudante()` (privado) | `PedidoService::marcarListo()`, `PedidoService::marcarPreparando()` | `PATCH /api/orders/{id}/preparing` → Cocina/Admin: el pedido no pasa a "En Preparación".<br>`PATCH /api/orders/{id}/ready` → Cocina/Admin: el pedido no pasa a "Listos". |
+| `bloquearPedido()` (privado) | `PedidoService::aceptarEntrega()`, `PedidoService::liberarPedido()`, `PedidoService::tomarPedido()` | `PATCH /api/orders/{id}/take` → Domiciliario: no puede tomar un pedido listo.<br>`PATCH /api/orders/{id}/release` → Domiciliario/Admin: no se puede soltar o reasignar un pedido.<br>`PATCH /api/orders/{id}/accept` → Domiciliario: el pedido no pasa a "En Camino". |
+| `tomarPedido()` | `OrderController::take()` | `PATCH /api/orders/{id}/take` → Domiciliario: no puede tomar un pedido listo. |
+| `liberarPedido()` | `OrderController::release()` | `PATCH /api/orders/{id}/release` → Domiciliario/Admin: no se puede soltar o reasignar un pedido. |
+| `aceptarEntrega()` | `OrderController::accept()` | `PATCH /api/orders/{id}/accept` → Domiciliario: el pedido no pasa a "En Camino". |
+| `confirmarEntrega()` | `OrderController::deliver()` | `PATCH /api/orders/{id}/deliver` → Domiciliario: no puede confirmar la entrega con el PIN. |
+| `cambiarDireccion()` | `OrderController::updateAddress()` | `PATCH /api/orders/{id}/address` → Admin: no se puede corregir la dirección de un pedido. |
+| `guardarDestino()` | `OrderController::updateDestination()` | `PATCH /api/orders/{id}/destination` → Domiciliario: no se guarda el destino que ubica en el mapa. |
+| `transicion()` (privado) | `PedidoService::marcarListo()`, `PedidoService::marcarPreparando()` | `PATCH /api/orders/{id}/preparing` → Cocina/Admin: el pedido no pasa a "En Preparación".<br>`PATCH /api/orders/{id}/ready` → Cocina/Admin: el pedido no pasa a "Listos". |
+| `calificar()` | `OrderController::review()` | `PATCH /api/orders/{id}/review` → Cliente → Historial: no puede calificar un pedido. |
+| `__construct()` | `new PedidoService()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa PedidoService. |

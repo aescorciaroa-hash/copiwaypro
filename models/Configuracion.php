@@ -2,8 +2,6 @@
 /**
  * Modelo Configuracion (CONFIGURACION_SISTEMA y categorias del menu).
  */
-require_once __DIR__ . '/../config/database.php';
-
 class Configuracion
 {
     private $conn;

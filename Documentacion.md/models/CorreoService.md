@@ -21,7 +21,7 @@ PHPMailer está dentro de un "namespace" (una carpeta de nombres). `use` permite
 ## Métodos (todos estáticos: `CorreoService::enviar(...)`)
 | Método | Qué hace |
 |---|---|
-| `configurado()` | `true` si PHPMailer está instalado y `HOST` y `REMITENTE` no están vacíos. |
+| `configurado()` | `true` si `HOST` y `REMITENTE` no están vacíos. |
 | `enviar($para, $asunto, $html, $textoPlano)` | Arma y envía el correo. Devuelve `true` si salió. |
 | `enviarCodigoRecuperacion($para, $codigo)` | Arma el HTML con el código grande en naranja y llama a `enviar()`. |
 
@@ -36,7 +36,28 @@ PHPMailer está dentro de un "namespace" (una carpeta de nombres). `use` permite
 | `setFrom()` / `addAddress()` | Quién envía / a quién. |
 | `isHTML(true)`, `Body`, `AltBody` | Cuerpo en HTML y versión de texto plano. |
 | `send()` | Envía. |
-| `catch (Throwable $e)` | Si falla, lo anota en el log y devuelve `false` (nunca muestra el error al usuario). |
+| `catch (Exception $e)` | Si el servidor de correo falla, lo anota en el log y devuelve `false`. Si falta una clase o un método (porque se borró), el error **sí** se muestra. |
 
 `htmlspecialchars($codigo, ...)` convierte caracteres especiales para que no se puedan inyectar
 etiquetas HTML dentro del correo.
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/CorreoService.php`).
+Lo cargan con `require_once`: `controllers/AuthController.php`. Dejan de funcionar:
+  - `POST /api/auth/login` → Nadie puede iniciar sesión (pantalla de login y PIN de cocina/domiciliario).
+  - `POST /api/auth/logout` → El botón "Cerrar sesión" de todos los paneles deja de funcionar.
+  - `GET /api/auth/csrf` → React no recibe el token CSRF: ningún formulario puede guardar (todo responde 419).
+  - `POST /api/auth/register` → No se pueden crear cuentas de cliente (pantalla "Crear cuenta").
+  - `POST /api/auth/forgot-password/request` → No llega el código para recuperar la contraseña.
+  - `POST /api/auth/forgot-password/reset` → No se puede cambiar la contraseña con el código.
+
+**Si se borra un método:** sale `Call to undefined method CorreoService::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `configurado()` | `CorreoService::enviar()` | `POST /api/auth/forgot-password/request` → No llega el código para recuperar la contraseña. |
+| `enviar()` | `CorreoService::enviarCodigoRecuperacion()` | `POST /api/auth/forgot-password/request` → No llega el código para recuperar la contraseña. |
+| `enviarCodigoRecuperacion()` | `AuthController::forgotPasswordRequest()` | `POST /api/auth/forgot-password/request` → No llega el código para recuperar la contraseña. |
+
+**Si se borra una constante** (`HOST`, `PUERTO`, `CIFRADO`, `USUARIO`, `CLAVE`, `REMITENTE`, `REMITENTE_NOMBRE`): sale `Undefined constant CorreoService::NOMBRE` en lo que la usa.

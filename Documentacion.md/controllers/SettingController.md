@@ -8,7 +8,6 @@ del menú.
 ## ¿Con qué se conecta?
 | Ruta | Método | Quién | React |
 |---|---|---|---|
-| `GET /api/settings` | `show` | cualquiera | También llega en `window.__DATOS__.settings` y por `/api/sync` |
 | `PUT /api/settings` | `update` | admin | `almacenAplicacion.ts` ← `admin/SettingsSection.tsx` |
 | `POST /api/settings/categories` | `addCategory` | admin | `almacenAplicacion.ts` ← `admin/MenuSection.tsx` |
 | `DELETE /api/settings/categories/{category}` | `removeCategory` | admin | `almacenAplicacion.ts` ← `MenuSection.tsx` |
@@ -32,3 +31,27 @@ del menú.
   entero mayor o igual a 0, o si `business.name` llega vacío.
 - **`addCategory`**: `trim()` quita espacios al inicio y al final. Si queda vacío → **422**. Si ya existe (sin importar mayúsculas), no la repite.
 - **`removeCategory`**: si algún producto **activo** la usa → **409** con el mensaje del modelo.
+
+## ¿Qué pasa si se borra?
+
+Este archivo lo carga `cargarControlador()` (`config/helpers.php`) cuando llega una de sus rutas.
+Si algo se borra, el error aparece en la pantalla como aviso rojo y completo en
+**F12 → Red → la petición → Respuesta**.
+
+| Si se borra… | Qué deja de funcionar | Error que aparece |
+|---|---|---|
+| **El archivo completo** | Todas sus rutas: `PUT /api/settings`, `POST /api/settings/categories`, `DELETE /api/settings/categories/{category}`. | `Failed to open stream: No such file or directory` (…`controllers/SettingController.php`) |
+| La línea `require_once __DIR__ . '/../models/Configuracion.php';` | **Todas** sus rutas (el modelo se crea en el constructor, que corre en cada acción). | `Class "Configuracion" not found` |
+| El método `update()` | Admin → Ajustes y Caja: no se guardan horario, tarifa, puntos ni datos del negocio. | `Call to undefined method SettingController::update()` (500) |
+| La rama `$accion === 'update'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'PUT /api/settings'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| El método `addCategory()` | Admin → Gestión de Menú: no se pueden crear categorías. | `Call to undefined method SettingController::addCategory()` (500) |
+| La rama `$accion === 'addCategory'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'POST /api/settings/categories'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| El método `removeCategory()` | Admin → Gestión de Menú: no se pueden borrar categorías. | `Call to undefined method SettingController::removeCategory()` (500) |
+| La rama `$accion === 'removeCategory'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'DELETE /api/settings/categories/{category}'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| La línea `$this->configModel = ...` del constructor | Las acciones que usan `$this->configModel`. | `Call to a member function ...() on null` o `Undefined property` |
+| La línea `$this->datos = ...` del constructor | Las acciones que usan `$this->datos`. | `Call to a member function ...() on null` o `Undefined property` |
+
+**Cómo se arregla:** volver a escribir lo que se borró. La ficha de arriba ("Código explicado") muestra cómo era.

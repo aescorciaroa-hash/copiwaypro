@@ -2,10 +2,6 @@
 /**
  * Controlador de Inventario (insumos, ajustes de stock y movimientos).
  */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../config/Session.php';
-require_once __DIR__ . '/../models/Auth.php';
 require_once __DIR__ . '/../models/Ingrediente.php';
 
 class InventoryController
@@ -17,11 +13,6 @@ class InventoryController
     {
         $this->ingredienteModel = new Ingrediente();
         $this->datos = entrada();
-    }
-
-    public function index()
-    {
-        responderJson($this->ingredienteModel->listarInventario());
     }
 
     public function store()
@@ -39,7 +30,7 @@ class InventoryController
 
     public function update()
     {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         if (!$this->ingredienteModel->buscar($id)) {
             responderError('Insumo no encontrado.', 404);
         }
@@ -49,7 +40,7 @@ class InventoryController
 
     public function destroy()
     {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         if (!$this->ingredienteModel->buscar($id)) {
             responderError('Insumo no encontrado.', 404);
         }
@@ -59,7 +50,7 @@ class InventoryController
 
     public function adjustStock()
     {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         if (!$this->ingredienteModel->buscar($id)) {
             responderError('Insumo no encontrado.', 404);
         }
@@ -74,20 +65,13 @@ class InventoryController
         }
         responderJson($this->ingredienteModel->comoInventario($this->ingredienteModel->buscar($id)));
     }
-
-    public function logs()
-    {
-        responderJson($this->ingredienteModel->registrosDeMovimientos());
-    }
 }
 
 $controller = new InventoryController();
 
 $accion = $_GET['accion'] ?? '';
 
-if ($accion === 'index') {
-    $controller->index();
-} elseif ($accion === 'store') {
+if ($accion === 'store') {
     $controller->store();
 } elseif ($accion === 'update') {
     $controller->update();
@@ -95,8 +79,6 @@ if ($accion === 'index') {
     $controller->destroy();
 } elseif ($accion === 'adjustStock') {
     $controller->adjustStock();
-} elseif ($accion === 'logs') {
-    $controller->logs();
 } else {
     responderError('Ruta no encontrada.', 404);
 }

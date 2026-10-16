@@ -17,7 +17,7 @@ require_once __DIR__ . '/../views/json/personal.php';
 function rutaBase()
 {
     global $config;
-    $forzada = $config['ruta_base'] ?? '';
+    $forzada = $config['ruta_base'];
     if ($forzada !== '') {
         return rtrim($forzada, '/');
     }
@@ -53,7 +53,7 @@ function manejarError($e)
     global $config;
     error_log($e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
 
-    if ($config['debug'] ?? false) {
+    if ($config['debug']) {
         responderError($e->getMessage(), 500, ['trace' => explode("\n", $e->getTraceAsString())]);
     }
     responderError('Ocurrio un error interno.', 500);

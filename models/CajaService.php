@@ -3,7 +3,6 @@
  * Servicio de Cierre de Caja: calcula el cierre del dia (efectivo vs digital,
  * consumo de insumos), archiva los pedidos del turno y liquida a cada domiciliario.
  */
-require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/Caja.php';
 
 class CajaService

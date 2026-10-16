@@ -7,8 +7,6 @@ y eliminarlos.
 ## ¿Con qué se conecta?
 | Ruta | Método | Quién | React |
 |---|---|---|---|
-| `GET /api/products` | `index` | cualquiera | La lista llega normalmente por `/api/sync` (`SyncDatos.tsx`) |
-| `GET /api/products/{id}` | `show` | cualquiera | — |
 | `POST /api/products` | `store` | admin | `src/store/almacenAplicacion.ts` (desde `admin/MenuSection.tsx`) |
 | `PUT /api/products/{id}` | `update` | admin | `almacenAplicacion.ts` (desde `MenuSection.tsx`) |
 | `DELETE /api/products/{id}` | `destroy` | admin | `almacenAplicacion.ts` (desde `MenuSection.tsx`) |
@@ -49,3 +47,27 @@ Busca un producto. Si no existe → **404**.
 
 ### `destroy` (eliminar)
 Si existe, lo borra con `$this->productoModel->eliminar($id)`.
+
+## ¿Qué pasa si se borra?
+
+Este archivo lo carga `cargarControlador()` (`config/helpers.php`) cuando llega una de sus rutas.
+Si algo se borra, el error aparece en la pantalla como aviso rojo y completo en
+**F12 → Red → la petición → Respuesta**.
+
+| Si se borra… | Qué deja de funcionar | Error que aparece |
+|---|---|---|
+| **El archivo completo** | Todas sus rutas: `POST /api/products`, `PUT /api/products/{id}`, `DELETE /api/products/{id}`. | `Failed to open stream: No such file or directory` (…`controllers/ProductController.php`) |
+| La línea `require_once __DIR__ . '/../models/Producto.php';` | **Todas** sus rutas (el modelo se crea en el constructor, que corre en cada acción). | `Class "Producto" not found` |
+| El método `store()` | Admin → Gestión de Menú: no se pueden crear productos. | `Call to undefined method ProductController::store()` (500) |
+| La rama `$accion === 'store'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'POST /api/products'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| El método `update()` | Admin → Gestión de Menú: no se pueden editar productos. | `Call to undefined method ProductController::update()` (500) |
+| La rama `$accion === 'update'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'PUT /api/products/{id}'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| El método `destroy()` | Admin → Gestión de Menú: no se pueden eliminar productos. | `Call to undefined method ProductController::destroy()` (500) |
+| La rama `$accion === 'destroy'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'DELETE /api/products/{id}'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| La línea `$this->productoModel = ...` del constructor | Las acciones que usan `$this->productoModel`. | `Call to a member function ...() on null` o `Undefined property` |
+| La línea `$this->datos = ...` del constructor | Las acciones que usan `$this->datos`. | `Call to a member function ...() on null` o `Undefined property` |
+
+**Cómo se arregla:** volver a escribir lo que se borró. La ficha de arriba ("Código explicado") muestra cómo era.

@@ -2,8 +2,6 @@
 /**
  * Modelo CodigoVerificacion (codigos para recuperar la contrasena).
  */
-require_once __DIR__ . '/../config/database.php';
-
 class CodigoVerificacion
 {
     private $conn;

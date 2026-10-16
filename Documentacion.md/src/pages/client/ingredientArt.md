@@ -46,3 +46,14 @@ Por eso los ingredientes nuevos del inventario se dibujan solos si su nombre con
 | `waveTop`, `waveBack` | Dibujan bordes ondulados (lechuga, queso derretido). |
 | `ART` | La tabla con el dibujo SVG de cada tipo. |
 | `BUN_BOTTOM` | Colores del pan de abajo. |
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../ingredientArt"` porque lo importan: `src/pages/AdminDashboard.tsx`, `src/pages/ClientDashboard.tsx`, `src/pages/KitchenDashboard.tsx`, `src/pages/client/ActiveOrdersSection.tsx`, `src/pages/client/BuilderSection.tsx`, `src/pages/client/CheckoutSection.tsx`, `src/pages/client/HistorySection.tsx`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

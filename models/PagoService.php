@@ -10,8 +10,6 @@
  * Celulares de prueba (Nequi / Daviplata):
  *   3991111111 -> aprobado   3992222222 -> rechazado   3993333333 -> error   otro -> aprobado
  */
-require_once __DIR__ . '/../config/database.php';
-
 class PagoService
 {
     const MONEDA = 'COP';

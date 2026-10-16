@@ -52,3 +52,14 @@ const csv = '﻿' + [header, ...rows].map(r => r.map(esc).join(';')).join('\r\n'
 - `;` separa columnas y `\r\n` separa filas.
 - `﻿` al inicio hace que Excel muestre bien las tildes.
 - `URL.createObjectURL(new Blob(...))` crea un archivo en memoria, y un enlace `<a download>` invisible lo descarga.
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../StaffSection"` porque lo importan: `src/pages/AdminDashboard.tsx`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

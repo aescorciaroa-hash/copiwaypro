@@ -106,3 +106,14 @@ dibuja la sección activa.
 3. **Enviar a Cocina:** el servidor recalcula los precios, descuenta el inventario y busca al cliente
    por su celular. Si está registrado, el pedido queda en su cuenta (y suma puntos al entregarse);
    si no, queda como **cliente invitado**. Se cobra en efectivo al entregar.
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../AdminDashboard"` porque lo importan: `src/main.tsx`, `src/pages/admin/InventorySection.tsx`, `src/pages/admin/MapSection.tsx`, `src/pages/admin/MenuSection.tsx`, `src/pages/admin/OrdersSection.tsx`, `src/pages/admin/OverviewSection.tsx`, `src/pages/admin/StaffSection.tsx`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

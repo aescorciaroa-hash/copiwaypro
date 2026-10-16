@@ -45,3 +45,30 @@ y conserva el historial).
 $sql = "UPDATE {$tabla} SET " . implode(", ", $sets) . " WHERE {$idCol} = ?";
 ```
 `{$tabla}` dentro de comillas dobles se reemplaza por el valor de la variable.
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/Personal.php`).
+Lo cargan con `require_once`: `controllers/StaffController.php`, `controllers/SyncController.php`. Dejan de funcionar:
+  - `POST /api/staff` → Admin → Equipo y Personal: no se puede agregar personal.
+  - `PUT /api/staff/{id}` → Admin → Equipo y Personal: no se puede editar ni dar de baja.
+  - `DELETE /api/staff/{id}` → Admin → Equipo y Personal: no se puede eliminar.
+  - `PATCH /api/staff/{id}/location` → Domiciliario: su ubicación GPS no se guarda (el admin no lo ve en el mapa).
+  - `GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan.
+
+**Si se borra un método:** sale `Call to undefined method Personal::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `listar()` | `SyncController::index()` | `GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `comoJsonCocina()` | `Personal::listar()` | `GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `comoJsonDomicilio()` | `Personal::listar()` | `GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `crear()` | `StaffController::store()` | `POST /api/staff` → Admin → Equipo y Personal: no se puede agregar personal. |
+| `actualizar()` | `StaffController::update()` | `PUT /api/staff/{id}` → Admin → Equipo y Personal: no se puede editar ni dar de baja. |
+| `existe()` (privado) | `Personal::actualizar()`, `Personal::actualizarUbicacion()`, `Personal::eliminarPermanente()` | `PUT /api/staff/{id}` → Admin → Equipo y Personal: no se puede editar ni dar de baja.<br>`DELETE /api/staff/{id}` → Admin → Equipo y Personal: no se puede eliminar.<br>`PATCH /api/staff/{id}/location` → Domiciliario: su ubicación GPS no se guarda (el admin no lo ve en el mapa). |
+| `actualizarCocina()` (privado) | `Personal::actualizar()` | `PUT /api/staff/{id}` → Admin → Equipo y Personal: no se puede editar ni dar de baja. |
+| `actualizarDomicilio()` (privado) | `Personal::actualizar()` | `PUT /api/staff/{id}` → Admin → Equipo y Personal: no se puede editar ni dar de baja. |
+| `guardarCambios()` (privado) | `Personal::actualizarCocina()`, `Personal::actualizarDomicilio()` | `PUT /api/staff/{id}` → Admin → Equipo y Personal: no se puede editar ni dar de baja. |
+| `eliminarPermanente()` | `StaffController::destroy()` | `DELETE /api/staff/{id}` → Admin → Equipo y Personal: no se puede eliminar. |
+| `actualizarUbicacion()` | `StaffController::updateLocation()` | `PATCH /api/staff/{id}/location` → Domiciliario: su ubicación GPS no se guarda (el admin no lo ve en el mapa). |
+| `__construct()` | `new Personal()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa Personal. |

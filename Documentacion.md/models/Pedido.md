@@ -58,3 +58,31 @@ if (preg_match('/^#ORD-(\d+)$/', (string) $idVisible, $m)) {
 2. Para cada una, trae sus PERSONALIZACION.
 3. Las separa: `accion_modificacion === 'agregar'` → `extras`; si no → `removed`.
 4. Arma cada ítem con los nombres que espera React (`productId`, `quantity`, `price`, `isCustom`...).
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/Pedido.php`).
+Lo cargan con `require_once`: `controllers/SyncController.php`, `models/PedidoService.php`. Dejan de funcionar:
+  - `GET /api/orders` → Admin: después de confirmar el cierre de caja no se recargan las comandas.
+  - `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).
+  - `POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.
+  - `PATCH /api/orders/{id}/address` → Admin: no se puede corregir la dirección de un pedido.
+  - `PATCH /api/orders/{id}/destination` → Domiciliario: no se guarda el destino que ubica en el mapa.
+  - `PATCH /api/orders/{id}/preparing` → Cocina/Admin: el pedido no pasa a "En Preparación".
+  - `PATCH /api/orders/{id}/ready` → Cocina/Admin: el pedido no pasa a "Listos".
+  - `PATCH /api/orders/{id}/take` → Domiciliario: no puede tomar un pedido listo.
+  - … y 8 más: `PATCH /api/orders/{id}/release`, `PATCH /api/orders/{id}/accept`, `PATCH /api/orders/{id}/deliver`, `PATCH /api/orders/{id}/review`, `POST /api/payments/prepare`, `POST /api/payments/transactions`, `GET /api/payments/transactions/{id}`, `GET /api/sync`.
+
+**Si se borra un método:** sale `Call to undefined method Pedido::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `porRol()` | `OrderController::index()`, `SyncController::index()` | `GET /api/orders` → Admin: después de confirmar el cierre de caja no se recargan las comandas.<br>`GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `buscar()` | `OrderController::responderPedido()`, `OrderController::review()`, `PedidoService::crear()`, `PedidoService::crearManual()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.<br>`PATCH /api/orders/{id}/address` → Admin: no se puede corregir la dirección de un pedido.<br>`PATCH /api/orders/{id}/destination` → Domiciliario: no se guarda el destino que ubica en el mapa.<br>… y 7 más: `PATCH /api/orders/{id}/preparing`, `PATCH /api/orders/{id}/ready`, `PATCH /api/orders/{id}/take`, `PATCH /api/orders/{id}/release`, `PATCH /api/orders/{id}/accept`, `PATCH /api/orders/{id}/deliver`, `PATCH /api/orders/{id}/review`. |
+| `buscarCrudo()` | `OrderController::buscarPedido()`, `OrderController::review()`, `PedidoService::cambiarDireccion()` | `PATCH /api/orders/{id}/address` → Admin: no se puede corregir la dirección de un pedido.<br>`PATCH /api/orders/{id}/destination` → Domiciliario: no se guarda el destino que ubica en el mapa.<br>`PATCH /api/orders/{id}/preparing` → Cocina/Admin: el pedido no pasa a "En Preparación".<br>`PATCH /api/orders/{id}/ready` → Cocina/Admin: el pedido no pasa a "Listos".<br>… y 5 más: `PATCH /api/orders/{id}/take`, `PATCH /api/orders/{id}/release`, `PATCH /api/orders/{id}/accept`, `PATCH /api/orders/{id}/deliver`, `PATCH /api/orders/{id}/review`. |
+| `numeroDesdeId()` (privado) | `Pedido::buscar()`, `Pedido::buscarCrudo()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.<br>`PATCH /api/orders/{id}/address` → Admin: no se puede corregir la dirección de un pedido.<br>`PATCH /api/orders/{id}/destination` → Domiciliario: no se guarda el destino que ubica en el mapa.<br>… y 7 más: `PATCH /api/orders/{id}/preparing`, `PATCH /api/orders/{id}/ready`, `PATCH /api/orders/{id}/take`, `PATCH /api/orders/{id}/release`, `PATCH /api/orders/{id}/accept`, `PATCH /api/orders/{id}/deliver`, `PATCH /api/orders/{id}/review`. |
+| `itemsDe()` | `Pedido::formar()` | `GET /api/orders` → Admin: después de confirmar el cierre de caja no se recargan las comandas.<br>`POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.<br>`PATCH /api/orders/{id}/address` → Admin: no se puede corregir la dirección de un pedido.<br>… y 9 más: `PATCH /api/orders/{id}/destination`, `PATCH /api/orders/{id}/preparing`, `PATCH /api/orders/{id}/ready`, `PATCH /api/orders/{id}/take`, `PATCH /api/orders/{id}/release`, `PATCH /api/orders/{id}/accept`, `PATCH /api/orders/{id}/deliver`, `PATCH /api/orders/{id}/review`, `GET /api/sync`. |
+| `formar()` (privado) | `Pedido::buscar()`, `Pedido::porRol()` | `GET /api/orders` → Admin: después de confirmar el cierre de caja no se recargan las comandas.<br>`POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.<br>`PATCH /api/orders/{id}/address` → Admin: no se puede corregir la dirección de un pedido.<br>… y 9 más: `PATCH /api/orders/{id}/destination`, `PATCH /api/orders/{id}/preparing`, `PATCH /api/orders/{id}/ready`, `PATCH /api/orders/{id}/take`, `PATCH /api/orders/{id}/release`, `PATCH /api/orders/{id}/accept`, `PATCH /api/orders/{id}/deliver`, `PATCH /api/orders/{id}/review`, `GET /api/sync`. |
+| `__construct()` | `new Pedido()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa Pedido. |
+
+**Si se borra una constante** (`BASE`): sale `Undefined constant Pedido::NOMBRE` en lo que la usa.

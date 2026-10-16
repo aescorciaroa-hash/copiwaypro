@@ -24,3 +24,12 @@ require dirname(__DIR__) . '/layouts/pie.php';
 |---|---|---|
 | `$pagina` | Nombre de la pantalla de React | `cabecera.php` lo pone en `<div id="app" data-pagina="kitchen">` |
 | `$datos` (no se ve aquí) | Usuario, rol, token y ajustes. Lo deja disponible `mostrarVista()` | `cabecera.php` lo convierte en `window.__DATOS__` |
+
+## ¿Qué pasa si se borra?
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `/kitchen` muestra `Vista no encontrada: cocina` (error 500). Lo revisa `mostrarVista()` en `config/helpers.php`. |
+| La línea `$pagina = '...'` | Sale el aviso `Undefined variable $pagina` y en lugar de la pantalla aparece `Pantalla no encontrada` (lo revisa `src/main.tsx`). |
+| La línea `require ... cabecera.php` | La página sale en blanco: falta el `<head>`, los estilos y `window.__DATOS__`. |
+| La línea `require ... pie.php` | La página sale en blanco: no se carga `main.js` (React). |

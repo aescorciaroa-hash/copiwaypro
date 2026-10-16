@@ -2,10 +2,6 @@
 /**
  * Controlador de Personal (ayudantes de cocina y domiciliarios).
  */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../config/Session.php';
-require_once __DIR__ . '/../models/Auth.php';
 require_once __DIR__ . '/../models/Personal.php';
 
 class StaffController
@@ -30,11 +26,6 @@ class StaffController
             }
         }
         return ['id' => (string) $id];
-    }
-
-    public function index()
-    {
-        responderJson($this->personalModel->listar());
     }
 
     public function store()
@@ -64,7 +55,7 @@ class StaffController
 
     public function update()
     {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
 
         if (!empty($this->datos['password']) && strlen((string) $this->datos['password']) < 8) {
             responderError('Datos inválidos.', 422, ['password' => ['El campo password debe tener al menos 8 caracteres.']]);
@@ -89,7 +80,7 @@ class StaffController
     {
         // Borrado permanente, solo si no tiene historial (si lo tiene, se da de baja con PUT active=false).
         // 'role' es obligatorio: el mismo id puede existir en cocina y en domicilio.
-        $id  = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id  = $_GET['id'];
         $rol = $_GET['role'] ?? null;
         try {
             if (!$this->personalModel->eliminarPermanente($id, $rol)) {
@@ -105,7 +96,7 @@ class StaffController
 
     public function updateLocation()
     {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
 
         // El domiciliario solo puede actualizar su propia ubicacion.
         if (!Auth::check() || Auth::rol() !== 'delivery' || (string) Auth::id() !== (string) $id) {
@@ -130,9 +121,7 @@ $controller = new StaffController();
 
 $accion = $_GET['accion'] ?? '';
 
-if ($accion === 'index') {
-    $controller->index();
-} elseif ($accion === 'store') {
+if ($accion === 'store') {
     $controller->store();
 } elseif ($accion === 'update') {
     $controller->update();

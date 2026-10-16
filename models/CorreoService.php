@@ -3,7 +3,6 @@
  * Envio de correos por SMTP (PHPMailer). Se configura con las constantes de esta clase.
  * Si no esta configurado, enviar() devuelve false y la app sigue funcionando.
  */
-require_once __DIR__ . '/../config/database.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 
@@ -20,12 +19,10 @@ class CorreoService
     const REMITENTE = '';
     const REMITENTE_NOMBRE = 'CopiwayPRO';
 
-    /** true si hay SMTP configurado y la libreria esta instalada. */
+    /** true si hay un servidor SMTP configurado. */
     public static function configurado()
     {
-        return class_exists('PHPMailer\\PHPMailer\\PHPMailer')
-            && self::HOST !== ''
-            && self::REMITENTE !== '';
+        return self::HOST !== '' && self::REMITENTE !== '';
     }
 
     /** Envia un correo HTML. Devuelve true si el servidor SMTP lo acepto. */
@@ -67,7 +64,7 @@ class CorreoService
             $mail->AltBody = $textoPlano !== '' ? $textoPlano : trim(strip_tags($html));
             $mail->send();
             return true;
-        } catch (Throwable $e) {
+        } catch (Exception $e) {
             error_log('No se pudo enviar el correo a ' . $para . ': ' . $e->getMessage());
             return false;
         }

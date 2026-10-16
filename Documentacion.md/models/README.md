@@ -9,6 +9,9 @@ Controlador  ──►  Modelo  ──►  MySQL
 ```
 
 ## La forma de todos los modelos
+Los modelos no cargan `config/database.php`: ya lo cargó `public/index.php` y `$conn` existe. Un
+modelo solo hace `require_once` de otro modelo que use (por ejemplo `Producto` carga `Ingrediente`).
+
 ```php
 class Cliente
 {
@@ -74,7 +77,6 @@ La base de datos usa nombres en español (`nombre`, `precio`) y React espera nom
 | [Personal](Personal.md) | AYUDANTE_COCINA, DOMICILIARIO |
 | [Configuracion](Configuracion.md) | CONFIGURACION_SISTEMA, CATEGORIA |
 | [Caja](Caja.md) | REPORTE_CAJA, LIQUIDACION_DOMICILIARIO, DETALLE_AUDITORIA |
-| [Panel](Panel.md) | PEDIDO, INGREDIENTE, DETALLE_PEDIDO (solo lectura) |
 | [Usuario](Usuario.md) | ADMINISTRADOR |
 | [CodigoVerificacion](CodigoVerificacion.md) | CODIGO_VERIFICACION |
 | [IntentoLogin](IntentoLogin.md) | INTENTO_LOGIN |

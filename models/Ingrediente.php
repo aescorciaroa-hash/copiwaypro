@@ -3,8 +3,6 @@
  * Modelo Ingrediente (INGREDIENTE, CATEGORIA y MOVIMIENTO_INVENTARIO).
  * Se usa en dos formas: inventario (/api/inventory) y catalogo de extras (/api/ingredients).
  */
-require_once __DIR__ . '/../config/database.php';
-
 class Ingrediente
 {
     private $conn;
@@ -59,11 +57,6 @@ class Ingrediente
     public function comoInventario($row)
     {
         return ingrediente_a_inventario($row);
-    }
-
-    public function comoIngrediente($row)
-    {
-        return ingrediente_a_catalogo($row);
     }
 
     /** Crea el insumo y, si trae stock inicial, registra el movimiento de entrada. */

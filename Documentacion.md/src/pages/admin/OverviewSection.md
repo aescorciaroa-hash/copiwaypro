@@ -35,5 +35,15 @@ gráfica de ventas, torta de productos más vendidos, pedidos recientes y un mon
 | Órdenes recientes | Últimos pedidos; tocar uno lleva a "Comandas Activas". |
 | Monitoreo operativo | Cuántos pedidos hay en cada estado, capacidad de cocina, domiciliarios activos y despachos en vivo. |
 
-Los números se calculan con los pedidos que tiene el navegador (los que llegan por `/api/sync`), no con
-`GET /api/dashboard`.
+Los números se calculan con los pedidos que tiene el navegador (los que llegan por `/api/sync`).
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../OverviewSection"` porque lo importan: `src/pages/AdminDashboard.tsx`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

@@ -2,8 +2,6 @@
 /**
  * Modelo PushSuscripcion (suscripciones Web Push de cada cliente).
  */
-require_once __DIR__ . '/../config/database.php';
-
 class PushSuscripcion
 {
     private $conn;

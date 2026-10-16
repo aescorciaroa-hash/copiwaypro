@@ -14,15 +14,20 @@ Cada documento tiene las mismas partes:
 - **¿Con qué se conecta?**: qué archivos usa (→) y qué archivos lo usan (←).
 - **Variables importantes**: de dónde viene cada una, para qué sirve y a dónde va.
 - **Código explicado**: las partes del código, con ejemplos.
+- **¿Qué pasa si se borra?**: qué deja de funcionar y qué error aparece si se borra el archivo, una
+  línea `require_once`, un método o una ruta (ver también [la guía 15](general.md/15-si-algo-deja-de-funcionar.md)).
 
 Algunas carpetas tienen además un `README.md` que explica lo que tienen en común todos sus archivos
 (por ejemplo, [controllers/README.md](controllers/README.md) explica la forma de un controlador).
 
 ---
 
+## 🌳 Estructura completa
+[ESTRUCTURA.md](ESTRUCTURA.md): todo el proyecto en forma de árbol, con lo que hace cada archivo en una línea.
+
 ## 📘 Guías generales (empieza aquí)
 Si es la primera vez, lee primero las guías por tema en [general.md/](general.md/README.md):
-[qué es](general.md/01-que-es-copiwaypro.md) · [instalación](general.md/02-instalacion.md) · [arrancar el sistema](general.md/03-arrancar-el-sistema.md) · [cómo funciona](general.md/04-como-funciona.md) · [roles](general.md/05-roles-y-usuarios.md) · [ciclo de un pedido](general.md/06-ciclo-de-un-pedido.md) · [base de datos](general.md/07-base-de-datos.md) · [configuración](general.md/08-configuracion.md) · [seguridad](general.md/09-seguridad.md) · [pagos](general.md/10-pagos.md) · [notificaciones y correo](general.md/11-notificaciones-y-correo.md) · [hacer cambios](general.md/12-como-hacer-cambios.md) · [problemas comunes](general.md/13-problemas-comunes.md) · [comandos](general.md/14-comandos.md)
+[qué es](general.md/01-que-es-copiwaypro.md) · [instalación](general.md/02-instalacion.md) · [arrancar el sistema](general.md/03-arrancar-el-sistema.md) · [cómo funciona](general.md/04-como-funciona.md) · [roles](general.md/05-roles-y-usuarios.md) · [ciclo de un pedido](general.md/06-ciclo-de-un-pedido.md) · [base de datos](general.md/07-base-de-datos.md) · [configuración](general.md/08-configuracion.md) · [seguridad](general.md/09-seguridad.md) · [pagos](general.md/10-pagos.md) · [notificaciones y correo](general.md/11-notificaciones-y-correo.md) · [hacer cambios](general.md/12-como-hacer-cambios.md) · [problemas comunes](general.md/13-problemas-comunes.md) · [comandos](general.md/14-comandos.md) · [**si algo deja de funcionar**](general.md/15-si-algo-deja-de-funcionar.md)
 
 El resto de esta carpeta documenta **cada archivo** del proyecto.
 
@@ -107,14 +112,12 @@ nuevos se guardan en `store/almacenAplicacion.ts` y todas las pantallas se actua
 | [AuthController](controllers/AuthController.md) | `/api/auth/...` login, registro, recuperar contraseña |
 | [PaginaController](controllers/PaginaController.md) | Las páginas (`/`, `/login`, `/admin`...) |
 | [ProductController](controllers/ProductController.md) | `/api/products` |
-| [IngredientController](controllers/IngredientController.md) | `/api/ingredients` |
-| [InventoryController](controllers/InventoryController.md) | `/api/inventory`, `/api/inventory-logs` |
+| [InventoryController](controllers/InventoryController.md) | `/api/inventory` |
 | [ClientController](controllers/ClientController.md) | `/api/clients` |
 | [StaffController](controllers/StaffController.md) | `/api/staff` |
 | [OrderController](controllers/OrderController.md) | `/api/orders` |
 | [PaymentController](controllers/PaymentController.md) | `/api/payments` |
 | [CashClosingController](controllers/CashClosingController.md) | `/api/cash-closing` |
-| [DashboardController](controllers/DashboardController.md) | `/api/dashboard` |
 | [SettingController](controllers/SettingController.md) | `/api/settings` |
 | [SyncController](controllers/SyncController.md) | `/api/sync` |
 | [PushController](controllers/PushController.md) | `/api/push` |
@@ -123,7 +126,7 @@ nuevos se guardan en `store/almacenAplicacion.ts` y todas las pantallas se actua
 ### models/ — [cómo funciona un modelo](models/README.md)
 [Cliente](models/Cliente.md) · [Producto](models/Producto.md) · [Ingrediente](models/Ingrediente.md) ·
 [Pedido](models/Pedido.md) · [Personal](models/Personal.md) · [Configuracion](models/Configuracion.md) ·
-[Caja](models/Caja.md) · [Panel](models/Panel.md) · [Usuario](models/Usuario.md) ·
+[Caja](models/Caja.md) · [Usuario](models/Usuario.md) ·
 [CodigoVerificacion](models/CodigoVerificacion.md) · [IntentoLogin](models/IntentoLogin.md) ·
 [PushSuscripcion](models/PushSuscripcion.md) · [Auth](models/Auth.md) (iniciar y cerrar sesión)
 

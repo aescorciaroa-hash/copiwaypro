@@ -3,10 +3,6 @@
  * Controlador de Pedidos (listar, crear, cambios de estado y resena).
  * Los roles ya se validan en config/rutas.php.
  */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../config/Session.php';
-require_once __DIR__ . '/../models/Auth.php';
 require_once __DIR__ . '/../models/PedidoService.php';
 
 class OrderController
@@ -41,16 +37,6 @@ class OrderController
     public function index()
     {
         responderJson($this->pedidoModel->porRol(Auth::rol(), Auth::id()));
-    }
-
-    public function show()
-    {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
-        $pedido = $this->pedidoModel->buscar($id, Auth::rol(), Auth::id());
-        if (!$pedido) {
-            responderError('Pedido no encontrado.', 404);
-        }
-        responderJson($pedido);
     }
 
     public function store()
@@ -106,7 +92,7 @@ class OrderController
     public function updateAddress()
     {
         // Admin: corrige la direccion de un pedido en curso.
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         $direccion = (string) ($this->datos['address'] ?? '');
         if (trim($direccion) === '') {
             responderError('Datos inválidos.', 422, ['address' => ['La dirección es obligatoria.']]);
@@ -123,7 +109,7 @@ class OrderController
     public function updateDestination()
     {
         // Domiciliario: guarda las coordenadas del destino que ubico en su mapa.
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         if (!isset($this->datos['lat'], $this->datos['lng']) || !is_numeric($this->datos['lat']) || !is_numeric($this->datos['lng'])) {
             responderError('Datos inválidos.', 422, ['lat' => ['Las coordenadas deben ser numéricas.']]);
         }
@@ -139,7 +125,7 @@ class OrderController
     public function markPreparing()
     {
         // Cocina: Pendiente -> En Preparacion
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         $idAyudante = Auth::rol() === 'kitchen' ? Auth::id() : null;
         $pedido = $this->buscarPedido($id);
         try {
@@ -153,7 +139,7 @@ class OrderController
     public function markReady()
     {
         // Cocina: -> Listos
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         $idAyudante = Auth::rol() === 'kitchen' ? Auth::id() : null;
         $pedido = $this->buscarPedido($id);
         try {
@@ -167,7 +153,7 @@ class OrderController
     public function take()
     {
         // Domiciliario toma un pedido 'Listos' (queda asignado, sigue en Listos)
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         $pedido = $this->buscarPedido($id);
         try {
             $this->pedidoService->tomarPedido($pedido['id_pedido'], Auth::id());
@@ -180,7 +166,7 @@ class OrderController
     public function release()
     {
         // Domiciliario suelta su pedido (o el admin lo reasigna)
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         $pedido = $this->buscarPedido($id);
         try {
             $this->pedidoService->liberarPedido($pedido['id_pedido'], Auth::rol(), Auth::id());
@@ -193,7 +179,7 @@ class OrderController
     public function accept()
     {
         // Domiciliario: Listos -> En Camino
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         $pedido = $this->buscarPedido($id);
         try {
             $this->pedidoService->aceptarEntrega($pedido['id_pedido'], Auth::id());
@@ -206,7 +192,7 @@ class OrderController
     public function deliver()
     {
         // Entrega solo con PIN valido -> Entregado
-        $id  = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id  = $_GET['id'];
         $pin = (string) ($this->datos['pin'] ?? '');
         if ($pin === '') {
             responderError('El PIN es obligatorio.', 422);
@@ -223,7 +209,7 @@ class OrderController
     public function review()
     {
         // El cliente califica un pedido ya entregado.
-        $id         = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id         = $_GET['id'];
         $puntaje    = (int) ($this->datos['rating'] ?? 0);
         $comentario = (string) ($this->datos['reviewText'] ?? '');
 
@@ -249,8 +235,6 @@ $accion = $_GET['accion'] ?? '';
 
 if ($accion === 'index') {
     $controller->index();
-} elseif ($accion === 'show') {
-    $controller->show();
 } elseif ($accion === 'store') {
     $controller->store();
 } elseif ($accion === 'storeManual') {

@@ -2,10 +2,6 @@
 /**
  * Controlador de Clientes (perfil, contrasena y notificaciones).
  */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../config/Session.php';
-require_once __DIR__ . '/../models/Auth.php';
 require_once __DIR__ . '/../models/Cliente.php';
 
 class ClientController
@@ -32,25 +28,9 @@ class ClientController
         }
     }
 
-    public function index()
-    {
-        responderJson($this->clienteModel->listar());
-    }
-
-    public function show()
-    {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
-        $this->autorizarPropioOAdmin($id);
-        $cliente = $this->clienteModel->buscar($id);
-        if (!$cliente) {
-            responderError('Cliente no encontrado.', 404);
-        }
-        responderJson($cliente);
-    }
-
     public function update()
     {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         $this->autorizarPropioOAdmin($id);
         if (!$this->clienteModel->buscar($id)) {
             responderError('Cliente no encontrado.', 404);
@@ -78,7 +58,7 @@ class ClientController
 
     public function changePassword()
     {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
 
         // Solo el propio cliente (el admin no conoce la contrasena actual).
         if (!Auth::check() || Auth::rol() !== 'client' || (string) Auth::id() !== (string) $id) {
@@ -103,45 +83,16 @@ class ClientController
         $this->clienteModel->actualizarContrasena($id, password_hash((string) $this->datos['newPassword'], PASSWORD_DEFAULT));
         responderJson(['ok' => true]);
     }
-
-    public function notifications()
-    {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
-        $this->autorizarPropioOAdmin($id);
-        if (!$this->clienteModel->buscar($id)) {
-            responderError('Cliente no encontrado.', 404);
-        }
-        responderJson($this->clienteModel->notificacionesDe($id));
-    }
-
-    public function markNotificationRead()
-    {
-        $id      = $_GET['id'] ?? $_POST['id'] ?? '';
-        $notifId = $_GET['notifId'] ?? $_POST['notifId'] ?? '';
-        $this->autorizarPropioOAdmin($id);
-        if (!$this->clienteModel->marcarNotificacionLeida($id, $notifId)) {
-            responderError('Notificación no encontrada.', 404);
-        }
-        responderJson(['ok' => true]);
-    }
 }
 
 $controller = new ClientController();
 
 $accion = $_GET['accion'] ?? '';
 
-if ($accion === 'index') {
-    $controller->index();
-} elseif ($accion === 'show') {
-    $controller->show();
-} elseif ($accion === 'update') {
+if ($accion === 'update') {
     $controller->update();
 } elseif ($accion === 'changePassword') {
     $controller->changePassword();
-} elseif ($accion === 'notifications') {
-    $controller->notifications();
-} elseif ($accion === 'markNotificationRead') {
-    $controller->markNotificationRead();
 } else {
     responderError('Ruta no encontrada.', 404);
 }

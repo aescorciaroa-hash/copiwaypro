@@ -2,38 +2,17 @@
 /**
  * Controlador de Productos (menu).
  */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../config/Session.php';
-require_once __DIR__ . '/../models/Auth.php';
 require_once __DIR__ . '/../models/Producto.php';
 
 class ProductController
 {
     private $productoModel;
     private $datos;
-    private $esAdmin;
 
     public function __construct()
     {
         $this->productoModel = new Producto();
         $this->datos = entrada();
-        $this->esAdmin = Auth::check() && Auth::rol() === 'admin';
-    }
-
-    public function index()
-    {
-        responderJson($this->productoModel->listar(!$this->esAdmin, $this->esAdmin));
-    }
-
-    public function show()
-    {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
-        $producto = $this->productoModel->buscar($id, $this->esAdmin);
-        if (!$producto) {
-            responderError('Producto no encontrado.', 404);
-        }
-        responderJson($producto);
     }
 
     public function store()
@@ -56,7 +35,7 @@ class ProductController
 
     public function update()
     {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         if (!$this->productoModel->buscar($id)) {
             responderError('Producto no encontrado.', 404);
         }
@@ -74,7 +53,7 @@ class ProductController
 
     public function destroy()
     {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         if (!$this->productoModel->buscar($id)) {
             responderError('Producto no encontrado.', 404);
         }
@@ -87,11 +66,7 @@ $controller = new ProductController();
 
 $accion = $_GET['accion'] ?? '';
 
-if ($accion === 'index') {
-    $controller->index();
-} elseif ($accion === 'show') {
-    $controller->show();
-} elseif ($accion === 'store') {
+if ($accion === 'store') {
     $controller->store();
 } elseif ($accion === 'update') {
     $controller->update();

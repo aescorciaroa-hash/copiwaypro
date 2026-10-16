@@ -35,3 +35,14 @@ detallado y **volver a pedir** lo mismo con un clic.
 | Caja de calificación | Estrellas 1–5, etiquetas rápidas y comentario. Solo para pedidos entregados (PHP también lo exige). |
 | Botones | Ver recibo y "Pedir de nuevo". |
 | Ventana de recibo | Estado, dirección, productos con personalizaciones, subtotal, domicilio, descuento de cumpleaños, puntos canjeados (si los usó), total y los puntos ganados. |
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../HistorySection"` porque lo importan: `src/pages/ClientDashboard.tsx`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

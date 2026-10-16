@@ -6,9 +6,7 @@ ejecutar según `$_GET['accion']`. Si entiendes este, entiendes todos.
 
 ```php
 <?php
-require_once __DIR__ . '/../config/database.php';       // 1. cargar lo que necesita
-require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../models/Producto.php';
+require_once __DIR__ . '/../models/Producto.php';        // 1. cargar el modelo que usa
 
 class ProductController
 {
@@ -28,7 +26,7 @@ class ProductController
 
     public function update()
     {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         ...
     }
 }
@@ -51,7 +49,7 @@ if ($accion === 'index') {                               // 7. llamar al método
 
 | Paso | Qué pasa | Conexión |
 |---|---|---|
-| 1. `require_once` | Carga la conexión, las funciones de ayuda y los modelos que va a usar. | `config/database.php`, `config/helpers.php`, `models/*` |
+| 1. `require_once` | Carga los modelos que va a usar. La conexión, las funciones de ayuda, `Session` y `Auth` ya los cargó `public/index.php`. | `models/*` |
 | 2. `private $...` | Las propiedades que comparten todos los métodos (modelos y datos). | |
 | 3. `__construct()` | Crea los modelos y lee los datos que envió React. | `models/`, `entrada()` en `config/helpers.php`. React los envía desde `src/servicios/api.ts`. |
 | 4. `public function ...()` | Un método por cada acción. Dentro se usa `$this->` para llegar a las propiedades. | |
@@ -61,6 +59,12 @@ if ($accion === 'index') {                               // 7. llamar al método
 | `$id = $_GET['id'] ...` | El valor de `{id}` en la ruta (ej: `/api/products/6` → `'6'`). | Lo pone `cargarControlador()`. |
 | `responderJson(...)` | Envía la respuesta a React y **termina** (`exit`). | `config/helpers.php` |
 | `responderError(...)` | Envía un error con su código HTTP y termina. | `config/helpers.php` |
+
+## Cada archivo se carga en un solo lugar
+Ningún `require_once` está repetido. `public/index.php` carga lo común (conexión, `app.php`,
+`helpers.php`, `Session.php` y `Auth.php`) y cada controlador carga solo sus modelos. Así, si se
+borra un `require_once` o un método, esa parte deja de funcionar y el error dice exactamente qué
+falta (por ejemplo `Class "Producto" not found` o `Call to undefined method ...`).
 
 ## Validaciones
 Muchas acciones validan así:

@@ -86,3 +86,14 @@ Solo aparece con el pedido **En Camino** (porque PHP solo entrega el teléfono d
 estado, ver `views/json/pedido.md`). Arma un mensaje con el nombre del cliente y el código del
 pedido y abre `https://wa.me/TELEFONO?text=MENSAJE`.
 `encodeURIComponent` convierte el texto para que funcione dentro de una dirección web.
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../DeliveryDashboard"` porque lo importan: `src/main.tsx`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

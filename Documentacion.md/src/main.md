@@ -37,17 +37,25 @@ Las claves **deben coincidir** con el `$pagina` de cada vista PHP (`views/pagina
 const nombrePagina =
   contenedor?.dataset.pagina ||
   new URLSearchParams(window.location.search).get('pagina') ||
-  'landing';
+  '';
 ```
 Busca el nombre en este orden:
 1. `contenedor?.dataset.pagina` → el `data-pagina="..."` que puso PHP. (`?.` = "si `contenedor` existe").
 2. `?pagina=admin` en la dirección → solo para probar con `npm run dev`.
-3. Si no hay nada → `'landing'`.
+3. Si no hay nada → texto vacío `''`.
 
 ```tsx
-const Pagina = PAGINAS[nombrePagina] || Landing;
+const Pagina = PAGINAS[nombrePagina];
+
+if (!Pagina) {
+  contenedor!.textContent = `Pantalla no encontrada: "${nombrePagina}". ...`;
+} else {
+  createRoot(contenedor!).render(...);
+}
 ```
-Si el nombre no existe en la tabla, muestra Landing.
+Si el nombre no existe en la tabla, **no** abre otra pantalla en su lugar: muestra
+`Pantalla no encontrada: "..."`. Así, si se borra el `$pagina` de una vista PHP o una línea de
+`PAGINAS`, el error se ve de inmediato.
 
 ```tsx
 createRoot(contenedor!).render(
@@ -70,3 +78,15 @@ createRoot(contenedor!).render(
 
 **No hay React Router:** para cambiar de pantalla se recarga la página con `irA('/admin')`
 (en `servicios/api.ts`), y PHP decide de nuevo qué mostrar.
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla (`index.html` lo carga) y ninguna pantalla se dibuja. |
+| Una línea de `PAGINAS` (ej. `admin: AdminDashboard,`) | Esa pantalla muestra `Pantalla no encontrada: "admin"`. |
+| `<SyncDatos />` | Todas las pantallas se quedan sin datos (no se llama a `/api/sync`). |

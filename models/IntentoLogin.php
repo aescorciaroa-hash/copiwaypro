@@ -2,8 +2,6 @@
 /**
  * Modelo IntentoLogin (limite de intentos fallidos de inicio de sesion).
  */
-require_once __DIR__ . '/../config/database.php';
-
 class IntentoLogin
 {
     const MAXIMO_INTENTOS = 5;   // intentos fallidos permitidos...

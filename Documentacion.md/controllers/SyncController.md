@@ -52,3 +52,23 @@ responderJson($payload, 200);
 - `md5` convierte todo el contenido en un código corto. Si un solo dato cambia, el código cambia.
 - La cabecera `ETag` le entrega ese código a React, y React lo devuelve en la siguiente consulta.
 - Si coincide → **304** sin cuerpo (ahorra mucho tráfico).
+
+## ¿Qué pasa si se borra?
+
+Este archivo lo carga `cargarControlador()` (`config/helpers.php`) cuando llega una de sus rutas.
+Si algo se borra, el error aparece en la pantalla como aviso rojo y completo en
+**F12 → Red → la petición → Respuesta**.
+
+| Si se borra… | Qué deja de funcionar | Error que aparece |
+|---|---|---|
+| **El archivo completo** | Todas sus rutas: `GET /api/sync`. | `Failed to open stream: No such file or directory` (…`controllers/SyncController.php`) |
+| La línea `require_once __DIR__ . '/../models/Producto.php';` | **Todas** sus rutas. | `Class "Producto" not found` |
+| La línea `require_once __DIR__ . '/../models/Configuracion.php';` | **Todas** sus rutas. | `Class "Configuracion" not found` |
+| La línea `require_once __DIR__ . '/../models/Personal.php';` | **Todas** sus rutas. | `Class "Personal" not found` |
+| La línea `require_once __DIR__ . '/../models/Pedido.php';` | **Todas** sus rutas. | `Class "Pedido" not found` |
+| La línea `require_once __DIR__ . '/../models/Cliente.php';` | **Todas** sus rutas. | `Class "Cliente" not found` |
+| El método `index()` | **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. | `Call to undefined method SyncController::index()` (500) |
+| La rama `$accion === 'index'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'GET /api/sync'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+
+**Cómo se arregla:** volver a escribir lo que se borró. La ficha de arriba ("Código explicado") muestra cómo era.

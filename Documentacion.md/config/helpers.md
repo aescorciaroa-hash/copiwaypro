@@ -155,3 +155,26 @@ cada controlador está `$accion = $_GET['accion'] ?? '';` y los métodos leen `$
 ### `despacharPagina($ruta)`
 Igual que el anterior, pero con `config/paginas.php`. Si la página no existe imprime
 "Pagina no encontrada." (404).
+
+## ¿Qué pasa si se borra?
+
+`helpers.php` lo carga `public/index.php` en **cada** petición, así que borrar el archivo completo
+deja **todo** el sistema sin funcionar (`Failed to open stream` …`config/helpers.php`).
+
+| Si se borra la función… | Qué deja de funcionar | Error que aparece |
+|---|---|---|
+| `rutaBase()` / `quitarRutaBase()` | Todo (se usan para saber qué dirección se pidió y para las cookies). | `Call to undefined function rutaBase()` |
+| `configurarManejadorErrores()` / `manejarError()` | `public/index.php` no arranca / los errores salen como texto técnico de PHP. | `Call to undefined function ...` |
+| `configurarSeguridadHttp()` | `public/index.php` no arranca. | `Call to undefined function configurarSeguridadHttp()` |
+| `entrada()` | Todos los controladores (la usan en el constructor): nada se guarda. | `Call to undefined function entrada()` |
+| `verificarCsrf()` | Todas las rutas `/api/...`. | `Call to undefined function verificarCsrf()` |
+| `responderJson()` / `responderError()` | Todas las rutas `/api/...` (es la forma de responder a React). | `Call to undefined function responderJson()` |
+| `requiereSesion()` / `requiereRol()` | Todas las rutas y páginas que exigen iniciar sesión. | `Call to undefined function requiereRol()` |
+| `redirect()` | Entrar a un panel sin sesión ya no lleva al login. | `Call to undefined function redirect()` |
+| `mostrarVista()` | Ninguna página abre. | `Call to undefined function mostrarVista()` |
+| `cargarControlador()` / `despacharRuta()` / `despacharPagina()` | Nada funciona: son el router. | `Call to undefined function ...` |
+| `tiposDe()` | Guardar cambios en productos, insumos, clientes, personal, ajustes y crear pedidos. | `Call to undefined function tiposDe()` |
+| `correoUsadoEnCualquierTabla()` | Crear cuenta, editar perfil de cliente y crear/editar personal. | `Call to undefined function correoUsadoEnCualquierTabla()` |
+| Una línea `require_once ... views/json/...` | Todo lo que usa las funciones de ese archivo (ver su ficha en `views/json/`). | `Call to undefined function ..._a_json()` |
+
+Para saber dónde se usa una función: en VS Code, clic derecho sobre su nombre → **Buscar todas las referencias** (o `Ctrl + Shift + F`).

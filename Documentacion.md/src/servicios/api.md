@@ -68,3 +68,14 @@ if (res.status === 304) return null;
 syncEtag = res.headers.get('ETag');
 ```
 Envía la huella anterior. Si PHP dice que nada cambió (304), devuelve `null` y no se procesa nada.
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../api"` porque lo importan: `src/components/Footer.tsx`, `src/components/Navbar.tsx`, `src/components/SyncDatos.tsx`, `src/lib/pasarela.ts`, `src/lib/pushNotifications.ts`, `src/pages/AdminDashboard.tsx`, `src/pages/ClientDashboard.tsx`, `src/pages/DeliveryDashboard.tsx`, `src/pages/ForgotPassword.tsx`, `src/pages/KitchenDashboard.tsx`, `src/pages/Landing.tsx`, `src/pages/Login.tsx`, `src/pages/Register.tsx`, `src/pages/admin/InventorySection.tsx`, `src/pages/admin/MenuSection.tsx`, `src/pages/admin/SettingsSection.tsx`, `src/pages/admin/StaffSection.tsx`, `src/store/almacenAplicacion.ts`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

@@ -3,12 +3,7 @@
  * Controlador de Pagos (pasarela de prueba, ver PagoService).
  * El total siempre lo calcula el servidor con PedidoService::cotizar().
  */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../config/Session.php';
-require_once __DIR__ . '/../models/Auth.php';
 require_once __DIR__ . '/../models/PedidoService.php';
-require_once __DIR__ . '/../models/PagoService.php';
 
 class PaymentController
 {
@@ -62,7 +57,7 @@ class PaymentController
     public function showTransaction()
     {
         // Paso 3: consulta el estado hasta que deje de estar PENDING.
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         $tx = $this->pagoService->obtenerTransaccion($id, Auth::id());
         if (!$tx) {
             responderError('Transacción no encontrada.', 404);

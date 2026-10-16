@@ -9,6 +9,8 @@ Corre en local con Laragon en **`http://localhost/copiwaypro/`**.
 
 > 📘 **Guías generales** (instalar, arrancar, cómo funciona, roles, pedidos, seguridad, problemas comunes...): [Documentacion.md/general.md/README.md](Documentacion.md/general.md/README.md).
 >
+> 🌳 **Estructura completa en forma de árbol:** [Documentacion.md/ESTRUCTURA.md](Documentacion.md/ESTRUCTURA.md).
+>
 > 📚 **Documentación archivo por archivo:** [Documentacion.md/README.md](Documentacion.md/README.md). Explica qué hace cada archivo, con qué se conecta y para qué sirve cada variable.
 
 ## Estructura
@@ -53,8 +55,6 @@ try {
 **Modelos** (`private $conn` + `global $conn`, consultas preparadas):
 ```php
 <?php
-require_once __DIR__ . '/../config/database.php';
-
 class Cliente
 {
     private $conn;
@@ -81,8 +81,6 @@ class Cliente
 **Controladores** (una clase con un método por acción y, al final, el despachador por `$_GET['accion']`):
 ```php
 <?php
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/../models/Producto.php';
 
 class ProductController
@@ -103,7 +101,7 @@ class ProductController
 
     public function update()
     {
-        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        $id = $_GET['id'];
         ...
     }
 }
@@ -121,6 +119,8 @@ if ($accion === 'index') {
 }
 ?>
 ```
+**Cada archivo se carga en un solo lugar:** `public/index.php` carga la conexión, `app.php`, `helpers.php`, `Session.php` y `Auth.php`; cada controlador carga solo sus modelos. No hay rutas ni métodos que la pantalla no use. Si se borra algo, esa parte deja de funcionar y el error dice qué falta.
+
 El router (`despacharRuta()` en `config/helpers.php`) busca la ruta en `config/rutas.php`, deja en `$_GET` la acción (`$_GET['accion']`) y los datos de la ruta (`{id}` → `$_GET['id']`) y carga el archivo del controlador.
 
 Los controladores responden **JSON** (con `responderJson()`) en vez de redirigir, porque la pantalla está hecha en React.
@@ -185,18 +185,18 @@ Con Laragon encendido (Apache y MySQL), abre **`http://localhost/copiwaypro/`**.
 
 Las rutas que cambian datos (`POST`, `PUT`, `PATCH`, `DELETE`) exigen el token CSRF (cabecera `X-CSRF-Token`). Las que tienen roles en `config/rutas.php` exigen sesión y rol. Las del catálogo (`products`, `ingredients`, `settings` en lectura) son públicas.
 
-- `POST /api/auth/login|register|logout`, `GET /api/auth/me`, `GET /api/auth/csrf`
+- `POST /api/auth/login|register|logout`, `GET /api/auth/csrf`
 - `POST /api/auth/forgot-password/request|reset`
-- `GET/POST/PUT/DELETE /api/products`, `/api/ingredients`, `/api/inventory`; `PATCH /api/inventory/{id}/stock`; `GET /api/inventory-logs`
+- `POST/PUT/DELETE /api/products` y `/api/inventory`; `PATCH /api/inventory/{id}/stock`
 - `POST /api/uploads/product-image`
-- `GET/POST/PUT /api/staff` (la baja es `PUT` con `active: false`), `DELETE /api/staff/{id}?role=...`, `PATCH /api/staff/{id}/location`
-- `GET/PUT /api/clients`, `PUT /api/clients/{id}/password`, `/api/clients/{id}/notifications`
+- `POST/PUT /api/staff` (la baja es `PUT` con `active: false`), `DELETE /api/staff/{id}?role=...`, `PATCH /api/staff/{id}/location`
+- `PUT /api/clients/{id}`, `PUT /api/clients/{id}/password`
 - `GET/POST /api/orders`, `POST /api/orders/manual`, `PATCH /api/orders/{id}/preparing|ready|take|release|accept|deliver|review|address|destination`
 - `POST /api/payments/prepare`, `POST /api/payments/transactions`, `GET /api/payments/transactions/{id}` (pasarela de prueba)
-- `GET/PUT /api/settings`, `POST/DELETE /api/settings/categories`
-- `GET /api/cash-closing/preview`, `POST/GET /api/cash-closing`, `GET /api/dashboard`
-- `GET /api/push/public-key`, `POST /api/push/subscribe|unsubscribe`
-- `GET /api/sync`: datos actualizados para la pantalla (responde `304` si nada cambió)
+- `PUT /api/settings`, `POST/DELETE /api/settings/categories`
+- `GET /api/cash-closing/preview`, `POST /api/cash-closing`
+- `GET /api/push/public-key`, `POST /api/push/subscribe`
+- `GET /api/sync`: **todos los datos que muestra la pantalla** (productos, inventario, pedidos, clientes, personal, ajustes). Responde `304` si nada cambió.
 
 La lista completa, con el controlador y los roles de cada ruta, está en `config/rutas.php` y en [Documentacion.md/config/rutas.md](Documentacion.md/config/rutas.md).
 

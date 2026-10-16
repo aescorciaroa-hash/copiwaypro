@@ -2,9 +2,6 @@
 /**
  * Controlador de Ajustes de la tienda (horario, tarifas y categorias del menu).
  */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../config/Session.php';
 require_once __DIR__ . '/../models/Configuracion.php';
 
 class SettingController
@@ -16,11 +13,6 @@ class SettingController
     {
         $this->configModel = new Configuracion();
         $this->datos = entrada();
-    }
-
-    public function show()
-    {
-        responderJson($this->configModel->obtener());
     }
 
     public function update()
@@ -55,7 +47,7 @@ class SettingController
 
     public function removeCategory()
     {
-        $categoria = $_GET['category'] ?? $_POST['category'] ?? '';
+        $categoria = $_GET['category'];
         try {
             $this->configModel->eliminarCategoria(urldecode($categoria));
         } catch (Exception $e) {
@@ -69,9 +61,7 @@ $controller = new SettingController();
 
 $accion = $_GET['accion'] ?? '';
 
-if ($accion === 'show') {
-    $controller->show();
-} elseif ($accion === 'update') {
+if ($accion === 'update') {
     $controller->update();
 } elseif ($accion === 'addCategory') {
     $controller->addCategory();

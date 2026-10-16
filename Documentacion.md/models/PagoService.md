@@ -46,3 +46,31 @@ cambiar por una pasarela real sin cambiar el resto del sistema.
 | `$final` | A qué estado pasará la transacción (según el celular de prueba). |
 | `$id` | `'sbx-'` + 16 caracteres al azar. `sbx` = *sandbox* (prueba). |
 | `$row['segundos']` | `TIMESTAMPDIFF(SECOND, creado_en, NOW())`: segundos desde que se creó. |
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/PagoService.php`).
+Lo cargan con `require_once`: `models/PedidoService.php`. Dejan de funcionar:
+  - `GET /api/orders` → Admin: después de confirmar el cierre de caja no se recargan las comandas.
+  - `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).
+  - `POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.
+  - `PATCH /api/orders/{id}/address` → Admin: no se puede corregir la dirección de un pedido.
+  - `PATCH /api/orders/{id}/destination` → Domiciliario: no se guarda el destino que ubica en el mapa.
+  - `PATCH /api/orders/{id}/preparing` → Cocina/Admin: el pedido no pasa a "En Preparación".
+  - `PATCH /api/orders/{id}/ready` → Cocina/Admin: el pedido no pasa a "Listos".
+  - `PATCH /api/orders/{id}/take` → Domiciliario: no puede tomar un pedido listo.
+  - … y 7 más: `PATCH /api/orders/{id}/release`, `PATCH /api/orders/{id}/accept`, `PATCH /api/orders/{id}/deliver`, `PATCH /api/orders/{id}/review`, `POST /api/payments/prepare`, `POST /api/payments/transactions`, `GET /api/payments/transactions/{id}`.
+
+**Si se borra un método:** sale `Call to undefined method PagoService::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `firmar()` (privado) | `PagoService::crearTransaccion()`, `PagoService::prepararCheckout()` | `POST /api/payments/prepare` → Cliente: el pago en línea no arranca (paso 1 de la pasarela).<br>`POST /api/payments/transactions` → Cliente: la pasarela no crea la transacción (paso 2). |
+| `prepararCheckout()` | `PaymentController::prepare()` | `POST /api/payments/prepare` → Cliente: el pago en línea no arranca (paso 1 de la pasarela). |
+| `crearTransaccion()` | `PaymentController::createTransaction()` | `POST /api/payments/transactions` → Cliente: la pasarela no crea la transacción (paso 2). |
+| `obtenerTransaccion()` | `PagoService::crearTransaccion()`, `PagoService::verificarTransaccion()`, `PaymentController::showTransaction()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/payments/transactions` → Cliente: la pasarela no crea la transacción (paso 2).<br>`GET /api/payments/transactions/{id}` → Cliente: la pasarela no sabe si el pago fue aprobado (paso 3). |
+| `mensaje()` (privado) | `PagoService::obtenerTransaccion()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/payments/transactions` → Cliente: la pasarela no crea la transacción (paso 2).<br>`GET /api/payments/transactions/{id}` → Cliente: la pasarela no sabe si el pago fue aprobado (paso 3). |
+| `verificarTransaccion()` | `PedidoService::crear()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout). |
+| `__construct()` | `new PagoService()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa PagoService. |
+
+**Si se borra una constante** (`MONEDA`, `CLAVE_FIRMA`, `SEGUNDOS_PENDIENTE`): sale `Undefined constant PagoService::NOMBRE` en lo que la usa.

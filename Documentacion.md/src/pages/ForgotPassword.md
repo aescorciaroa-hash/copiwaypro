@@ -47,3 +47,14 @@ muestra debajo del campo del código.
 
 **En modo local:** si el correo no está configurado, PHP responde el código en `debugCode`. Esta
 pantalla no lo muestra; se puede ver en las herramientas del navegador (F12 → Red).
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../ForgotPassword"` porque lo importan: `src/main.tsx`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

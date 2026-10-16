@@ -4,13 +4,8 @@
  * con If-None-Match; si nada cambio se responde 304 sin datos.
  * Lo que se envia depende del rol.
  */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../config/Session.php';
-require_once __DIR__ . '/../models/Auth.php';
 require_once __DIR__ . '/../models/Producto.php';
 require_once __DIR__ . '/../models/Configuracion.php';
-require_once __DIR__ . '/../models/Ingrediente.php';
 require_once __DIR__ . '/../models/Personal.php';
 require_once __DIR__ . '/../models/Pedido.php';
 require_once __DIR__ . '/../models/Cliente.php';

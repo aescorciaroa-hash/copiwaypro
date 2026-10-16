@@ -3,8 +3,6 @@
  * Autenticacion y control de acceso por rol.
  * Roles: admin, kitchen (cocina), delivery (domiciliario) y client (cliente).
  */
-require_once __DIR__ . '/../config/database.php';
-
 class Auth
 {
     /** Tabla y llave primaria de cada rol. */

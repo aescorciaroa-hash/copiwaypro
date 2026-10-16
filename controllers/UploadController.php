@@ -3,9 +3,6 @@
  * Controlador de Subida de imagenes (fotos de producto).
  * La imagen se guarda en public/uploads/productos/ y en la base de datos solo va la URL.
  */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../config/Session.php';
 
 class UploadController
 {

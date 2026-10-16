@@ -47,3 +47,13 @@ if ($esAdmin) {
 ```
 - El cliente solo recibe `id` y `name` de cada ingrediente: lo justo para "quitar cebolla" o "extra queso".
 - El `foreach` recorre los ingredientes y agrega (`[] =`) cada uno a la lista nueva.
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** `config/helpers.php` lo carga en cada petición, así que **nada funciona** (`Failed to open stream` …`views/json/producto.php`).
+
+**Si se borra una función:** sale `Call to undefined function nombre()` en lo que la usa:
+
+| Función | La llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `producto_a_json()` | `Producto::comoJson()` | `POST /api/products` → Admin → Gestión de Menú: no se pueden crear productos.<br>`PUT /api/products/{id}` → Admin → Gestión de Menú: no se pueden editar productos.<br>`DELETE /api/products/{id}` → Admin → Gestión de Menú: no se pueden eliminar productos.<br>`GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |

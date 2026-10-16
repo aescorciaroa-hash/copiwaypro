@@ -27,3 +27,10 @@ Es la **segunda mitad del HTML**: cierra el `<div id="app">` que abrió `cabecer
 - `</div>` cierra el `<div id="app">`.
 - `type="module"` = JavaScript moderno (con `import`).
 - Al cargar `main.js`, se ejecuta `src/main.tsx`, que lee `data-pagina` y muestra la pantalla.
+
+## ¿Qué pasa si se borra?
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | Ninguna página abre: todas las vistas de `views/paginas/` lo cargan (`Failed to open stream` …`pie.php`). |
+| El `<script ... main.js>` | La página sale en blanco: React no se carga. |

@@ -30,3 +30,14 @@ marca, el modo oscuro, la barra de desplazamiento y el mapa oscuro.
 | `.leaflet-dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) ... }` | **Mapa oscuro gratis:** invierte los colores del mapa de OpenStreetMap; `hue-rotate` hace que el agua siga azul y los parques verdes. |
 
 `var(--color-bg-light)` = usar el valor de esa variable de CSS definida en `@theme`.
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../index"` porque lo importan: `src/main.tsx`. |
+| Una clase o variable de color | Esa parte de las pantallas pierde el estilo (no sale error). |

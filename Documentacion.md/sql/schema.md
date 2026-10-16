@@ -103,3 +103,12 @@ END$$
 INSERT INTO CONFIGURACION_SISTEMA (id_config) VALUES (DEFAULT);
 ```
 Crea la única fila de configuración con los valores por defecto.
+
+## ¿Qué pasa si se borra?
+
+`schema.sql` solo se usa para **crear** la base de datos. Borrar el archivo no cambia nada mientras
+la base ya exista; solo impide instalar el sistema en otro computador.
+
+Si se borra una **tabla o columna en MySQL** (no en el archivo), lo que la usa falla con
+`Table 'hamburguer_copiway.X' doesn't exist` o `Unknown column 'x'`. Para saber qué modelo la usa,
+busca el nombre de la tabla en `models/` (`Ctrl + Shift + F`).

@@ -12,7 +12,6 @@ La misma tabla se muestra de dos formas:
 | Dirección | Archivo | Para qué |
 |---|---|---|
 | ← lo usa | `InventoryController.php` | Inventario y ajustes de stock. |
-| ← lo usa | `IngredientController.php` | Catálogo de extras. |
 | ← lo usa | `SyncController.php` | Enviar inventario, ingredientes e historial. |
 | ← lo usa | `Producto.php` | `resolverOCrear()` al guardar una receta. |
 | ← lo usa | `PedidoService.php` | `descontarPorReceta()` al crear un pedido. |
@@ -34,7 +33,7 @@ La misma tabla se muestra de dos formas:
 | `listarInventario()` | Insumos activos, ordenados por nombre, en formato inventario. |
 | `listarIngredientes()` | Insumos activos que **no** son empaques, en formato catálogo. |
 | `buscar($id)` | Una fila (con el nombre de su categoría). |
-| `comoInventario($row)` / `comoIngrediente($row)` | Pasan la fila por la función de formato correspondiente. |
+| `comoInventario($row)` | Pasa la fila por `ingrediente_a_inventario()`. |
 | `crearConStockInicial($d, $idAdmin)` | Crea el insumo y, si trae stock, registra un movimiento de "entrada". En transacción. |
 | `actualizar($id, $d)` | Cambia solo los campos enviados (igual que `Cliente::actualizar`). |
 | `eliminar($id)` | **Baja lógica**: `activo = 0`. No se borra porque tiene movimientos y recetas que lo referencian. |
@@ -67,3 +66,37 @@ Recibe líneas como: `['id_ingrediente' => 5, 'cantidad' => 2, 'motivo' => 'Vent
 4. **Descontar:** `UPDATE ... SET cantidad_stock = cantidad_stock - ?` y guarda una "salida" en el historial, con el id del pedido.
 
 No hace `begin_transaction()` porque ya está dentro de la transacción que abrió `PedidoService::crear()`.
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/Ingrediente.php`).
+Lo cargan con `require_once`: `controllers/InventoryController.php`, `models/PedidoService.php`, `models/Producto.php`. Dejan de funcionar:
+  - `POST /api/products` → Admin → Gestión de Menú: no se pueden crear productos.
+  - `PUT /api/products/{id}` → Admin → Gestión de Menú: no se pueden editar productos.
+  - `DELETE /api/products/{id}` → Admin → Gestión de Menú: no se pueden eliminar productos.
+  - `POST /api/inventory` → Admin → Inventario: no se pueden crear insumos.
+  - `PUT /api/inventory/{id}` → Admin → Inventario: no se pueden editar insumos.
+  - `DELETE /api/inventory/{id}` → Admin → Inventario: no se pueden eliminar insumos.
+  - `PATCH /api/inventory/{id}/stock` → Admin → Inventario: no se puede sumar o restar stock.
+  - `GET /api/orders` → Admin: después de confirmar el cierre de caja no se recargan las comandas.
+  - … y 15 más: `POST /api/orders`, `POST /api/orders/manual`, `PATCH /api/orders/{id}/address`, `PATCH /api/orders/{id}/destination`, `PATCH /api/orders/{id}/preparing`, `PATCH /api/orders/{id}/ready`, `PATCH /api/orders/{id}/take`, `PATCH /api/orders/{id}/release`, `PATCH /api/orders/{id}/accept`, `PATCH /api/orders/{id}/deliver`, `PATCH /api/orders/{id}/review`, `POST /api/payments/prepare`, `POST /api/payments/transactions`, `GET /api/payments/transactions/{id}`, `GET /api/sync`.
+
+**Si se borra un método:** sale `Call to undefined method Ingrediente::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `listarInventario()` | `SyncController::index()` | `GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `listarIngredientes()` | `SyncController::index()` | `GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `buscar()` | `InventoryController::adjustStock()`, `InventoryController::destroy()`, `InventoryController::store()`, `InventoryController::update()` | `POST /api/inventory` → Admin → Inventario: no se pueden crear insumos.<br>`PUT /api/inventory/{id}` → Admin → Inventario: no se pueden editar insumos.<br>`DELETE /api/inventory/{id}` → Admin → Inventario: no se pueden eliminar insumos.<br>`PATCH /api/inventory/{id}/stock` → Admin → Inventario: no se puede sumar o restar stock. |
+| `comoInventario()` | `InventoryController::adjustStock()`, `InventoryController::store()`, `InventoryController::update()` | `POST /api/inventory` → Admin → Inventario: no se pueden crear insumos.<br>`PUT /api/inventory/{id}` → Admin → Inventario: no se pueden editar insumos.<br>`PATCH /api/inventory/{id}/stock` → Admin → Inventario: no se puede sumar o restar stock. |
+| `crearConStockInicial()` | `InventoryController::store()` | `POST /api/inventory` → Admin → Inventario: no se pueden crear insumos. |
+| `actualizar()` | `InventoryController::update()` | `PUT /api/inventory/{id}` → Admin → Inventario: no se pueden editar insumos. |
+| `eliminar()` | `InventoryController::destroy()` | `DELETE /api/inventory/{id}` → Admin → Inventario: no se pueden eliminar insumos. |
+| `ajustarStock()` | `InventoryController::adjustStock()` | `PATCH /api/inventory/{id}/stock` → Admin → Inventario: no se puede sumar o restar stock. |
+| `descontarPorReceta()` | `PedidoService::guardar()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp. |
+| `resolverOCrear()` | `Producto::sincronizarReceta()` | `POST /api/products` → Admin → Gestión de Menú: no se pueden crear productos.<br>`PUT /api/products/{id}` → Admin → Gestión de Menú: no se pueden editar productos. |
+| `resolverCategoria()` (privado) | `Ingrediente::actualizar()`, `Ingrediente::crearConStockInicial()` | `POST /api/inventory` → Admin → Inventario: no se pueden crear insumos.<br>`PUT /api/inventory/{id}` → Admin → Inventario: no se pueden editar insumos. |
+| `registrosDeMovimientos()` | `SyncController::index()` | `GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `__construct()` | `new Ingrediente()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa Ingrediente. |
+
+**Si se borra una constante** (`BASE`): sale `Undefined constant Ingrediente::NOMBRE` en lo que la usa.

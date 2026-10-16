@@ -29,7 +29,6 @@ Consultas para el **cierre de caja**. Solo lee datos; los cálculos y el guardad
 | `stockActual($idIngrediente)` | Stock de un insumo en este momento. |
 | `pedidosActivosCount()` | Cuántos pedidos siguen sin entregar ni cancelar (para avisar al admin). |
 | `reporte($idReporte)` | Arma el reporte completo de un cierre ya guardado. |
-| `historialDeAdmin($idAdmin)` | Cierres de ese admin, del más nuevo al más viejo. |
 
 ## `consumoTeorico()` explicado
 ```php
@@ -50,3 +49,23 @@ El resultado se guarda con el id del insumo como clave: `$resultado[5] = ['nombr
 `$this->conn->query()` devuelve los números como texto (`"5"`), mientras que `prepare()` los devuelve
 como número (`5`). React recibe estos datos en el JSON, así que se usa `prepare()` + `execute()` para
 que los tipos lleguen siempre igual.
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/Caja.php`).
+Lo cargan con `require_once`: `models/CajaService.php`. Dejan de funcionar:
+  - `GET /api/cash-closing/preview` → Admin → Ajustes y Caja: el botón "Generar cierre" no muestra la vista previa.
+  - `POST /api/cash-closing` → Admin: no se puede confirmar el cierre de caja.
+
+**Si se borra un método:** sale `Call to undefined method Caja::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `yaGeneradoHoy()` | `CajaService::generar()`, `CajaService::previsualizar()` | `GET /api/cash-closing/preview` → Admin → Ajustes y Caja: el botón "Generar cierre" no muestra la vista previa.<br>`POST /api/cash-closing` → Admin: no se puede confirmar el cierre de caja. |
+| `pedidosDelTurno()` | `CajaService::generar()`, `CajaService::previsualizar()` | `GET /api/cash-closing/preview` → Admin → Ajustes y Caja: el botón "Generar cierre" no muestra la vista previa.<br>`POST /api/cash-closing` → Admin: no se puede confirmar el cierre de caja. |
+| `consumoTeorico()` | `CajaService::generar()`, `CajaService::previsualizar()` | `GET /api/cash-closing/preview` → Admin → Ajustes y Caja: el botón "Generar cierre" no muestra la vista previa.<br>`POST /api/cash-closing` → Admin: no se puede confirmar el cierre de caja. |
+| `domiciliariosActivos()` | `CajaService::generar()`, `CajaService::previsualizar()` | `GET /api/cash-closing/preview` → Admin → Ajustes y Caja: el botón "Generar cierre" no muestra la vista previa.<br>`POST /api/cash-closing` → Admin: no se puede confirmar el cierre de caja. |
+| `stockActual()` | `CajaService::generar()`, `CajaService::previsualizar()` | `GET /api/cash-closing/preview` → Admin → Ajustes y Caja: el botón "Generar cierre" no muestra la vista previa.<br>`POST /api/cash-closing` → Admin: no se puede confirmar el cierre de caja. |
+| `pedidosActivosCount()` | `CajaService::generar()`, `CajaService::previsualizar()` | `GET /api/cash-closing/preview` → Admin → Ajustes y Caja: el botón "Generar cierre" no muestra la vista previa.<br>`POST /api/cash-closing` → Admin: no se puede confirmar el cierre de caja. |
+| `reporte()` | `CajaService::generar()` | `POST /api/cash-closing` → Admin: no se puede confirmar el cierre de caja. |
+| `__construct()` | `new Caja()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa Caja. |

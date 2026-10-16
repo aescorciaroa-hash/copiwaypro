@@ -36,3 +36,11 @@ Si alguien entra a una página protegida sin sesión o con otro rol, se le **red
 | `/client` | Cliente |
 | `/kitchen` | Cocina |
 | `/delivery` | Domiciliario |
+
+## ¿Qué pasa si se borra?
+
+| Si se borra… | Qué pasa | Error que aparece |
+|---|---|---|
+| **El archivo completo** | Ninguna página abre (inicio, login, paneles). La API sí responde. | `Failed to open stream` (…`config/paginas.php`) |
+| Una línea | Esa página no abre. | `Pagina no encontrada.` (404) |
+| El rol de una página (ej. `['admin']` → `[]`) | Cualquiera puede abrir ese panel sin iniciar sesión (aunque la API sigue pidiendo el rol). | Ninguno |

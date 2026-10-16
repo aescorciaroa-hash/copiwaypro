@@ -3,8 +3,6 @@
  * Modelo Pedido (PEDIDO, DETALLE_PEDIDO y PERSONALIZACION).
  * Solo consultas; las reglas del pedido estan en PedidoService.
  */
-require_once __DIR__ . '/../config/database.php';
-
 class Pedido
 {
     private $conn;

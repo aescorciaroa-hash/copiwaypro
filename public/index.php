@@ -3,11 +3,8 @@
  * Punto de entrada unico de la app (API y paginas).
  */
 
-// Librerias de Composer (web-push y PHPMailer). Si aun no se corrio
-// "composer install", la app funciona igual pero sin push ni correos.
-if (is_file(__DIR__ . '/../vendor/autoload.php')) {
-    require __DIR__ . '/../vendor/autoload.php';
-}
+// Librerias de Composer (web-push y PHPMailer), instaladas con "composer install".
+require_once __DIR__ . '/../vendor/autoload.php';
 
 require_once __DIR__ . '/../config/database.php';
 $config = require __DIR__ . '/../config/app.php';

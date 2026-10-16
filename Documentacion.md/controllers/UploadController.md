@@ -44,3 +44,20 @@ move_uploaded_file($archivo['tmp_name'], $directorio . '/' . $nombreArchivo)
 Mueve el archivo desde la carpeta temporal de PHP a `public/uploads/productos/`.
 
 Responde **201** con `{"url": "/copiwaypro/uploads/productos/nombre.png"}`.
+
+## ¿Qué pasa si se borra?
+
+Este archivo lo carga `cargarControlador()` (`config/helpers.php`) cuando llega una de sus rutas.
+Si algo se borra, el error aparece en la pantalla como aviso rojo y completo en
+**F12 → Red → la petición → Respuesta**.
+
+| Si se borra… | Qué deja de funcionar | Error que aparece |
+|---|---|---|
+| **El archivo completo** | Todas sus rutas: `POST /api/uploads/product-image`. | `Failed to open stream: No such file or directory` (…`controllers/UploadController.php`) |
+| El método `productImage()` | Admin: no se pueden subir fotos de productos ni de insumos. | `Call to undefined method UploadController::productImage()` (500) |
+| La rama `$accion === 'productImage'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
+| La línea `'POST /api/uploads/product-image'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
+| La línea `$this->tamanoMaximo = ...` del constructor | Las acciones que usan `$this->tamanoMaximo`. | `Call to a member function ...() on null` o `Undefined property` |
+| La línea `$this->extensiones = ...` del constructor | Las acciones que usan `$this->extensiones`. | `Call to a member function ...() on null` o `Undefined property` |
+
+**Cómo se arregla:** volver a escribir lo que se borró. La ficha de arriba ("Código explicado") muestra cómo era.

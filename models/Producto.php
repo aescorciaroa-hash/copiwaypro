@@ -3,7 +3,6 @@
  * Modelo Producto (PRODUCTO y RECETA).
  * El producto oculto "Hamburguesa Personalizada" nunca aparece en el catalogo.
  */
-require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/Ingrediente.php';
 
 class Producto

@@ -30,3 +30,14 @@ Lo mismo, más los datos del domiciliario:
 | `destCoords` | `[lat, lng]` del destino de ese pedido, si el domiciliario ya lo ubicó en su mapa; si no, `null`. Con esto el mapa del admin dibuja la ruta. |
 | `plate`, `vehicle`, `vehicleModel` | `placa`, `tipo_vehiculo`, `modelo_vehiculo` |
 | `baseCash` | `(float) base_efectivo_asignada` (efectivo para dar cambio) |
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** `config/helpers.php` lo carga en cada petición, así que **nada funciona** (`Failed to open stream` …`views/json/personal.php`).
+
+**Si se borra una función:** sale `Call to undefined function nombre()` en lo que la usa:
+
+| Función | La llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `personal_cocina_a_json()` | `Personal::comoJsonCocina()` | `GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `personal_domicilio_a_json()` | `Personal::comoJsonDomicilio()` | `GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |

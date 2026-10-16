@@ -98,3 +98,24 @@ administrador desactiva una cuenta, esa persona pierde el acceso de inmediato.
 
 ### `Auth::logout()`
 Borra el usuario de la sesión y llama a `Session::destroy()`.
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** `public/index.php` no lo encuentra y **nada funciona** (`Failed to open stream` …`models/Auth.php`).
+
+**Si se borra un método:** sale `Call to undefined method Auth::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `check()` | `requiereSesion()`, `Auth::usuarioActual()`, `ClientController::autorizarPropioOAdmin()`, `ClientController::changePassword()`, `PaginaController::mostrar()`, `StaffController::updateLocation()`, `SyncController::index()` | **Todo el sistema** (todas las rutas y páginas). |
+| `rol()` | `requiereRol()`, `Auth::usuarioActual()`, `ClientController::autorizarPropioOAdmin()`, `ClientController::changePassword()`, `ClientController::update()`, `OrderController::index()`, `OrderController::markPreparing()`, `OrderController::markReady()`, `OrderController::release()`, `OrderController::responderPedido()`, `PaginaController::mostrar()`, `StaffController::updateLocation()`, `SyncController::index()` | **Todo el sistema** (todas las rutas y páginas). |
+| `id()` | `Auth::usuarioActual()`, `CashClosingController::preview()`, `CashClosingController::store()`, `ClientController::autorizarPropioOAdmin()`, `ClientController::changePassword()`, `InventoryController::adjustStock()`, `InventoryController::store()`, `OrderController::accept()`, `OrderController::deliver()`, `OrderController::index()`, `OrderController::markPreparing()`, `OrderController::markReady()`, `OrderController::release()`, `OrderController::responderPedido()`, `OrderController::review()`, `OrderController::store()`, `OrderController::storeManual()`, `OrderController::take()`, `OrderController::updateDestination()`, `PaymentController::createTransaction()`, `PaymentController::prepare()`, `PaymentController::showTransaction()`, `PushController::subscribe()`, `StaffController::store()`, `StaffController::updateLocation()`, `SyncController::index()` | **Todo el sistema** (todas las rutas y páginas). |
+| `buscarPorCorreo()` (privado) | `Auth::intentarLogin()`, `Auth::intentarLoginConPin()` | `POST /api/auth/login` → Nadie puede iniciar sesión (pantalla de login y PIN de cocina/domiciliario). |
+| `intentarLogin()` | `AuthController::login()` | `POST /api/auth/login` → Nadie puede iniciar sesión (pantalla de login y PIN de cocina/domiciliario). |
+| `intentarLoginConPin()` | `AuthController::login()` | `POST /api/auth/login` → Nadie puede iniciar sesión (pantalla de login y PIN de cocina/domiciliario). |
+| `usuarioSinDominio()` (privado) | `Auth::intentarLoginConPin()` | `POST /api/auth/login` → Nadie puede iniciar sesión (pantalla de login y PIN de cocina/domiciliario). |
+| `login()` | `Auth::intentarLogin()`, `Auth::intentarLoginConPin()`, `AuthController::register()` | `POST /api/auth/login` → Nadie puede iniciar sesión (pantalla de login y PIN de cocina/domiciliario).<br>`POST /api/auth/register` → No se pueden crear cuentas de cliente (pantalla "Crear cuenta"). |
+| `usuarioActual()` | `requiereSesion()`, `PaginaController::mostrar()` | **Todo el sistema** (todas las rutas y páginas). |
+| `logout()` | `Auth::usuarioActual()`, `AuthController::logout()` | **Todo el sistema** (todas las rutas y páginas). |
+
+**Si se borra una constante** (`TABLAS`): sale `Undefined constant Auth::NOMBRE` en lo que la usa.

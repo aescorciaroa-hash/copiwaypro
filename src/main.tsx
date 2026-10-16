@@ -30,19 +30,24 @@ const PAGINAS: Record<string, ComponentType> = {
 const contenedor = document.getElementById('app');
 
 // En "npm run dev" (sin PHP de por medio) no hay data-pagina en el HTML de
-// Vite; se puede forzar con ?pagina=admin en la URL para probar una pantalla.
+// Vite; la pantalla se elige con ?pagina=admin en la URL.
 const nombrePagina =
   contenedor?.dataset.pagina ||
   new URLSearchParams(window.location.search).get('pagina') ||
-  'landing';
+  '';
 
-const Pagina = PAGINAS[nombrePagina] || Landing;
+const Pagina = PAGINAS[nombrePagina];
 
-createRoot(contenedor!).render(
-  <StrictMode>
-    <ThemeProvider>
-      <SyncDatos />
-      <Pagina />
-    </ThemeProvider>
-  </StrictMode>,
-);
+if (!Pagina) {
+  // Sin pantalla valida se muestra el error en vez de abrir otra pantalla.
+  contenedor!.textContent = `Pantalla no encontrada: "${nombrePagina}". Revisa $pagina en views/paginas/ (o ?pagina= con npm run dev).`;
+} else {
+  createRoot(contenedor!).render(
+    <StrictMode>
+      <ThemeProvider>
+        <SyncDatos />
+        <Pagina />
+      </ThemeProvider>
+    </StrictMode>,
+  );
+}

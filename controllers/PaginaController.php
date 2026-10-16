@@ -3,10 +3,6 @@
  * Controlador de Paginas: prepara los datos iniciales y monta la app de React.
  * El control de sesion/rol ya lo hizo despacharPagina().
  */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../config/Session.php';
-require_once __DIR__ . '/../models/Auth.php';
 require_once __DIR__ . '/../models/Configuracion.php';
 
 class PaginaController

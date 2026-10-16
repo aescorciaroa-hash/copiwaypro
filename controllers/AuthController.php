@@ -2,10 +2,6 @@
 /**
  * Controlador de Autenticacion (login, registro, sesion y recuperar contrasena).
  */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../config/Session.php';
-require_once __DIR__ . '/../models/Auth.php';
 require_once __DIR__ . '/../models/Cliente.php';
 require_once __DIR__ . '/../models/CodigoVerificacion.php';
 require_once __DIR__ . '/../models/IntentoLogin.php';
@@ -80,7 +76,7 @@ class AuthController
 
             // Solo en local y si el correo no salio: se devuelve el codigo para poder probar.
             global $config;
-            if (!$enviado && ($config['entorno'] ?? '') === 'local') {
+            if (!$enviado && $config['entorno'] === 'local') {
                 responderJson(['ok' => true, 'debugCode' => $codigo]);
             }
         }
@@ -161,18 +157,6 @@ class AuthController
         responderJson(['ok' => true]);
     }
 
-    public function me()
-    {
-        if (!Auth::check()) {
-            responderError('No autenticado.', 401);
-        }
-        $usuario = Auth::usuarioActual();
-        if ($usuario === null) {
-            responderError('Sesión inválida.', 401);
-        }
-        responderJson(['user' => $usuario, 'role' => Auth::rol(), 'csrfToken' => Session::csrf()]);
-    }
-
     public function csrf()
     {
         // No exige sesion: lo usa el visitante para tener su primer token CSRF.
@@ -194,8 +178,6 @@ if ($accion === 'register') {
     $controller->login();
 } elseif ($accion === 'logout') {
     $controller->logout();
-} elseif ($accion === 'me') {
-    $controller->me();
 } elseif ($accion === 'csrf') {
     $controller->csrf();
 } else {

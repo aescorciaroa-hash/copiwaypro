@@ -38,3 +38,14 @@ Recibe un arreglo con 4 partes que arma el modelo:
 | `title`, `message`, `date` | `titulo`, `mensaje`, `fecha` |
 | `read` | `(bool) leida` |
 | `type` | `tipo` (`order`, `promo` o `system`) |
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** `config/helpers.php` lo carga en cada petición, así que **nada funciona** (`Failed to open stream` …`views/json/cliente.php`).
+
+**Si se borra una función:** sale `Call to undefined function nombre()` en lo que la usa:
+
+| Función | La llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `cliente_a_json()` | `Cliente::comoJson()` | `PUT /api/clients/{id}` → Cliente → Mi Perfil (y el carrito/tema guardado): no se guardan los cambios. Admin → Clientes: no se puede editar un cliente.<br>`GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |
+| `notificacion_a_json()` | `Cliente::notificacionesDe()` | `PUT /api/clients/{id}` → Cliente → Mi Perfil (y el carrito/tema guardado): no se guardan los cambios. Admin → Clientes: no se puede editar un cliente.<br>`GET /api/sync` → **Todas las pantallas se quedan sin datos**: menú, pedidos, inventario, clientes, personal y ajustes no aparecen ni se actualizan. |

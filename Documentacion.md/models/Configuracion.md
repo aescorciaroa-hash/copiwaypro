@@ -59,3 +59,34 @@ $categorias = array_column($rows, 'nombre');
 ```
 De una lista de filas `[['nombre' => 'Bebidas'], ['nombre' => 'Hamburguesas']]` saca solo los
 nombres: `['Bebidas', 'Hamburguesas']`.
+
+## ¿Qué pasa si se borra?
+
+**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/Configuracion.php`).
+Lo cargan con `require_once`: `controllers/PaginaController.php`, `controllers/SettingController.php`, `controllers/SyncController.php`, `models/PedidoService.php`. Dejan de funcionar:
+  - `PUT /api/settings` → Admin → Ajustes y Caja: no se guardan horario, tarifa, puntos ni datos del negocio.
+  - `POST /api/settings/categories` → Admin → Gestión de Menú: no se pueden crear categorías.
+  - `DELETE /api/settings/categories/{category}` → Admin → Gestión de Menú: no se pueden borrar categorías.
+  - `GET /api/orders` → Admin: después de confirmar el cierre de caja no se recargan las comandas.
+  - `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).
+  - `POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.
+  - `PATCH /api/orders/{id}/address` → Admin: no se puede corregir la dirección de un pedido.
+  - `PATCH /api/orders/{id}/destination` → Domiciliario: no se guarda el destino que ubica en el mapa.
+  - … y 19 más: `PATCH /api/orders/{id}/preparing`, `PATCH /api/orders/{id}/ready`, `PATCH /api/orders/{id}/take`, `PATCH /api/orders/{id}/release`, `PATCH /api/orders/{id}/accept`, `PATCH /api/orders/{id}/deliver`, `PATCH /api/orders/{id}/review`, `POST /api/payments/prepare`, `POST /api/payments/transactions`, `GET /api/payments/transactions/{id}`, `GET /api/sync`, `/`, `/login`, `/register`, `/forgot-password`, `/admin`, `/client`, `/kitchen`, `/delivery`.
+
+**Si se borra un método:** sale `Call to undefined method Configuracion::nombre()` (error 500), solo en lo que usa ese método:
+
+| Método | Lo llaman | Qué deja de funcionar si se borra |
+|---|---|---|
+| `get()` | `Configuracion::actualizar()`, `Configuracion::idIngredienteBolsaGlobal()`, `Configuracion::margenGanancia()`, `Configuracion::obtener()`, `Configuracion::reglasPuntos()`, `Configuracion::tarifaDomicilio()` | `PUT /api/settings` → Admin → Ajustes y Caja: no se guardan horario, tarifa, puntos ni datos del negocio.<br>`POST /api/settings/categories` → Admin → Gestión de Menú: no se pueden crear categorías.<br>`DELETE /api/settings/categories/{category}` → Admin → Gestión de Menú: no se pueden borrar categorías.<br>`POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>… y 11 más: `POST /api/orders/manual`, `POST /api/payments/prepare`, `GET /api/sync`, `/`, `/login`, `/register`, `/forgot-password`, `/admin`, `/client`, `/kitchen`, `/delivery`. |
+| `obtener()` | `Configuracion::tiendaAbiertaAhora()`, `PaginaController::mostrar()`, `SettingController::addCategory()`, `SettingController::removeCategory()`, `SettingController::update()`, `SyncController::index()` | `PUT /api/settings` → Admin → Ajustes y Caja: no se guardan horario, tarifa, puntos ni datos del negocio.<br>`POST /api/settings/categories` → Admin → Gestión de Menú: no se pueden crear categorías.<br>`DELETE /api/settings/categories/{category}` → Admin → Gestión de Menú: no se pueden borrar categorías.<br>`POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>… y 11 más: `POST /api/orders/manual`, `POST /api/payments/prepare`, `GET /api/sync`, `/`, `/login`, `/register`, `/forgot-password`, `/admin`, `/client`, `/kitchen`, `/delivery`. |
+| `actualizar()` | `SettingController::update()` | `PUT /api/settings` → Admin → Ajustes y Caja: no se guardan horario, tarifa, puntos ni datos del negocio. |
+| `agregarCategoria()` | `SettingController::addCategory()` | `POST /api/settings/categories` → Admin → Gestión de Menú: no se pueden crear categorías. |
+| `eliminarCategoria()` | `SettingController::removeCategory()` | `DELETE /api/settings/categories/{category}` → Admin → Gestión de Menú: no se pueden borrar categorías. |
+| `tiendaAbiertaAhora()` | `PedidoService::cotizar()`, `PedidoService::crear()`, `PedidoService::crearManual()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.<br>`POST /api/payments/prepare` → Cliente: el pago en línea no arranca (paso 1 de la pasarela). |
+| `aMinutos()` (privado) | `Configuracion::tiendaAbiertaAhora()` | `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).<br>`POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.<br>`POST /api/payments/prepare` → Cliente: el pago en línea no arranca (paso 1 de la pasarela). |
+| `tarifaDomicilio()` | — | Nada directo. |
+| `idIngredienteBolsaGlobal()` | — | Nada directo. |
+| `reglasPuntos()` | — | Nada directo. |
+| `margenGanancia()` | — | Nada directo. |
+| `__construct()` | `new Configuracion()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa Configuracion. |

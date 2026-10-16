@@ -28,14 +28,11 @@ router.
 
 ### 1. Librerías de Composer
 ```php
-if (is_file(__DIR__ . '/../vendor/autoload.php')) {
-    require __DIR__ . '/../vendor/autoload.php';
-}
+require_once __DIR__ . '/../vendor/autoload.php';
 ```
 - Composer es el instalador de librerías de PHP. Aquí se usan dos: **PHPMailer** (correos) y
   **web-push** (notificaciones).
-- `is_file(...)` revisa si el archivo existe. Si todavía no se ejecutó `composer install`, la app
-  funciona igual, pero sin correos ni notificaciones.
+- Si falta la carpeta `vendor/` (no se ejecutó `composer install`), la app no arranca y muestra el error.
 
 ### 2. Cargar los archivos base
 ```php
@@ -84,3 +81,21 @@ if (strpos($ruta, '/api') === 0) {
 - Si la ruta empieza con `/api` → es una petición de datos → `despacharRuta()` (usa `config/rutas.php`).
 - Si no → es una página → `despacharPagina()` (usa `config/paginas.php`).
 - `$_SERVER['REQUEST_METHOD']` es el método HTTP: `GET`, `POST`, `PUT`, `PATCH` o `DELETE`.
+
+## ¿Qué pasa si se borra?
+
+`public/index.php` es la **puerta de entrada**: toda dirección pasa por aquí.
+
+| Si se borra… | Qué pasa | Error que aparece |
+|---|---|---|
+| **El archivo completo** | Nada abre. | `404 Not Found` de Apache |
+| `require_once ... vendor/autoload.php` | Al confirmar una entrega con PIN sale error 500 (la entrega sí queda guardada, pero no sale la notificación). El correo de recuperación falla igual si el servidor de correo está configurado. | `Class "Minishlink\WebPush\WebPush" not found` |
+| `require_once ... config/database.php` | Todo lo que consulta MySQL. | `Call to a member function prepare() on null` |
+| `$config = require ... config/app.php` | Nada funciona. | `Undefined variable $config` |
+| `require_once ... config/helpers.php` | Nada funciona. | `Call to undefined function configurarManejadorErrores()` |
+| `require_once ... config/Session.php` | Nada funciona. | `Class "Session" not found` |
+| `require_once ... models/Auth.php` | Todo lo que exige sesión (paneles y casi toda la API). | `Class "Auth" not found` |
+| `configurarManejadorErrores();` | Los errores salen como texto técnico de PHP en vez de JSON. | — |
+| `configurarSeguridadHttp();` | Todo funciona, pero sin las cabeceras de seguridad. No se ve ningún error. | Ninguno |
+| `Session::start();` | Nadie queda con sesión: la API responde `No autenticado.` (401) y los paneles mandan al login. | `No autenticado.` (401) |
+| El `if (strpos($ruta, '/api') === 0)` | La API o las páginas dejan de llegar a su router. | `Pagina no encontrada.` o `Ruta no encontrada.` |

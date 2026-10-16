@@ -43,3 +43,13 @@ Agrega esas dos propiedades al objeto `window` del navegador. El `?` dice que pu
 
 `declare global { ... }` = "esto aplica a todo el proyecto". `export {}` hace que TypeScript trate el
 archivo como un módulo (requisito para usar `declare global`).
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | Nadie lo importa con `import`: revisa su ficha para ver cómo se usa. |

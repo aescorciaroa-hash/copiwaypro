@@ -112,3 +112,14 @@ lee con `client.points ?? ...` (y no con `||`) para que un saldo de **0** se mue
 ## Ventanas que dibuja este archivo
 Aviso de notificaciones, reseña (estrellas y comentario), detalle de un pedido, personalizar producto
 (SIN / EXTRA), cambio de contraseña, `CalendarModal` (cumpleaños), `ConfirmDialog` y `ToastNotification`.
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../ClientDashboard"` porque lo importan: `src/main.tsx`, `src/pages/client/BuilderSection.tsx`, `src/pages/client/CartSection.tsx`, `src/pages/client/CheckoutSection.tsx`, `src/pages/client/HistorySection.tsx`, `src/pages/client/ProfileSection.tsx`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

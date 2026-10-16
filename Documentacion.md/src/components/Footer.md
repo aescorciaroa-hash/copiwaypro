@@ -21,3 +21,14 @@ No tiene estado (`useState`) ni recibe props: solo muestra contenido fijo.
 | Compañía / Legal | Enlaces a secciones de la página y páginas legales (sin dirección real). |
 | Suscríbete | Formulario de correo. Al enviarlo, `e.preventDefault()` evita recargar y muestra `alert('Suscrito exitosamente.')`: **no guarda nada** en el servidor. |
 | Copyright | "© 2024 Hamburguer Copiway". |
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../Footer"` porque lo importan: `src/pages/Landing.tsx`. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

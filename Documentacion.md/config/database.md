@@ -39,3 +39,15 @@ try {
 | `catch (mysqli_sql_exception $e)` | Si no se pudo conectar (ej: MySQL apagado), `die()` detiene todo y muestra el error. |
 
 Para cambiar de base de datos o de contraseña solo se editan las variables de arriba.
+
+## ¿Qué pasa si se borra?
+
+| Si se borra… | Qué pasa | Error que aparece |
+|---|---|---|
+| **El archivo completo** | Nada funciona (API, páginas y `sql/create-admin.php`). | `Failed to open stream` (…`config/database.php`) |
+| Una de las variables (`$host`, `$user`, `$password`, `$bd`, `$port`) | No se puede conectar a MySQL. | `Undefined variable $...` y después `Error de Conexion: ...` |
+| `$conn->set_charset("utf8mb4")` | Funciona, pero las tildes, la ñ y los emojis se ven dañados (`Ã±`). | Ninguno: se nota en los textos. |
+| `$conn->query("SET time_zone ...")` | Las horas que guarda MySQL quedan en otra zona horaria (pedidos con la hora corrida, horario de la tienda mal calculado). | Ninguno: se nota en las horas. |
+| El `try / catch` | Si MySQL está apagado, sale el error técnico completo de PHP en vez de `Error de Conexion`. | `Fatal error: Uncaught mysqli_sql_exception` |
+
+Lo carga `public/index.php` (una sola vez para todo el sistema) y `sql/create-admin.php`.

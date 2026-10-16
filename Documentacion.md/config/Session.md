@@ -75,3 +75,12 @@ $_SESSION['_csrf'] = bin2hex(random_bytes(32));
 `random_bytes(32)` genera 32 bytes al azar y `bin2hex` los convierte en texto (64 caracteres).
 React envía este token en cada petición que cambia datos, y `verificarCsrf()` lo revisa.
 
+## ¿Qué pasa si se borra?
+
+| Si se borra… | Qué pasa | Error que aparece |
+|---|---|---|
+| **El archivo completo** | Nada funciona: `public/index.php` llama a `Session::start()` en cada petición. | `Failed to open stream` (…`config/Session.php`) |
+| `start()` | Nada funciona. | `Call to undefined method Session::start()` |
+| `csrf()` | No abren las páginas y no se puede iniciar sesión (React no recibe el token). | `Call to undefined method Session::csrf()` |
+| `destroy()` | El botón "Cerrar sesión" falla. | `Call to undefined method Session::destroy()` (en `Auth::logout()`) |
+| Las constantes `NOMBRE` o `DURACION_MINUTOS` | Nada funciona. | `Undefined constant Session::...` |

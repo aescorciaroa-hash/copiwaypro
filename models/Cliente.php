@@ -2,8 +2,6 @@
 /**
  * Modelo Cliente (CLIENTE y CLIENTE_NOTIFICACION).
  */
-require_once __DIR__ . '/../config/database.php';
-
 class Cliente
 {
     private $conn;
@@ -101,18 +99,6 @@ class Cliente
             $notificaciones[] = notificacion_a_json($row);
         }
         return $notificaciones;
-    }
-
-    public function marcarNotificacionLeida($idCliente, $idNotificacion)
-    {
-        $stmt = $this->conn->prepare(
-            "UPDATE CLIENTE_NOTIFICACION SET leida = 1 WHERE id_notificacion_cliente = ? AND id_cliente = ?"
-        );
-        $stmt->bind_param("ss", $idNotificacion, $idCliente);
-        $stmt->execute();
-        $afectadas = $stmt->affected_rows;
-        $stmt->close();
-        return $afectadas > 0;
     }
 
     /** Actualiza solo los campos que vengan en $campos (claves en camelCase). */

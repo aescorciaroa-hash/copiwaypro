@@ -1,44 +1,82 @@
 # models/Usuario.php
+¿No entiendes una palabra? Mira el [glosario](../GLOSARIO.md).
 
 ## ¿Para qué sirve?
-Consultas de la tabla **ADMINISTRADOR**. Solo lo usa el script de consola `sql/create-admin.php` para
-crear el primer administrador.
+Maneja los administradores (tabla ADMINISTRADOR).
+
+## ¿Qué hace?
+- busca un administrador por correo
+- revisa si el correo o el teléfono ya existen
+- crea un administrador
+
+## Sus métodos
+| Método | Qué hace | Lo usan |
+|---|---|---|
+| `buscarPorCorreo()` | busca un administrador por correo | `Usuario::crear()` |
+| `esUsado()` | revisa si el correo o el teléfono ya existen | — |
+| `crear()` | crea un administrador | — |
 
 ## ¿Con qué se conecta?
-| Dirección | Archivo |
-|---|---|
-| ← lo usa | `sql/create-admin.php` |
-| → tabla | `ADMINISTRADOR` |
+- **Lo cargan:** `sql/create-admin.php`.
+- **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
-El inicio de sesión de los administradores lo hace `models/Auth.php`, no este modelo.
+## Línea por línea
 
-## Columnas de ADMINISTRADOR
-| Columna | Qué guarda |
-|---|---|
-| `nivel_acceso` | `programador` (crea admins, no entra por la web) o `maestro` (el admin normal). |
-| `creado_por` | Id del programador que lo creó. |
+Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GLOSARIO.md).
 
-## Métodos
-| Método | Qué hace |
-|---|---|
-| `buscarPorCorreo($correo)` | Una fila por correo, o `null`. |
-| `esUsado($correo, $telefono)` | ¿Ya existe un admin con ese correo o teléfono? |
-| `crear($d)` | Inserta el admin (contraseña cifrada con `PASSWORD_BCRYPT`) y devuelve la fila creada usando `buscarPorCorreo()`. |
-
-`$creadoPor = $d['creado_por'] ?? null;` → si no viene quién lo creó, se guarda `NULL`
-(el programador inicial no tiene creador).
+| # | Código | Qué hace |
+|---|---|---|
+| 1 | `<?php` | Abre el código PHP. |
+| 2-5 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Modelo Usuario (administradores, tabla ADMINISTRADOR). El rol 'programador' no entra por la web: solo se usa en sql/create-admin.php."* |
+| 6 | `class Usuario` | Crea la clase `Usuario`: maneja los administradores (tabla `ADMINISTRADOR`). La usa `sql/create-admin.php`. |
+| 7 | `{` | Abre la clase `Usuario`. |
+| 8 | `private $conn;` | Cajita `$conn` de la clase: aquí se guarda la conexión a la base de datos. |
+| 10 | `public function __construct()` | Función `__construct()`: se ejecuta sola apenas se crea la clase (`new`). Prepara lo que se va a usar. |
+| 11 | `{` | Abre la función `__construct()`. |
+| 12 | `global $conn;` | Trae la conexión `$conn` (la que se crea en `config/database.php`). |
+| 13 | `$this->conn = $conn;` | Guarda la conexión en `$this->conn`, para usarla en todas las consultas de esta clase. |
+| 14 | `}` | Cierra la función `__construct()`. |
+| 16 | `public function buscarPorCorreo($correo)` | Método `buscarPorCorreo($correo)`: busca un administrador por su correo. |
+| 17 | `{` | Abre la función `buscarPorCorreo()`. |
+| 18 | `$stmt = $this->conn->prepare("SELECT * FROM ADMINISTRADOR WHERE correo = ? LIMIT 1");` | Prepara la consulta: "trae todo de `ADMINISTRADOR` donde el correo sea `?`, solo uno". |
+| 19 | `$stmt->bind_param("s", $correo);` | Llena los `?` de la consulta, en orden: `$correo` (texto). |
+| 20 | `$stmt->execute();` | Ejecuta la consulta. |
+| 21 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
+| 22 | `$stmt->close();` | Cierra la consulta. |
+| 23 | `return $row ?: null;` | Devuelve `$row`; si está vacío, devuelve `null` (nada). |
+| 24 | `}` | Cierra la función `buscarPorCorreo()`. |
+| 26 | `public function esUsado($correo, $telefono)` | Método `esUsado($correo, $telefono)`: dice si ya existe un administrador con ese correo o teléfono. |
+| 27 | `{` | Abre la función `esUsado()`. |
+| 28 | `$stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM ADMINISTRADOR WHERE correo = ? OR telefono = ?");` | Prepara la consulta: "cuenta (`COUNT(*)`) cuántos administradores tienen ese correo **o** ese teléfono". El resultado se llama `total`. |
+| 29 | `$stmt->bind_param("ss", $correo, $telefono);` | Llena los `?` de la consulta, en orden: `$correo` (texto), `$telefono` (texto). |
+| 30 | `$stmt->execute();` | Ejecuta la consulta. |
+| 31 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
+| 32 | `$stmt->close();` | Cierra la consulta. |
+| 33 | `return (int) $row['total'] > 0;` | Devuelve `true` si el total es mayor que 0 (ya existe). |
+| 34 | `}` | Cierra la función `esUsado()`. |
+| 36 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Crea un administrador ('programador' o 'maestro') y devuelve la fila creada."* |
+| 37 | `public function crear($d)` | Método `crear($d)`: crea un administrador. `$d` trae sus datos. |
+| 38 | `{` | Abre la función `crear()`. |
+| 39 | `$hash = password_hash($d['password'], PASSWORD_BCRYPT);` | Cifra la contraseña (`password_hash`) y la guarda en `$hash`. Nunca se guarda la contraseña tal cual. |
+| 40 | `$creadoPor = $d['creado_por'] ?? null;` | Guarda en `$creadoPor` quién lo creó; si no se sabe, `null`. |
+| 42 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "guarda (`INSERT INTO`) en `ADMINISTRADOR` el nombre, correo, teléfono, contraseña cifrada, nivel y quién lo creó". Cada `?` se llena abajo. |
+| 43 | `"INSERT INTO ADMINISTRADOR (nombre, correo, telefono, contrasena, nivel_acceso, creado_por)` | ↑ (sigue la misma instrucción) |
+| 44 | `VALUES (?, ?, ?, ?, ?, ?)"` | ↑ (sigue la misma instrucción) |
+| 45 | `);` | ↑ (sigue la misma instrucción) |
+| 46 | `$stmt->bind_param("ssssss", $d['nombre'], $d['correo'], $d['telefono'], $hash, $d['nivel_acceso'], $creadoPor);` | Llena los `?` de la consulta, en orden: `$d['nombre']` (texto), `$d['correo']` (texto), `$d['telefono']` (texto), `$hash` (texto), `$d['nivel_acceso']` (texto), `$creadoPor` (texto). |
+| 47 | `$stmt->execute();` | Ejecuta la consulta. |
+| 48 | `$stmt->close();` | Cierra la consulta. |
+| 50 | `return $this->buscarPorCorreo($d['correo']);` | Busca el administrador recién creado y lo devuelve. |
+| 51 | `}` | Cierra la función `crear()`. |
+| 52 | `}` | Cierra la clase `Usuario`. |
+| 53 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
-
-**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/Usuario.php`).
-Lo cargan con `require_once`: `sql/create-admin.php`. Dejan de funcionar:
-  - Nada directo.
-
-**Si se borra un método:** sale `Call to undefined method Usuario::nombre()` (error 500), solo en lo que usa ese método:
-
-| Método | Lo llaman | Qué deja de funcionar si se borra |
+| Si se borra… | Qué deja de funcionar | Error que sale |
 |---|---|---|
-| `buscarPorCorreo()` | `Usuario::crear()` | Nada directo. |
-| `esUsado()` | — | Nada directo. |
-| `crear()` | — | Nada directo. |
-| `__construct()` | `new Usuario()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa Usuario. |
+| el archivo completo | nada directo | `Failed to open stream` |
+| el método `buscarPorCorreo()` | nada directo | `Call to undefined method Usuario::buscarPorCorreo()` |
+| el método `esUsado()` | nada directo | `Call to undefined method Usuario::esUsado()` |
+| el método `crear()` | nada directo | `Call to undefined method Usuario::crear()` |
+
+**Cómo ver el error:** en el navegador, **F12 → Red → la petición en rojo → Respuesta**.

@@ -1,35 +1,34 @@
 # views/paginas/landing.php
+¿No entiendes una palabra? Mira el [glosario](../../GLOSARIO.md).
 
 ## ¿Para qué sirve?
-Es la vista de la dirección **`/`**. Muestra la página de inicio: presentación del restaurante y botones para entrar o registrarse.
+Es la vista de la página de inicio (`/`).
 
-No tiene HTML propio: carga la aplicación de React y le dice que abra la pantalla `landing`.
-La explicación general de las 8 vistas está en [README.md](README.md).
+## ¿Qué hace?
+- le dice a React qué pantalla abrir: `$pagina = 'landing'`
+- carga la parte de arriba (`cabecera.php`) y la de abajo (`pie.php`)
 
 ## ¿Con qué se conecta?
-| Dirección | Archivo | Para qué |
-|---|---|---|
-| ← la configura | `config/paginas.php` (`'/'`) | Quién puede entrar: **cualquiera**. Si no tiene permiso, se le redirige a `/login`. |
-| ← la carga | `PaginaController.php` con `mostrarVista('landing', ...)` | Le entrega `$datos`. |
-| → incluye | `views/layouts/cabecera.php` y `pie.php` | El HTML y el JavaScript. |
-| → abre | `src/pages/Landing.tsx` | `src/main.tsx` busca `'landing'` en `PAGINAS`. |
+- **La abre:** `PaginaController` (método `landing()`), cuando alguien entra a `/`.
+- **Quién puede entrar:** cualquiera.
+- **React:** `src/main.tsx` busca `'landing'` y muestra esa pantalla.
 
-## Código
-```php
-$pagina = 'landing';
-require dirname(__DIR__) . '/layouts/cabecera.php';
-require dirname(__DIR__) . '/layouts/pie.php';
-```
-| Variable | Para qué sirve | A dónde va |
+## Línea por línea
+
+Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../../GLOSARIO.md).
+
+| # | Código | Qué hace |
 |---|---|---|
-| `$pagina` | Nombre de la pantalla de React | `cabecera.php` lo pone en `<div id="app" data-pagina="landing">` |
-| `$datos` (no se ve aquí) | Usuario, rol, token y ajustes. Lo deja disponible `mostrarVista()` | `cabecera.php` lo convierte en `window.__DATOS__` |
+| 1 | `<?php` | Abre el código PHP. |
+| 2-4 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Pagina: monta la app de React (los datos ya vienen en window.__DATOS__)."* |
+| 5 | `$pagina = 'landing';` | Crea la variable `$pagina` con el nombre de la pantalla de React: `'landing'` (la página de inicio). La usa `cabecera.php` para escribirla en `data-pagina`, y `src/main.tsx` la lee para saber qué pantalla mostrar. |
+| 6 | `require dirname(__DIR__) . '/layouts/cabecera.php';` | Trae `views/layouts/cabecera.php`: la parte de arriba de la página. `dirname(__DIR__)` = la carpeta `views/`. |
+| 7 | `require dirname(__DIR__) . '/layouts/pie.php';` | Trae `views/layouts/pie.php`: la parte de abajo, que carga React. |
 
 ## ¿Qué pasa si se borra?
-
 | Si se borra… | Qué pasa |
 |---|---|
-| **El archivo completo** | `/` muestra `Vista no encontrada: landing` (error 500). Lo revisa `mostrarVista()` en `config/helpers.php`. |
-| La línea `$pagina = '...'` | Sale el aviso `Undefined variable $pagina` y en lugar de la pantalla aparece `Pantalla no encontrada` (lo revisa `src/main.tsx`). |
-| La línea `require ... cabecera.php` | La página sale en blanco: falta el `<head>`, los estilos y `window.__DATOS__`. |
-| La línea `require ... pie.php` | La página sale en blanco: no se carga `main.js` (React). |
+| el archivo completo | sale `Vista no encontrada: landing` |
+| la línea `$pagina = ...` | sale `Pantalla no encontrada` en vez de la pantalla |
+| el `require` de `cabecera.php` | la página sale en blanco |
+| el `require` de `pie.php` | la página sale en blanco (no carga React) |

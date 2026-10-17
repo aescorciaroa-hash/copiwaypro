@@ -23,24 +23,6 @@ class Configuracion
     public function obtener()
     {
         $cfg = $this->get();
-        if (!$cfg) {
-            $cfg = [
-                'horario_apertura'        => '11:00:00',
-                'horario_cierre'          => '22:00:00',
-                'tienda_abierta_manual'   => 1,
-                'pausa_emergencia_activa' => 0,
-                'tarifa_plana_domicilio'  => 0,
-                'margen_ganancia_defecto' => 30,
-                'valor_punto'             => 10,
-                'minimo_puntos_canje'     => 100,
-                'negocio_nombre'          => 'COPIWAY PRO',
-                'negocio_nit'             => '',
-                'negocio_direccion'       => '',
-                'negocio_telefono'        => '',
-                'negocio_instagram'       => '',
-                'negocio_web'             => '',
-            ];
-        }
 
         $stmt = $this->conn->prepare("SELECT nombre FROM CATEGORIA WHERE ambito = 'menu' ORDER BY nombre ASC");
         $stmt->execute();

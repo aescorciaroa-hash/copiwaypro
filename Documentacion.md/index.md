@@ -1,21 +1,16 @@
-# index.html (en la raíz del proyecto)
+# index.html
 
 ## ¿Para qué sirve?
-Es la página que usa **solo el modo desarrollo** (`npm run dev`). En el sistema real (Laragon) **no se
-usa**: allí el HTML lo generan `views/layouts/cabecera.php` y `pie.php`.
+Página que se usa solo en modo desarrollo (`npm run dev`).
+
+## ¿Qué hace?
+- carga `src/main.tsx`
+- en el sistema real no se usa: la página la arma PHP (`views/layouts/`)
 
 ## ¿Con qué se conecta?
-| Dirección | Archivo |
-|---|---|
-| ← lo usa | Vite (`npm run dev`, `npm run build`) como punto de partida |
-| → carga | `src/main.tsx` |
+- **Se usa con:** `npm run dev` y `npm run build`.
 
-## Código explicado
-```html
-<div id="app"></div>
-<script type="module" src="/src/main.tsx"></script>
-```
-- `<div id="app">` es donde React dibuja la pantalla (igual que en `cabecera.php`).
-- Aquí **no** hay `data-pagina` ni `window.__DATOS__`. Por eso, en desarrollo, se elige la pantalla
-  con la dirección: `http://localhost:3000/?pagina=admin` (lo lee `src/main.tsx`).
-- Al compilar, Vite genera una copia en `public/index.html`, pero `vite.config.ts` la borra.
+## ¿Qué pasa si se borra?
+| Si se borra… | Qué pasa |
+|---|---|
+| el archivo | `npm run build` y `npm run dev` fallan |

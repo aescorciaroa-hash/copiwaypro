@@ -1,35 +1,34 @@
 # views/paginas/domiciliario.php
+¿No entiendes una palabra? Mira el [glosario](../../GLOSARIO.md).
 
 ## ¿Para qué sirve?
-Es la vista de la dirección **`/delivery`**. Muestra el panel del domiciliario (pedidos para repartir, mapa y entrega con PIN).
+Es la vista de el panel del domiciliario (`/delivery`).
 
-No tiene HTML propio: carga la aplicación de React y le dice que abra la pantalla `delivery`.
-La explicación general de las 8 vistas está en [README.md](README.md).
+## ¿Qué hace?
+- le dice a React qué pantalla abrir: `$pagina = 'delivery'`
+- carga la parte de arriba (`cabecera.php`) y la de abajo (`pie.php`)
 
 ## ¿Con qué se conecta?
-| Dirección | Archivo | Para qué |
-|---|---|---|
-| ← la configura | `config/paginas.php` (`'/delivery'`) | Quién puede entrar: **solo el rol delivery**. Si no tiene permiso, se le redirige a `/login`. |
-| ← la carga | `PaginaController.php` con `mostrarVista('domiciliario', ...)` | Le entrega `$datos`. |
-| → incluye | `views/layouts/cabecera.php` y `pie.php` | El HTML y el JavaScript. |
-| → abre | `src/pages/DeliveryDashboard.tsx` | `src/main.tsx` busca `'delivery'` en `PAGINAS`. |
+- **La abre:** `PaginaController` (método `delivery()`), cuando alguien entra a `/delivery`.
+- **Quién puede entrar:** delivery.
+- **React:** `src/main.tsx` busca `'delivery'` y muestra esa pantalla.
 
-## Código
-```php
-$pagina = 'delivery';
-require dirname(__DIR__) . '/layouts/cabecera.php';
-require dirname(__DIR__) . '/layouts/pie.php';
-```
-| Variable | Para qué sirve | A dónde va |
+## Línea por línea
+
+Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../../GLOSARIO.md).
+
+| # | Código | Qué hace |
 |---|---|---|
-| `$pagina` | Nombre de la pantalla de React | `cabecera.php` lo pone en `<div id="app" data-pagina="delivery">` |
-| `$datos` (no se ve aquí) | Usuario, rol, token y ajustes. Lo deja disponible `mostrarVista()` | `cabecera.php` lo convierte en `window.__DATOS__` |
+| 1 | `<?php` | Abre el código PHP. |
+| 2-4 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Pagina: monta la app de React (los datos ya vienen en window.__DATOS__)."* |
+| 5 | `$pagina = 'delivery';` | Crea la variable `$pagina` con el nombre de la pantalla de React: `'delivery'` (el panel del domiciliario). La usa `cabecera.php` para escribirla en `data-pagina`, y `src/main.tsx` la lee para saber qué pantalla mostrar. |
+| 6 | `require dirname(__DIR__) . '/layouts/cabecera.php';` | Trae `views/layouts/cabecera.php`: la parte de arriba de la página. `dirname(__DIR__)` = la carpeta `views/`. |
+| 7 | `require dirname(__DIR__) . '/layouts/pie.php';` | Trae `views/layouts/pie.php`: la parte de abajo, que carga React. |
 
 ## ¿Qué pasa si se borra?
-
 | Si se borra… | Qué pasa |
 |---|---|
-| **El archivo completo** | `/delivery` muestra `Vista no encontrada: domiciliario` (error 500). Lo revisa `mostrarVista()` en `config/helpers.php`. |
-| La línea `$pagina = '...'` | Sale el aviso `Undefined variable $pagina` y en lugar de la pantalla aparece `Pantalla no encontrada` (lo revisa `src/main.tsx`). |
-| La línea `require ... cabecera.php` | La página sale en blanco: falta el `<head>`, los estilos y `window.__DATOS__`. |
-| La línea `require ... pie.php` | La página sale en blanco: no se carga `main.js` (React). |
+| el archivo completo | sale `Vista no encontrada: domiciliario` |
+| la línea `$pagina = ...` | sale `Pantalla no encontrada` en vez de la pantalla |
+| el `require` de `cabecera.php` | la página sale en blanco |
+| el `require` de `pie.php` | la página sale en blanco (no carga React) |

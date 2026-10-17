@@ -1,128 +1,214 @@
 # controllers/AuthController.php
+¿No entiendes una palabra? Mira el [glosario](../GLOSARIO.md).
 
 ## ¿Para qué sirve?
-Maneja todo lo de **cuentas y sesión**: registrarse, iniciar sesión, cerrar sesión, saber quién está
-conectado y recuperar la contraseña.
+Se encarga del inicio de sesión y las cuentas.
+
+## ¿Qué hace?
+- registrarse
+- pedir el código para recuperar la contraseña
+- cambiar la contraseña con el código
+- iniciar sesión
+- cerrar sesión
+- entregar el token de seguridad (sin él no se puede guardar nada)
+
+## Sus métodos
+| Método | Qué hace | Ruta |
+|---|---|---|
+| `register()` | registrarse | `POST /api/auth/register` |
+| `forgotPasswordRequest()` | pedir el código para recuperar la contraseña | `POST /api/auth/forgot-password/request` |
+| `forgotPasswordReset()` | cambiar la contraseña con el código | `POST /api/auth/forgot-password/reset` |
+| `login()` | iniciar sesión | `POST /api/auth/login` |
+| `logout()` | cerrar sesión | `POST /api/auth/logout` |
+| `csrf()` | entregar el token de seguridad (sin él no se puede guardar nada) | `GET /api/auth/csrf` |
 
 ## ¿Con qué se conecta?
-| Ruta (config/rutas.php) | Método | Pantalla de React que la usa |
+- **Lo abre:** `config/helpers.php`, cuando la pantalla pide una de sus acciones.
+- **Desde la pantalla:** Login.tsx, KitchenDashboard.tsx y DeliveryDashboard.tsx (PIN); el botón "Cerrar sesión" de todos los paneles; SyncDatos.tsx; Register.tsx; ForgotPassword.tsx.
+- **Usa los modelos:** `Cliente`, `CodigoVerificacion`, `IntentoLogin`, `CorreoService`.
+
+## Línea por línea
+
+Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GLOSARIO.md).
+
+| # | Código | Qué hace |
 |---|---|---|
-| `POST /api/auth/register` | `register` | `src/pages/Register.tsx` |
-| `POST /api/auth/login` | `login` | `src/pages/Login.tsx`, `KitchenDashboard.tsx`, `DeliveryDashboard.tsx` |
-| `POST /api/auth/logout` | `logout` | Los 4 paneles (botón "Cerrar sesión") |
-| `GET /api/auth/csrf` | `csrf` | `src/components/SyncDatos.tsx` y `src/servicios/api.ts` |
-| `POST /api/auth/forgot-password/request` | `forgotPasswordRequest` | `src/pages/ForgotPassword.tsx` |
-| `POST /api/auth/forgot-password/reset` | `forgotPasswordReset` | `src/pages/ForgotPassword.tsx` |
-
-| Usa | Para qué |
-|---|---|
-| `Auth` (`models/Auth.php`) | Iniciar/cerrar sesión, saber el rol. |
-| `Session::csrf()` | Entregar el token CSRF a React. |
-| `Cliente` (modelo) | Crear clientes, buscar por correo, cambiar contraseña. |
-| `CodigoVerificacion` (modelo) | Códigos para recuperar la contraseña. |
-| `IntentoLogin` (modelo) | Bloquear después de muchos intentos fallidos. |
-| `CorreoService` | Enviar el código por correo. |
-| `correoUsadoEnCualquierTabla()` | Que nadie se registre con un correo ya usado. |
-
-## Variables importantes
-| Variable | De dónde viene | Para qué sirve |
-|---|---|---|
-| Método | `$_GET['accion']` (lo pone el router) | Saber qué rama ejecutar. |
-| `$this->datos` | `entrada()` = lo que envió React | `$this->datos['email']`, `$this->datos['password']`, etc. |
-| `$clienteModel`, `$codigoModel`, `$intentoModel` | `new ...()` | Hablar con las tablas CLIENTE, CODIGO_VERIFICACION e INTENTO_LOGIN. |
-| `$usuario` | `Auth::login()` / `Auth::intentarLogin()` | Datos del usuario conectado (`id`, `role`, `name`, `email`) que se envían a React. |
-
----
-
-## Acción `register` (registro de cliente)
-1. Lee los datos (`name`, `phone`, `email`, `birthday`, `password`, `confirmPassword`, `terms`).
-2. Valida cada campo. Por ejemplo:
-   ```php
-   if (empty($this->datos['email']) || !filter_var($this->datos['email'], FILTER_VALIDATE_EMAIL)) ...
-   ```
-   `filter_var(..., FILTER_VALIDATE_EMAIL)` revisa que el correo tenga formato válido.
-3. Exige aceptar los términos (`terms`): es la ley de **Habeas Data** (tratamiento de datos personales).
-4. Revisa que las dos contraseñas sean iguales.
-5. Revisa que el correo/teléfono no existan → si existen, **409**.
-6. `$this->clienteModel->crear([...])` guarda al cliente (con su IP y fecha de aceptación).
-7. `Auth::login('client', ...)` lo deja conectado de una vez.
-8. Responde **201** con el usuario y un token CSRF nuevo.
-
-## Acción `forgotPasswordRequest` (paso 1: pedir código)
-```php
-$codigo = (string) random_int(100000, 999999);
-```
-- Genera un código de 6 dígitos al azar.
-- `$this->codigoModel->crearParaCliente()` lo guarda **cifrado** (vence en 15 minutos).
-- `CorreoService::enviarCodigoRecuperacion()` lo manda por correo.
-- Responde lo mismo exista o no el correo: así nadie puede averiguar qué correos están registrados.
-- Solo con `'entorno' => 'local'` (en `config/app.php`), si el correo no se pudo enviar, responde el código en `debugCode` para poder probar.
-
-## Acción `forgotPasswordReset` (paso 2: cambiar contraseña)
-1. Valida `email`, `code` y `newPassword` (mínimo 8 caracteres).
-2. Busca un código válido (no usado, no vencido, menos de 5 intentos).
-3. `password_verify($codigo, $registro['codigo_hash'])` compara el código escrito con el guardado.
-   - Si está mal: suma un intento y responde **422**.
-4. Marca el código como usado y guarda la nueva contraseña con `password_hash()` (cifrada).
-
-## Acción `login`
-```php
-$usaPin = !empty($this->datos['pin']);
-```
-- Si llega `pin` → es **cocina o domiciliario** (`Auth::intentarLoginConPin`).
-- Si no → es **admin o cliente** (`Auth::intentarLogin`).
-
-Pasos:
-1. Valida el correo (con PIN también acepta solo el usuario, sin `@`) y el PIN de 4 dígitos (`preg_match('/^\d{4}$/', ...)`) o la contraseña.
-2. `$this->intentoModel->excedeLimite($email, $ip)`: si hubo demasiados intentos fallidos → **429**.
-3. Intenta el login.
-4. `$this->intentoModel->registrar(...)` guarda el intento (exitoso o no).
-5. Si falló → **401**. Si funcionó → responde el usuario y el token CSRF.
-
-## Acción `logout`
-`Auth::logout()` borra la sesión.
-
-## Acción `me`
-Devuelve quién está conectado. Si no hay sesión → **401**.
-
-## Acción `csrf`
-Devuelve un token CSRF sin exigir sesión. Lo necesita el visitante antes de enviar el formulario de
-login o registro.
+| 1 | `<?php` | Abre el código PHP. |
+| 2-4 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Controlador de Autenticacion (login, registro, sesion y recuperar contrasena)."* |
+| 5 | `require_once __DIR__ . '/../models/Cliente.php';` | Trae el archivo `Cliente.php` para poder usar la clase `Cliente`. |
+| 6 | `require_once __DIR__ . '/../models/CodigoVerificacion.php';` | Trae el archivo `CodigoVerificacion.php` para poder usar la clase `CodigoVerificacion`. |
+| 7 | `require_once __DIR__ . '/../models/IntentoLogin.php';` | Trae el archivo `IntentoLogin.php` para poder usar la clase `IntentoLogin`. |
+| 8 | `require_once __DIR__ . '/../models/CorreoService.php';` | Trae el archivo `CorreoService.php` para poder usar la clase `CorreoService`. |
+| 10 | `class AuthController` | Crea la clase `AuthController`: un grupo de funciones que trabajan juntas. |
+| 11 | `{` | Abre la clase `AuthController`. |
+| 12 | `private $clienteModel;` | Cajita `$clienteModel` de la clase: aquí se guarda el modelo `Cliente`. |
+| 13 | `private $codigoModel;` | Cajita `$codigoModel` de la clase: aquí se guarda el modelo `CodigoVerificacion`. |
+| 14 | `private $intentoModel;` | Cajita `$intentoModel` de la clase: aquí se guarda el modelo `IntentoLogin`. |
+| 15 | `private $datos;` | Cajita `$datos` de la clase: aquí se guardan los datos que mandó la pantalla. |
+| 17 | `public function __construct()` | Función `__construct()`: se ejecuta sola apenas se crea la clase (`new`). Prepara lo que se va a usar. |
+| 18 | `{` | Abre la función `__construct()`. |
+| 19 | `$this->clienteModel = new Cliente();` | Crea el modelo `Cliente` y lo guarda en `$this->clienteModel`, para usarlo en las funciones de abajo. |
+| 20 | `$this->codigoModel = new CodigoVerificacion();` | Crea el modelo `CodigoVerificacion` y lo guarda en `$this->codigoModel`, para usarlo en las funciones de abajo. |
+| 21 | `$this->intentoModel = new IntentoLogin();` | Crea el modelo `IntentoLogin` y lo guarda en `$this->intentoModel`, para usarlo en las funciones de abajo. |
+| 22 | `$this->datos = entrada();` | Lee lo que mandó la pantalla (`entrada()` de `helpers.php`) y lo guarda en `$this->datos`. |
+| 23 | `}` | Cierra la función `__construct()`. |
+| 25 | `public function register()` | Función `register()`: crea la cuenta de un cliente nuevo. Ruta: `POST /api/auth/register`. La llama la pantalla `Register.tsx`. |
+| 26 | `{` | Abre la función `register()`. |
+| 27 | `$nombre    = $this->datos['name'] ?? '';` | Guarda en `$nombre` el nombre que escribió. `?? ''` = si no lo mandó, vacío. |
+| 28 | `$telefono  = trim((string) ($this->datos['phone'] ?? ''));` | Guarda en `$telefono` el teléfono, sin espacios al principio ni al final (`trim`). `(string)` = lo vuelve texto. |
+| 29 | `$email     = trim((string) ($this->datos['email'] ?? ''));` | Guarda en `$email` el correo, sin espacios. |
+| 30 | `$birthday  = $this->datos['birthday'] ?? '';` | Guarda en `$birthday` la fecha de nacimiento. |
+| 31 | `$password  = (string) ($this->datos['password'] ?? '');` | Guarda en `$password` la contraseña. |
+| 32 | `$confirmar = (string) ($this->datos['confirmPassword'] ?? '');` | Guarda en `$confirmar` la contraseña repetida (para compararlas). |
+| 34 | `$errores = [];` | Empieza `$errores` como una lista vacía. Ahí se anota cada campo que venga mal. |
+| 35 | `if (empty($this->datos['name'])) $errores['name'] = ['El campo name es obligatorio.'];` | Si el nombre está vacío, anota el error en `$errores['name']`. |
+| 36 | `if (empty($this->datos['phone']) \|\| strlen((string) $this->datos['phone']) < 10) $errores['phone'] = ['El campo phone debe tener al menos 10 caracteres.'];` | Si el teléfono está vacío o tiene menos de 10 números (`strlen` cuenta los caracteres; `<` = menor que), anota el error. |
+| 37 | `if (empty($this->datos['email']) \|\| !filter_var($this->datos['email'], FILTER_VALIDATE_EMAIL)) $errores['email'] = ['El campo email debe ser un correo válido.'];` | Si el correo está vacío o no es un correo válido (`filter_var(..., FILTER_VALIDATE_EMAIL)` lo revisa), anota el error. |
+| 38 | `if (empty($this->datos['birthday'])) $errores['birthday'] = ['El campo birthday es obligatorio.'];` | Si la fecha de nacimiento está vacía, anota el error. |
+| 39 | `if (empty($this->datos['password']) \|\| strlen($password) < 8) $errores['password'] = ['El campo password debe tener al menos 8 caracteres.'];` | Si la contraseña está vacía o tiene menos de 8 caracteres, anota el error. |
+| 40 | `if ($errores) {` | Si se anotó algún error (la lista no está vacía)... |
+| 41 | `responderError('Datos inválidos.', 422, $errores);` | ...responde 422 "Datos inválidos." con la lista de errores (React la muestra debajo de cada campo) y termina. |
+| 42 | `}` | Cierra el `if`. |
+| 43 | `if (empty($this->datos['terms'])) {` | Si no aceptó los términos (la casilla `terms`)... |
+| 44 | `responderError('Debes aceptar los términos y la política de tratamiento de datos (Habeas Data).', 422);` | ...responde 422 con el mensaje de los términos (Habeas Data) y termina. |
+| 45 | `}` | Cierra el `if`. |
+| 46 | `if ($password !== $confirmar) {` | Si las dos contraseñas no son iguales (`!==` = diferentes)... |
+| 47 | `responderError('Las contraseñas no coinciden.', 422);` | ...responde 422 "Las contraseñas no coinciden." y termina. |
+| 48 | `}` | Cierra el `if`. |
+| 49 | `if ($this->clienteModel->correoOTelefonoExiste($email, $telefono) \|\| correoUsadoEnCualquierTabla($email)) {` | Si ya existe un cliente con ese correo o teléfono (`correoOTelefonoExiste()` de `models/Cliente.php`) **o** el correo ya lo usa otra cuenta (`correoUsadoEnCualquierTabla()` de `helpers.php`)... |
+| 50 | `responderError('Ya existe una cuenta con ese correo o teléfono.', 409);` | ...responde 409 "Ya existe una cuenta..." y termina. |
+| 51 | `}` | Cierra el `if`. |
+| 53 | `$idCliente = $this->clienteModel->crear([` | Crea el cliente en la base de datos (`crear()` de `models/Cliente.php`) con estos datos, y guarda su número nuevo en `$idCliente`. |
+| 54 | `'name'     => $nombre,` | El nombre. |
+| 55 | `'phone'    => $telefono,` | El teléfono. |
+| 56 | `'email'    => $email,` | El correo. |
+| 57 | `'birthday' => $birthday,` | La fecha de nacimiento. |
+| 58 | `'password' => $password,` | La contraseña (el modelo la cifra antes de guardarla). |
+| 59 | `'ip'       => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',` | La IP del computador desde donde aceptó los términos. `?? '0.0.0.0'` = si no se sabe, `0.0.0.0`. |
+| 60 | `]);` | Cierra la lista de datos y la instrucción. |
+| 62 | `$usuario = Auth::login('client', $this->clienteModel->buscarCrudo($idCliente));` | Busca el cliente recién creado (`buscarCrudo()`) e inicia su sesión como cliente (`Auth::login('client', ...)` de `models/Auth.php`). Guarda sus datos en `$usuario`. |
+| 63 | `responderJson(['user' => $usuario, 'csrfToken' => Session::csrf()], 201);` | Responde 201 (creado) con el usuario y el token de seguridad (`Session::csrf()`). React lo lleva a su panel. |
+| 64 | `}` | Cierra la función `register()`. |
+| 66 | `public function forgotPasswordRequest()` | Función `forgotPasswordRequest()`: envía el código para recuperar la contraseña. Ruta: `POST /api/auth/forgot-password/request`. La llama `ForgotPassword.tsx`. |
+| 67 | `{` | Abre la función `forgotPasswordRequest()`. |
+| 68 | `$email     = trim((string) ($this->datos['email'] ?? ''));` | Guarda en `$email` el correo que escribió. |
+| 69 | `$idCliente = $this->clienteModel->buscarIdPorCorreo($email);` | Busca el cliente con ese correo (`buscarIdPorCorreo()` de `models/Cliente.php`) y guarda su número en `$idCliente` (o nada si no existe). |
+| 71 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Se responde igual exista o no la cuenta, para no revelar que correos estan registrados."* |
+| 72 | `if ($idCliente) {` | Si el cliente existe... |
+| 73 | `$codigo = (string) random_int(100000, 999999);` | ...crea un código al azar de 6 números (`random_int(100000, 999999)`) y lo guarda en `$codigo`. |
+| 74 | `$this->codigoModel->crearParaCliente($idCliente, $codigo);` | ...guarda el código en la base de datos (`crearParaCliente()` de `models/CodigoVerificacion.php`). |
+| 75 | `$enviado = CorreoService::enviarCodigoRecuperacion($email, $codigo);` | ...envía el código por correo (`enviarCodigoRecuperacion()` de `models/CorreoService.php`). `$enviado` queda en `true` si salió. |
+| 77 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Solo en local y si el correo no salio: se devuelve el codigo para poder probar."* |
+| 78 | `global $config;` | Trae `$config` (los ajustes de `config/app.php`). |
+| 79 | `if (!$enviado && $config['entorno'] === 'local') {` | Si el correo **no** salió (`!$enviado`) y estamos en tu computador (`'entorno'` = `'local'`)... |
+| 80 | `responderJson(['ok' => true, 'debugCode' => $codigo]);` | ...responde el código en `debugCode`, para poder probar sin correo. |
+| 81 | `}` | Cierra el `if`. |
+| 82 | `}` | Cierra el `if`. |
+| 83 | `responderJson(['ok' => true]);` | Responde `ok` siempre, exista o no la cuenta (así nadie puede averiguar qué correos están registrados). |
+| 84 | `}` | Cierra la función `forgotPasswordRequest()`. |
+| 86 | `public function forgotPasswordReset()` | Función `forgotPasswordReset()`: cambia la contraseña usando el código. Ruta: `POST /api/auth/forgot-password/reset`. |
+| 87 | `{` | Abre la función `forgotPasswordReset()`. |
+| 88 | `$errores = [];` | Empieza `$errores` como una lista vacía. Ahí se anota cada campo que venga mal. |
+| 89 | `if (empty($this->datos['email'])) $errores['email'] = ['El campo email es obligatorio.'];` | Si falta el correo, anota el error. |
+| 90 | `if (empty($this->datos['code'])) $errores['code'] = ['El campo code es obligatorio.'];` | Si falta el código, anota el error. |
+| 91 | `if (empty($this->datos['newPassword']) \|\| strlen((string) $this->datos['newPassword']) < 8) $errores['newPassword'] = ['El campo newPassword debe tener al menos 8 caracteres.'];` | Si falta la contraseña nueva o tiene menos de 8 caracteres, anota el error. |
+| 92 | `if ($errores) {` | Si se anotó algún error (la lista no está vacía)... |
+| 93 | `responderError('Datos inválidos.', 422, $errores);` | ...responde 422 "Datos inválidos." con la lista de errores (React la muestra debajo de cada campo) y termina. |
+| 94 | `}` | Cierra el `if`. |
+| 96 | `$email       = trim((string) $this->datos['email']);` | Guarda en `$email` el correo, sin espacios. |
+| 97 | `$codigo      = (string) $this->datos['code'];` | Guarda en `$codigo` el código que escribió. |
+| 98 | `$nuevaClave  = (string) $this->datos['newPassword'];` | Guarda en `$nuevaClave` la contraseña nueva. |
+| 100 | `$registro = $this->codigoModel->buscarValidoPorCorreo($email);` | Busca un código que siga sirviendo para ese correo (`buscarValidoPorCorreo()` de `models/CodigoVerificacion.php`) y lo guarda en `$registro`. |
+| 101 | `if (!$registro) {` | Si no hay ninguno... |
+| 102 | `responderError('Código inválido o expirado.', 422);` | ...responde 422 "Código inválido o expirado." y termina. |
+| 103 | `}` | Cierra el `if`. |
+| 104 | `if (!password_verify($codigo, $registro['codigo_hash'])) {` | Si el código que escribió no coincide con el guardado (`password_verify` compara con la versión cifrada)... |
+| 105 | `$this->codigoModel->incrementarIntentos($registro['id_codigo']);` | ...suma un intento fallido (`incrementarIntentos()`; al quinto el código deja de servir)... |
+| 106 | `responderError('Código inválido o expirado.', 422);` | ...y responde 422 "Código inválido o expirado.". |
+| 107 | `}` | Cierra el `if`. |
+| 109 | `$this->codigoModel->marcarUsado($registro['id_codigo']);` | Marca el código como usado (`marcarUsado()`), para que no sirva otra vez. |
+| 110 | `$this->clienteModel->actualizarContrasena($registro['id_cliente'], password_hash($nuevaClave, PASSWORD_DEFAULT));` | Cifra la contraseña nueva (`password_hash`) y la guarda (`actualizarContrasena()` de `models/Cliente.php`). |
+| 111 | `responderJson(['ok' => true]);` | Responde `ok`. |
+| 112 | `}` | Cierra la función `forgotPasswordReset()`. |
+| 114 | `public function login()` | Función `login()`: inicia sesión. Ruta: `POST /api/auth/login`. La llaman `Login.tsx` (correo y contraseña) y los paneles de cocina y domiciliario (PIN). |
+| 115 | `{` | Abre la función `login()`. |
+| 116 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Cocina y Domiciliario entran con 'pin'; admin y cliente con 'password'."* |
+| 117 | `$usaPin = !empty($this->datos['pin']);` | Guarda en `$usaPin` si mandó un PIN (`true`) o no (`false`). Cocina y domiciliario usan PIN. |
+| 119 | `$errores = [];` | Empieza `$errores` como una lista vacía. Ahí se anota cada campo que venga mal. |
+| 120 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Con PIN tambien se acepta solo el usuario, sin "@dominio"."* |
+| 121 | `$usuarioValido = $usaPin && !empty($this->datos['email']) && preg_match('/^[A-Za-z0-9._+-]{2,64}$/', (string) $this->datos['email']);` | Guarda en `$usuarioValido` si escribió un usuario sin `@` válido: solo cuenta con PIN, y `preg_match` revisa que sean letras, números o `. _ + -`, de 2 a 64 caracteres. |
+| 122 | `if (empty($this->datos['email']) \|\| (!$usuarioValido && !filter_var($this->datos['email'], FILTER_VALIDATE_EMAIL))) {` | Si el correo está vacío, o no es un usuario válido y tampoco un correo válido... |
+| 123 | `$errores['email'] = [$usaPin ? 'Ingresa tu usuario (lo que va antes del @) o tu correo.' : 'El campo email debe ser un correo válido.'];` | ...anota el error. El mensaje cambia si usa PIN (`? :` = si usa PIN, un mensaje; si no, el otro). |
+| 124 | `}` | Cierra el `if`. |
+| 125 | `if ($usaPin) {` | Si usa PIN... |
+| 126 | `if (!preg_match('/^\d{4}$/', (string) $this->datos['pin'])) $errores['pin'] = ['El PIN debe tener 4 dígitos.'];` | ...revisa que sean exactamente 4 números (`/^\d{4}$/`); si no, anota el error. |
+| 127 | `} else {` | Si no usa PIN... |
+| 128 | `if (empty($this->datos['password'])) $errores['password'] = ['El campo password es obligatorio.'];` | ...revisa que haya escrito la contraseña. |
+| 129 | `}` | Cierra el `else`. |
+| 130 | `if ($errores) {` | Si se anotó algún error (la lista no está vacía)... |
+| 131 | `responderError('Datos inválidos.', 422, $errores);` | ...responde 422 "Datos inválidos." con la lista de errores (React la muestra debajo de cada campo) y termina. |
+| 132 | `}` | Cierra el `if`. |
+| 134 | `$email = trim((string) $this->datos['email']);` | Guarda en `$email` el correo (o usuario), sin espacios. |
+| 135 | `$ip    = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';` | Guarda en `$ip` la IP del computador. |
+| 137 | `if ($this->intentoModel->excedeLimite($email, $ip)) {` | Si ya hubo demasiados intentos fallidos con ese correo o esa IP (`excedeLimite()` de `models/IntentoLogin.php`)... |
+| 138 | `responderError('Demasiados intentos fallidos. Intenta de nuevo en unos minutos.', 429);` | ...responde 429 "Demasiados intentos fallidos..." y termina. |
+| 139 | `}` | Cierra el `if`. |
+| 141 | `if ($usaPin) {` | Si usa PIN... |
+| 142 | `$usuario = Auth::intentarLoginConPin($email, (string) $this->datos['pin']);` | ...intenta entrar con el PIN (`Auth::intentarLoginConPin()` de `models/Auth.php`). Si sale bien, `$usuario` tiene sus datos. |
+| 143 | `} else {` | Si no... |
+| 144 | `$usuario = Auth::intentarLogin($email, (string) $this->datos['password']);` | ...intenta entrar con correo y contraseña (`Auth::intentarLogin()`). |
+| 145 | `}` | Cierra el `else`. |
+| 146 | `$this->intentoModel->registrar($email, $ip, (bool) $usuario);` | Guarda el intento (`registrar()` de `models/IntentoLogin.php`): el correo, la IP y si salió bien. `(bool)` = sí/no. |
+| 148 | `if (!$usuario) {` | Si no pudo entrar (`!$usuario`)... |
+| 149 | `responderError($usaPin ? 'Usuario o PIN incorrectos.' : 'Correo o contraseña incorrectos.', 401);` | ...responde 401 con "Usuario o PIN incorrectos." o "Correo o contraseña incorrectos.". |
+| 150 | `}` | Cierra el `if`. |
+| 151 | `responderJson(['user' => $usuario, 'csrfToken' => Session::csrf()]);` | Si entró, responde con sus datos y el token de seguridad. React lo lleva a su panel. |
+| 152 | `}` | Cierra la función `login()`. |
+| 154 | `public function logout()` | Función `logout()`: cierra la sesión. Ruta: `POST /api/auth/logout`. La llama el botón "Cerrar sesión". |
+| 155 | `{` | Abre la función `logout()`. |
+| 156 | `Auth::logout();` | Cierra la sesión (`Auth::logout()` de `models/Auth.php`). |
+| 157 | `responderJson(['ok' => true]);` | Responde `ok`. |
+| 158 | `}` | Cierra la función `logout()`. |
+| 160 | `public function csrf()` | Función `csrf()`: entrega el token de seguridad. Ruta: `GET /api/auth/csrf`. La llama `SyncDatos.tsx`. |
+| 161 | `{` | Abre la función `csrf()`. |
+| 162 | *(comentario)* | Comentario: no se ejecuta. Dice: *"No exige sesion: lo usa el visitante para tener su primer token CSRF."* |
+| 163 | `responderJson(['csrfToken' => Session::csrf()]);` | Responde el token (`Session::csrf()` de `config/Session.php`). |
+| 164 | `}` | Cierra la función `csrf()`. |
+| 165 | `}` | Cierra la clase `AuthController`. |
+| 167 | `$controller = new AuthController();` | Crea el controlador. Al hacer `new AuthController()` se ejecuta su `__construct()`. |
+| 169 | `$accion = $_GET['accion'] ?? '';` | Guarda en `$accion` qué acción pidió la ruta (la puso `cargarControlador()` de `helpers.php`). `?? ''` = si no hay, vacío. |
+| 171 | `if ($accion === 'register') {` | Si la acción es `'register'`... |
+| 172 | `$controller->register();` | ...llama al método `register()` de arriba. |
+| 173 | `} elseif ($accion === 'forgotPasswordRequest') {` | Si no, si la acción es `'forgotPasswordRequest'`... |
+| 174 | `$controller->forgotPasswordRequest();` | ...llama al método `forgotPasswordRequest()` de arriba. |
+| 175 | `} elseif ($accion === 'forgotPasswordReset') {` | Si no, si la acción es `'forgotPasswordReset'`... |
+| 176 | `$controller->forgotPasswordReset();` | ...llama al método `forgotPasswordReset()` de arriba. |
+| 177 | `} elseif ($accion === 'login') {` | Si no, si la acción es `'login'`... |
+| 178 | `$controller->login();` | ...llama al método `login()` de arriba. |
+| 179 | `} elseif ($accion === 'logout') {` | Si no, si la acción es `'logout'`... |
+| 180 | `$controller->logout();` | ...llama al método `logout()` de arriba. |
+| 181 | `} elseif ($accion === 'csrf') {` | Si no, si la acción es `'csrf'`... |
+| 182 | `$controller->csrf();` | ...llama al método `csrf()` de arriba. |
+| 183 | `} else {` | Si no es ninguna de las anteriores... |
+| 184 | `responderError('Ruta no encontrada.', 404);` | ...responde 404 "Ruta no encontrada." (la acción no existe). |
+| 185 | `}` | Cierra el `else`. |
+| 186 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
-
-Este archivo lo carga `cargarControlador()` (`config/helpers.php`) cuando llega una de sus rutas.
-Si algo se borra, el error aparece en la pantalla como aviso rojo y completo en
-**F12 → Red → la petición → Respuesta**.
-
-| Si se borra… | Qué deja de funcionar | Error que aparece |
+| Si se borra… | Qué deja de funcionar | Error que sale |
 |---|---|---|
-| **El archivo completo** | Todas sus rutas: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/csrf`, `POST /api/auth/register`, `POST /api/auth/forgot-password/request`, `POST /api/auth/forgot-password/reset`. | `Failed to open stream: No such file or directory` (…`controllers/AuthController.php`) |
-| La línea `require_once __DIR__ . '/../models/Cliente.php';` | **Todas** sus rutas (el modelo se crea en el constructor, que corre en cada acción). | `Class "Cliente" not found` |
-| La línea `require_once __DIR__ . '/../models/CodigoVerificacion.php';` | **Todas** sus rutas (el modelo se crea en el constructor, que corre en cada acción). | `Class "CodigoVerificacion" not found` |
-| La línea `require_once __DIR__ . '/../models/IntentoLogin.php';` | **Todas** sus rutas (el modelo se crea en el constructor, que corre en cada acción). | `Class "IntentoLogin" not found` |
-| La línea `require_once __DIR__ . '/../models/CorreoService.php';` | `POST /api/auth/forgot-password/request` | `Class "CorreoService" not found` |
-| El método `register()` | No se pueden crear cuentas de cliente (pantalla "Crear cuenta"). | `Call to undefined method AuthController::register()` (500) |
-| La rama `$accion === 'register'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
-| La línea `'POST /api/auth/register'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
-| El método `forgotPasswordRequest()` | No llega el código para recuperar la contraseña. | `Call to undefined method AuthController::forgotPasswordRequest()` (500) |
-| La rama `$accion === 'forgotPasswordRequest'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
-| La línea `'POST /api/auth/forgot-password/request'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
-| El método `forgotPasswordReset()` | No se puede cambiar la contraseña con el código. | `Call to undefined method AuthController::forgotPasswordReset()` (500) |
-| La rama `$accion === 'forgotPasswordReset'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
-| La línea `'POST /api/auth/forgot-password/reset'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
-| El método `login()` | Nadie puede iniciar sesión (pantalla de login y PIN de cocina/domiciliario). | `Call to undefined method AuthController::login()` (500) |
-| La rama `$accion === 'login'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
-| La línea `'POST /api/auth/login'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
-| El método `logout()` | El botón "Cerrar sesión" de todos los paneles deja de funcionar. | `Call to undefined method AuthController::logout()` (500) |
-| La rama `$accion === 'logout'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
-| La línea `'POST /api/auth/logout'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
-| El método `csrf()` | React no recibe el token CSRF: ningún formulario puede guardar (todo responde 419). | `Call to undefined method AuthController::csrf()` (500) |
-| La rama `$accion === 'csrf'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
-| La línea `'GET /api/auth/csrf'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
-| La línea `$this->clienteModel = ...` del constructor | Las acciones que usan `$this->clienteModel`. | `Call to a member function ...() on null` o `Undefined property` |
-| La línea `$this->codigoModel = ...` del constructor | Las acciones que usan `$this->codigoModel`. | `Call to a member function ...() on null` o `Undefined property` |
-| La línea `$this->intentoModel = ...` del constructor | Las acciones que usan `$this->intentoModel`. | `Call to a member function ...() on null` o `Undefined property` |
-| La línea `$this->datos = ...` del constructor | Las acciones que usan `$this->datos`. | `Call to a member function ...() on null` o `Undefined property` |
+| el archivo completo | iniciar sesión, cerrar sesión, entregar el token de seguridad (sin él no se puede guardar nada), registrarse, pedir el código para recuperar la contraseña, cambiar la contraseña con el código | `Failed to open stream` |
+| el `require_once` de `Cliente.php` | todas sus acciones | `Class "Cliente" not found` |
+| el `require_once` de `CodigoVerificacion.php` | todas sus acciones | `Class "CodigoVerificacion" not found` |
+| el `require_once` de `IntentoLogin.php` | todas sus acciones | `Class "IntentoLogin" not found` |
+| el `require_once` de `CorreoService.php` | pedir el código para recuperar la contraseña | `Class "CorreoService" not found` |
+| el método `register()` | registrarse | `Call to undefined method AuthController::register()` |
+| el método `forgotPasswordRequest()` | pedir el código para recuperar la contraseña | `Call to undefined method AuthController::forgotPasswordRequest()` |
+| el método `forgotPasswordReset()` | cambiar la contraseña con el código | `Call to undefined method AuthController::forgotPasswordReset()` |
+| el método `login()` | iniciar sesión | `Call to undefined method AuthController::login()` |
+| el método `logout()` | cerrar sesión | `Call to undefined method AuthController::logout()` |
+| el método `csrf()` | entregar el token de seguridad (sin él no se puede guardar nada) | `Call to undefined method AuthController::csrf()` |
+| una línea `elseif ($accion === '...')` del final | esa acción | `Ruta no encontrada.` |
+| su línea en `config/rutas.php` | esa acción | `Ruta no encontrada.` |
 
-**Cómo se arregla:** volver a escribir lo que se borró. La ficha de arriba ("Código explicado") muestra cómo era.
+**Cómo ver el error:** en el navegador, **F12 → Red → la petición en rojo → Respuesta**.

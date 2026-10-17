@@ -1,73 +1,108 @@
 # controllers/ProductController.php
+¿No entiendes una palabra? Mira el [glosario](../GLOSARIO.md).
 
 ## ¿Para qué sirve?
-Maneja los **productos del menú** (hamburguesas, bebidas...): listarlos, verlos, crearlos, editarlos
-y eliminarlos.
+Se encarga de los productos del menú.
+
+## ¿Qué hace?
+- crear productos
+- editar productos
+- eliminar productos
+
+## Sus métodos
+| Método | Qué hace | Ruta |
+|---|---|---|
+| `store()` | crear productos | `POST /api/products` |
+| `update()` | editar productos | `PUT /api/products/{id}` |
+| `destroy()` | eliminar productos | `DELETE /api/products/{id}` |
 
 ## ¿Con qué se conecta?
-| Ruta | Método | Quién | React |
-|---|---|---|---|
-| `POST /api/products` | `store` | admin | `src/store/almacenAplicacion.ts` (desde `admin/MenuSection.tsx`) |
-| `PUT /api/products/{id}` | `update` | admin | `almacenAplicacion.ts` (desde `MenuSection.tsx`) |
-| `DELETE /api/products/{id}` | `destroy` | admin | `almacenAplicacion.ts` (desde `MenuSection.tsx`) |
+- **Lo abre:** `config/helpers.php`, cuando la pantalla pide una de sus acciones.
+- **Desde la pantalla:** MenuSection.tsx (Gestión de Menú).
+- **Usa los modelos:** `Producto`.
 
-| Usa | Para qué |
-|---|---|
-| `Producto` (modelo) | Todas las consultas a PRODUCTO y RECETA. |
-| `Auth` | Saber si quien pregunta es admin. |
+## Línea por línea
 
-## Variables importantes
-| Variable | De dónde viene | Para qué sirve |
+Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GLOSARIO.md).
+
+| # | Código | Qué hace |
 |---|---|---|
-| `$esAdmin` | `Auth::check() && Auth::rol() === 'admin'` | El admin ve más datos (costos, receta y productos ocultos). |
-| `$id` | `$_GET['id']` (el `{id}` de la ruta) | Qué producto. |
-| `$this->datos` | `entrada()` | Lo que envió el formulario de `MenuSection.tsx`: `name`, `price`, `category`, `ingredients`, `packaging`, `badge`... |
-
-## Acciones
-### `index`
-```php
-responderJson($this->productoModel->listar(!$esAdmin, $esAdmin));
-```
-- Primer parámetro (`$soloActivos`): si **no** es admin, solo los productos activos.
-- Segundo (`$esAdmin`): si es admin, el JSON completo.
-
-### `show`
-Busca un producto. Si no existe → **404**.
-
-### `store` (crear)
-1. Valida `name`, `price` (debe ser número: `is_numeric`) y `category`.
-2. `$this->productoModel->crear($this->datos)` lo guarda junto con su receta.
-3. Si el modelo lanza un error (por ejemplo, sin categoría), el `catch` responde **422**.
-4. Responde **201** con el producto creado.
-
-### `update` (editar)
-1. Si el producto no existe → **404**.
-2. Si envían `price`, debe ser número.
-3. `$this->productoModel->actualizar($id, $this->datos)` cambia solo los campos que llegaron.
-
-### `destroy` (eliminar)
-Si existe, lo borra con `$this->productoModel->eliminar($id)`.
+| 1 | `<?php` | Abre el código PHP. |
+| 2-4 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Controlador de Productos (menu)."* |
+| 5 | `require_once __DIR__ . '/../models/Producto.php';` | Trae el archivo `Producto.php` para poder usar la clase `Producto`. |
+| 7 | `class ProductController` | Crea la clase `ProductController`: un grupo de funciones que trabajan juntas. |
+| 8 | `{` | Abre la clase `ProductController`. |
+| 9 | `private $productoModel;` | Cajita `$productoModel` de la clase: aquí se guarda el modelo `Producto`. |
+| 10 | `private $datos;` | Cajita `$datos` de la clase: aquí se guardan los datos que mandó la pantalla. |
+| 12 | `public function __construct()` | Función `__construct()`: se ejecuta sola apenas se crea la clase (`new`). Prepara lo que se va a usar. |
+| 13 | `{` | Abre la función `__construct()`. |
+| 14 | `$this->productoModel = new Producto();` | Crea el modelo `Producto` y lo guarda en `$this->productoModel`, para usarlo en las funciones de abajo. |
+| 15 | `$this->datos = entrada();` | Lee lo que mandó la pantalla (`entrada()` de `helpers.php`) y lo guarda en `$this->datos`. |
+| 16 | `}` | Cierra la función `__construct()`. |
+| 18 | `public function store()` | Función `store()`: crea un producto. Ruta: `POST /api/products`. La llama `MenuSection.tsx` (Gestión de Menú). |
+| 19 | `{` | Abre la función `store()`. |
+| 20 | `$errores = [];` | Empieza `$errores` como una lista vacía. Ahí se anota cada campo que venga mal. |
+| 21 | `if (empty($this->datos['name'])) $errores['name'] = ['El campo name es obligatorio.'];` | Si falta el nombre, anota el error. |
+| 22 | `if (!isset($this->datos['price']) \|\| !is_numeric($this->datos['price'])) $errores['price'] = ['El campo price debe ser numérico.'];` | Si falta el precio (`!isset`) o no es un número (`!is_numeric`), anota el error. |
+| 23 | `if (empty($this->datos['category'])) $errores['category'] = ['El campo category es obligatorio.'];` | Si falta la categoría, anota el error. |
+| 24 | `if ($errores) {` | Si se anotó algún error (la lista no está vacía)... |
+| 25 | `responderError('Datos inválidos.', 422, $errores);` | ...responde 422 "Datos inválidos." con la lista de errores (React la muestra debajo de cada campo) y termina. |
+| 26 | `}` | Cierra el `if`. |
+| 28 | `try {` | Intenta... |
+| 29 | `$id = $this->productoModel->crear($this->datos);` | ...crear el producto con su receta (`crear()` de `models/Producto.php`) y guarda el número nuevo en `$id`. |
+| 30 | `} catch (Exception $e) {` | Si falló... |
+| 31 | `responderError($e->getMessage(), 422);` | ...responde 422 con el mensaje. |
+| 32 | `}` | Cierra el `catch`. |
+| 33 | `responderJson($this->productoModel->buscar($id, true), 201);` | Busca el producto nuevo con los datos completos (`buscar($id, true)`; `true` = como lo ve el administrador) y responde 201 (creado). |
+| 34 | `}` | Cierra la función `store()`. |
+| 36 | `public function update()` | Función `update()`: edita un producto. Ruta: `PUT /api/products/{id}`. |
+| 37 | `{` | Abre la función `update()`. |
+| 38 | `$id = $_GET['id'];` | Guarda en `$id` el número que viene en la dirección (ej. el `6` de `/api/products/6`). Lo puso `cargarControlador()` de `helpers.php`. |
+| 39 | `if (!$this->productoModel->buscar($id)) {` | Si el producto no existe (`buscar()` de `models/Producto.php`)... |
+| 40 | `responderError('Producto no encontrado.', 404);` | ...responde 404 "Producto no encontrado.". |
+| 41 | `}` | Cierra el `if`. |
+| 42 | `if (array_key_exists('price', $this->datos) && !is_numeric($this->datos['price'])) {` | Si mandó precio (`array_key_exists` = ¿viene este dato?) y no es un número... |
+| 43 | `responderError('Datos inválidos.', 422, ['price' => ['El campo price debe ser numérico.']]);` | ...responde 422 "El campo price debe ser numérico.". |
+| 44 | `}` | Cierra el `if`. |
+| 46 | `try {` | Intenta... |
+| 47 | `$this->productoModel->actualizar($id, $this->datos);` | ...guardar los cambios (`actualizar()` de `models/Producto.php`). |
+| 48 | `} catch (Exception $e) {` | Si falló... |
+| 49 | `responderError($e->getMessage(), 422);` | ...responde 422. |
+| 50 | `}` | Cierra el `catch`. |
+| 51 | `responderJson($this->productoModel->buscar($id, true));` | Responde con el producto actualizado (como lo ve el administrador). |
+| 52 | `}` | Cierra la función `update()`. |
+| 54 | `public function destroy()` | Función `destroy()`: elimina un producto. Ruta: `DELETE /api/products/{id}`. |
+| 55 | `{` | Abre la función `destroy()`. |
+| 56 | `$id = $_GET['id'];` | Guarda en `$id` el número que viene en la dirección (ej. el `6` de `/api/products/6`). Lo puso `cargarControlador()` de `helpers.php`. |
+| 57 | `if (!$this->productoModel->buscar($id)) {` | Si el producto no existe... |
+| 58 | `responderError('Producto no encontrado.', 404);` | ...responde 404. |
+| 59 | `}` | Cierra el `if`. |
+| 60 | `$this->productoModel->eliminar($id);` | Lo elimina (`eliminar()` de `models/Producto.php`). |
+| 61 | `responderJson(['ok' => true]);` | Responde `ok`. |
+| 62 | `}` | Cierra la función `destroy()`. |
+| 63 | `}` | Cierra la clase `ProductController`. |
+| 65 | `$controller = new ProductController();` | Crea el controlador. Al hacer `new ProductController()` se ejecuta su `__construct()`. |
+| 67 | `$accion = $_GET['accion'] ?? '';` | Guarda en `$accion` qué acción pidió la ruta (la puso `cargarControlador()` de `helpers.php`). `?? ''` = si no hay, vacío. |
+| 69 | `if ($accion === 'store') {` | Si la acción es `'store'`... |
+| 70 | `$controller->store();` | ...llama al método `store()` de arriba. |
+| 71 | `} elseif ($accion === 'update') {` | Si no, si la acción es `'update'`... |
+| 72 | `$controller->update();` | ...llama al método `update()` de arriba. |
+| 73 | `} elseif ($accion === 'destroy') {` | Si no, si la acción es `'destroy'`... |
+| 74 | `$controller->destroy();` | ...llama al método `destroy()` de arriba. |
+| 75 | `} else {` | Si no es ninguna de las anteriores... |
+| 76 | `responderError('Ruta no encontrada.', 404);` | ...responde 404 "Ruta no encontrada." (la acción no existe). |
+| 77 | `}` | Cierra el `else`. |
+| 78 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
-
-Este archivo lo carga `cargarControlador()` (`config/helpers.php`) cuando llega una de sus rutas.
-Si algo se borra, el error aparece en la pantalla como aviso rojo y completo en
-**F12 → Red → la petición → Respuesta**.
-
-| Si se borra… | Qué deja de funcionar | Error que aparece |
+| Si se borra… | Qué deja de funcionar | Error que sale |
 |---|---|---|
-| **El archivo completo** | Todas sus rutas: `POST /api/products`, `PUT /api/products/{id}`, `DELETE /api/products/{id}`. | `Failed to open stream: No such file or directory` (…`controllers/ProductController.php`) |
-| La línea `require_once __DIR__ . '/../models/Producto.php';` | **Todas** sus rutas (el modelo se crea en el constructor, que corre en cada acción). | `Class "Producto" not found` |
-| El método `store()` | Admin → Gestión de Menú: no se pueden crear productos. | `Call to undefined method ProductController::store()` (500) |
-| La rama `$accion === 'store'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
-| La línea `'POST /api/products'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
-| El método `update()` | Admin → Gestión de Menú: no se pueden editar productos. | `Call to undefined method ProductController::update()` (500) |
-| La rama `$accion === 'update'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
-| La línea `'PUT /api/products/{id}'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
-| El método `destroy()` | Admin → Gestión de Menú: no se pueden eliminar productos. | `Call to undefined method ProductController::destroy()` (500) |
-| La rama `$accion === 'destroy'` del despachador (al final) | Lo mismo. | `Ruta no encontrada.` (404) |
-| La línea `'DELETE /api/products/{id}'` de `config/rutas.php` | Lo mismo. | `Ruta no encontrada.` (404) o `Metodo no permitido.` (405) |
-| La línea `$this->productoModel = ...` del constructor | Las acciones que usan `$this->productoModel`. | `Call to a member function ...() on null` o `Undefined property` |
-| La línea `$this->datos = ...` del constructor | Las acciones que usan `$this->datos`. | `Call to a member function ...() on null` o `Undefined property` |
+| el archivo completo | crear productos, editar productos, eliminar productos | `Failed to open stream` |
+| el `require_once` de `Producto.php` | todas sus acciones | `Class "Producto" not found` |
+| el método `store()` | crear productos | `Call to undefined method ProductController::store()` |
+| el método `update()` | editar productos | `Call to undefined method ProductController::update()` |
+| el método `destroy()` | eliminar productos | `Call to undefined method ProductController::destroy()` |
+| una línea `elseif ($accion === '...')` del final | esa acción | `Ruta no encontrada.` |
+| su línea en `config/rutas.php` | esa acción | `Ruta no encontrada.` |
 
-**Cómo se arregla:** volver a escribir lo que se borró. La ficha de arriba ("Código explicado") muestra cómo era.
+**Cómo ver el error:** en el navegador, **F12 → Red → la petición en rojo → Respuesta**.

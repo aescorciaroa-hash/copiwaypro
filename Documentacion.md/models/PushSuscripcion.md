@@ -1,50 +1,78 @@
 # models/PushSuscripcion.php
+¿No entiendes una palabra? Mira el [glosario](../GLOSARIO.md).
 
 ## ¿Para qué sirve?
-Guarda los **dispositivos** de cada cliente donde se pueden enviar notificaciones push
-(tabla `PUSH_SUSCRIPCION`). Un cliente puede tener varios (celular, computador...).
+Guarda los celulares que reciben notificaciones.
+
+## ¿Qué hace?
+- guarda un celular que recibe notificaciones
+- borra un celular que ya no sirve
+- trae los celulares de un cliente
+
+## Sus métodos
+| Método | Qué hace | Lo usan |
+|---|---|---|
+| `guardar()` | guarda un celular que recibe notificaciones | `PushController::subscribe()` |
+| `eliminarPorEndpoint()` | borra un celular que ya no sirve | `PushNotificationService::enviarATodosLosDispositivos()` |
+| `listarPorCliente()` | trae los celulares de un cliente | `PushNotificationService::enviarATodosLosDispositivos()` |
 
 ## ¿Con qué se conecta?
-| Dirección | Archivo | Para qué |
+- **Lo cargan:** `models/PushNotificationService.php`.
+- **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
+
+## Línea por línea
+
+Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GLOSARIO.md).
+
+| # | Código | Qué hace |
 |---|---|---|
-| ← lo usa | `PushController.php` | Guardar y borrar suscripciones. |
-| ← lo usa | `PushNotificationService.php` | Saber a qué dispositivos enviar y borrar las vencidas. |
-| → tabla | `PUSH_SUSCRIPCION` | |
-
-## Columnas
-| Columna | Qué guarda |
-|---|---|
-| `endpoint` | Dirección única del navegador (la entrega el navegador al suscribirse). |
-| `clave_p256dh`, `clave_auth` | Claves para cifrar el mensaje para ese navegador. |
-
-## Métodos
-| Método | Qué hace |
-|---|---|
-| `guardar($idCliente, $endpoint, $claveP256dh, $claveAuth)` | Inserta. Si el `endpoint` ya existe, actualiza los datos (`ON DUPLICATE KEY UPDATE`). |
-| `eliminarPorEndpoint($endpoint)` | Borra esa suscripción. |
-| `listarPorCliente($idCliente)` | Todos los dispositivos del cliente. |
-
-`ON DUPLICATE KEY UPDATE` = "si ya existe una fila con esa llave única, en vez de dar error, actualízala".
+| 1 | `<?php` | Abre el código PHP. |
+| 2-4 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Modelo PushSuscripcion (suscripciones Web Push de cada cliente)."* |
+| 5 | `class PushSuscripcion` | Crea la clase `PushSuscripcion`: guarda los navegadores (celulares) que reciben notificaciones (tabla `PUSH_SUSCRIPCION`). |
+| 6 | `{` | Abre la clase `PushSuscripcion`. |
+| 7 | `private $conn;` | Cajita `$conn` de la clase: aquí se guarda la conexión a la base de datos. |
+| 9 | `public function __construct()` | Función `__construct()`: se ejecuta sola apenas se crea la clase (`new`). Prepara lo que se va a usar. |
+| 10 | `{` | Abre la función `__construct()`. |
+| 11 | `global $conn;` | Trae la conexión `$conn` (la que se crea en `config/database.php`). |
+| 12 | `$this->conn = $conn;` | Guarda la conexión en `$this->conn`, para usarla en todas las consultas de esta clase. |
+| 13 | `}` | Cierra la función `__construct()`. |
+| 15 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Crea o actualiza (mismo endpoint = mismo navegador)."* |
+| 16 | `public function guardar($idCliente, $endpoint, $claveP256dh, $claveAuth)` | Método `guardar(...)`: guarda la suscripción de un cliente. Si ese navegador ya estaba, la actualiza. Lo usa `PushController::subscribe()`. |
+| 17 | `{` | Abre la función `guardar()`. |
+| 18 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "guarda el cliente, la dirección del navegador (`endpoint`) y sus dos claves; si ese navegador ya existe (`ON DUPLICATE KEY UPDATE`), solo actualiza el cliente y las claves". |
+| 19 | `"INSERT INTO PUSH_SUSCRIPCION (id_cliente, endpoint, clave_p256dh, clave_auth)` | ↑ (sigue la misma instrucción) |
+| 20 | `VALUES (?, ?, ?, ?)` | ↑ (sigue la misma instrucción) |
+| 21 | `ON DUPLICATE KEY UPDATE id_cliente = VALUES(id_cliente), clave_p256dh = VALUES(clave_p256dh), clave_auth = VALUES(clave_auth)"` | ↑ (sigue la misma instrucción) |
+| 22 | `);` | ↑ (sigue la misma instrucción) |
+| 23 | `$stmt->bind_param("isss", $idCliente, $endpoint, $claveP256dh, $claveAuth);` | Llena los `?` de la consulta, en orden: `$idCliente` (número entero), `$endpoint` (texto), `$claveP256dh` (texto), `$claveAuth` (texto). |
+| 24 | `$stmt->execute();` | Ejecuta la consulta. |
+| 25 | `$stmt->close();` | Cierra la consulta. |
+| 26 | `}` | Cierra la función `guardar()`. |
+| 28 | `public function eliminarPorEndpoint($endpoint)` | Método `eliminarPorEndpoint($endpoint)`: borra un navegador que ya no sirve. Lo usa `PushNotificationService` cuando una notificación falla. |
+| 29 | `{` | Abre la función `eliminarPorEndpoint()`. |
+| 30 | `$stmt = $this->conn->prepare("DELETE FROM PUSH_SUSCRIPCION WHERE endpoint = ?");` | Prepara la consulta: "borra (`DELETE`) la suscripción con esa dirección". |
+| 31 | `$stmt->bind_param("s", $endpoint);` | Llena los `?` de la consulta, en orden: `$endpoint` (texto). |
+| 32 | `$stmt->execute();` | Ejecuta la consulta. |
+| 33 | `$stmt->close();` | Cierra la consulta. |
+| 34 | `}` | Cierra la función `eliminarPorEndpoint()`. |
+| 36 | `public function listarPorCliente($idCliente)` | Método `listarPorCliente($idCliente)`: trae todos los navegadores de un cliente. Lo usa `PushNotificationService` para enviarle la notificación. |
+| 37 | `{` | Abre la función `listarPorCliente()`. |
+| 38 | `$stmt = $this->conn->prepare("SELECT endpoint, clave_p256dh, clave_auth FROM PUSH_SUSCRIPCION WHERE id_cliente = ?");` | Prepara la consulta: "trae la dirección y las claves de las suscripciones de ese cliente". |
+| 39 | `$stmt->bind_param("i", $idCliente);` | Llena los `?` de la consulta, en orden: `$idCliente` (número entero). |
+| 40 | `$stmt->execute();` | Ejecuta la consulta. |
+| 41 | `$data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);` | Trae **todas** las filas que encontró y las guarda en `$data` (una lista). |
+| 42 | `$stmt->close();` | Cierra la consulta. |
+| 43 | `return $data;` | Devuelve la lista. |
+| 44 | `}` | Cierra la función `listarPorCliente()`. |
+| 45 | `}` | Cierra la clase `PushSuscripcion`. |
+| 46 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
-
-**Si se borra el archivo completo:** sale `Failed to open stream: No such file or directory` (…`models/PushSuscripcion.php`).
-Lo cargan con `require_once`: `models/PushNotificationService.php`. Dejan de funcionar:
-  - `GET /api/orders` → Admin: después de confirmar el cierre de caja no se recargan las comandas.
-  - `POST /api/orders` → Cliente: no puede hacer pedidos (botón "Confirmar pedido" del checkout).
-  - `POST /api/orders/manual` → Admin: no se pueden registrar pedidos por llamada o WhatsApp.
-  - `PATCH /api/orders/{id}/address` → Admin: no se puede corregir la dirección de un pedido.
-  - `PATCH /api/orders/{id}/destination` → Domiciliario: no se guarda el destino que ubica en el mapa.
-  - `PATCH /api/orders/{id}/preparing` → Cocina/Admin: el pedido no pasa a "En Preparación".
-  - `PATCH /api/orders/{id}/ready` → Cocina/Admin: el pedido no pasa a "Listos".
-  - `PATCH /api/orders/{id}/take` → Domiciliario: no puede tomar un pedido listo.
-  - … y 9 más: `PATCH /api/orders/{id}/release`, `PATCH /api/orders/{id}/accept`, `PATCH /api/orders/{id}/deliver`, `PATCH /api/orders/{id}/review`, `POST /api/payments/prepare`, `POST /api/payments/transactions`, `GET /api/payments/transactions/{id}`, `GET /api/push/public-key`, `POST /api/push/subscribe`.
-
-**Si se borra un método:** sale `Call to undefined method PushSuscripcion::nombre()` (error 500), solo en lo que usa ese método:
-
-| Método | Lo llaman | Qué deja de funcionar si se borra |
+| Si se borra… | Qué deja de funcionar | Error que sale |
 |---|---|---|
-| `guardar()` | `PushController::subscribe()` | `POST /api/push/subscribe` → Cliente: no se activan las notificaciones push. |
-| `eliminarPorEndpoint()` | `PushNotificationService::enviarATodosLosDispositivos()` | `PATCH /api/orders/{id}/deliver` → Domiciliario: no puede confirmar la entrega con el PIN. |
-| `listarPorCliente()` | `PushNotificationService::enviarATodosLosDispositivos()` | `PATCH /api/orders/{id}/deliver` → Domiciliario: no puede confirmar la entrega con el PIN. |
-| `__construct()` | `new PushSuscripcion()` | Deja de recibir la conexión `$conn`: sale `Call to a member function prepare() on null` en todo lo que usa PushSuscripcion. |
+| el archivo completo | recargar los pedidos después del cierre de caja, hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp, cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario o administrador), salir a entregar ("En camino"), entregar pedidos con el PIN, calificar pedidos, empezar un pago en línea, crear el pago, saber si el pago fue aprobado, activar las notificaciones | `Failed to open stream` |
+| el método `guardar()` | activar las notificaciones | `Call to undefined method PushSuscripcion::guardar()` |
+| el método `eliminarPorEndpoint()` | entregar pedidos con el PIN | `Call to undefined method PushSuscripcion::eliminarPorEndpoint()` |
+| el método `listarPorCliente()` | entregar pedidos con el PIN | `Call to undefined method PushSuscripcion::listarPorCliente()` |
+
+**Cómo ver el error:** en el navegador, **F12 → Red → la petición en rojo → Respuesta**.

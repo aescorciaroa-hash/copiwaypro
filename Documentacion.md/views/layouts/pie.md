@@ -1,36 +1,33 @@
 # views/layouts/pie.php
+¿No entiendes una palabra? Mira el [glosario](../../GLOSARIO.md).
 
 ## ¿Para qué sirve?
-Es la **segunda mitad del HTML**: cierra el `<div id="app">` que abrió `cabecera.php` y carga el
-**JavaScript de React** (`main.js`).
+Es la parte de abajo de todas las páginas.
+
+## ¿Qué hace?
+- carga React (main.js)
 
 ## ¿Con qué se conecta?
-| Dirección | Archivo | Para qué |
+- **La cargan:** todas las vistas de `views/paginas/`.
+
+## Línea por línea
+
+Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../../GLOSARIO.md).
+
+| # | Código | Qué hace |
 |---|---|---|
-| ← lo incluye | cada vista de `views/paginas/*.php` | Después de `cabecera.php`. |
-| → carga | `public/assets/main.js` | Toda la aplicación de React, compilada por Vite (`npm run build`). Su código fuente está en `src/`. |
-| → usa | `rutaBase()` (`helpers.php`) | Para armar la dirección del archivo. |
-
-## Variables
-| Variable | Para qué |
-|---|---|
-| `$rutaAssets` | Carpeta `public/assets`. |
-| `$verJs` | Fecha de modificación de `main.js`; se usa como versión (`main.js?v=...`) para que el navegador descargue el nuevo cuando cambia. |
-
-## Código explicado
-```html
-    </div>
-    <script type="module" src="<?= rutaBase() ?>/assets/main.js?v=<?= $verJs ?>"></script>
-</body>
-</html>
-```
-- `</div>` cierra el `<div id="app">`.
-- `type="module"` = JavaScript moderno (con `import`).
-- Al cargar `main.js`, se ejecuta `src/main.tsx`, que lee `data-pagina` y muestra la pantalla.
+| 1 | `<?php` | Abre el código PHP. |
+| 2-4 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Pie HTML: carga el JavaScript de la app de React."* |
+| 5 | `$rutaAssets = dirname(__DIR__, 2) . '/public/assets';` | Guarda en `$rutaAssets` la carpeta `public/assets` (donde está React compilado). |
+| 6 | `$verJs = filemtime($rutaAssets . '/main.js');` | Guarda en `$verJs` la fecha en que cambió `main.js`, para que el navegador baje la versión nueva. |
+| 7 | `?>` | `?>` cierra el PHP; lo que sigue es HTML. |
+| 8 | `</div>` | Cierra el `<div id="app">` que se abrió en `cabecera.php`. |
+| 9 | `<script type="module" src="<?= rutaBase() ?>/assets/main.js?v=<?= $verJs ?>"></script>` | Carga React (`main.js`). Cuando carga, `src/main.tsx` dibuja la pantalla dentro del `<div id="app">`. `?v=` lleva la fecha para no usar una versión vieja. |
+| 10 | `</body>` | Cierra el cuerpo de la página. |
+| 11 | `</html>` | Cierra la página. |
 
 ## ¿Qué pasa si se borra?
-
 | Si se borra… | Qué pasa |
 |---|---|
-| **El archivo completo** | Ninguna página abre: todas las vistas de `views/paginas/` lo cargan (`Failed to open stream` …`pie.php`). |
-| El `<script ... main.js>` | La página sale en blanco: React no se carga. |
+| el archivo completo | ninguna página abre |
+| el `<script>` de main.js | la página sale en blanco (no carga React) |

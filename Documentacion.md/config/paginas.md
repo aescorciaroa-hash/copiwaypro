@@ -1,46 +1,41 @@
 # config/paginas.php
+¿No entiendes una palabra? Mira el [glosario](../GLOSARIO.md).
 
 ## ¿Para qué sirve?
-Es la lista de **páginas** (las direcciones que se escriben en el navegador, sin `/api`).
-La usa la función `despacharPagina()` de `config/helpers.php`.
+Es la lista de páginas del sistema.
+
+## ¿Qué hace?
+- dice qué página abre cada dirección (/login, /admin...)
+- dice qué rol puede entrar a cada página
 
 ## ¿Con qué se conecta?
-| Dirección | Archivo | Para qué |
+- **Lo lee:** `despacharPagina()` en `config/helpers.php`.
+- **Ejemplo:** `'/admin' => ['PaginaController', 'admin', ['admin']]`
+- **Las abre:** `PaginaController`.
+
+## Línea por línea
+
+Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GLOSARIO.md).
+
+| # | Código | Qué hace |
 |---|---|---|
-| ← lo lee | `despacharPagina()` en `config/helpers.php` | Busca la página pedida y revisa el rol. |
-| → apunta a | `controllers/PaginaController.php` | Todas las páginas las muestra ese controlador. |
-| → termina en | `views/paginas/*.php` | El HTML que carga React. |
-
-## Código explicado
-```php
-return [
-    '/'                => ['PaginaController', 'landing', []],
-    '/login'           => ['PaginaController', 'login', []],
-    '/admin'           => ['PaginaController', 'admin', ['admin']],
-    ...
-];
-```
-| Parte | Significado |
-|---|---|
-| `'/admin'` | La dirección en el navegador. |
-| `'PaginaController'` | Siempre es el mismo controlador. |
-| `'admin'` | La acción: el método de `PaginaController` que se llama (qué página mostrar). |
-| `['admin']` | Quién puede entrar. `[]` = pública. |
-
-Si alguien entra a una página protegida sin sesión o con otro rol, se le **redirige a `/login`**.
-
-| Página | Quién entra |
-|---|---|
-| `/`, `/login`, `/register`, `/forgot-password` | Cualquiera |
-| `/admin` | Administrador |
-| `/client` | Cliente |
-| `/kitchen` | Cocina |
-| `/delivery` | Domiciliario |
+| 1 | `<?php` | Abre el código PHP. |
+| 2-5 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Paginas: 'ruta' => [Controlador, accion, roles]. roles = [] significa publica (sin sesion)."* |
+| 7 | `return [` | `return [` = devuelve la lista de páginas. La lee `despacharPagina()` en `helpers.php`. |
+| 8 | `'/' => ['PaginaController', 'landing', []],` | La dirección `/` (inicio) → `PaginaController`, función `landing()`. `[]` = cualquiera puede entrar. |
+| 9 | `'/login' => ['PaginaController', 'login', []],` | `/login` → `PaginaController::login()`. Cualquiera puede entrar. |
+| 10 | `'/register' => ['PaginaController', 'register', []],` | `/register` (crear cuenta) → `PaginaController::register()`. Cualquiera puede entrar. |
+| 11 | `'/forgot-password' => ['PaginaController', 'forgotPassword', []],` | `/forgot-password` (recuperar contraseña) → `PaginaController::forgotPassword()`. Cualquiera. |
+| 12 | `'/admin' => ['PaginaController', 'admin', ['admin']],` | `/admin` → `PaginaController::admin()`. `['admin']` = solo el administrador. |
+| 13 | `'/client' => ['PaginaController', 'client', ['client']],` | `/client` → `PaginaController::client()`. Solo el cliente. |
+| 14 | `'/kitchen' => ['PaginaController', 'kitchen', ['kitchen']],` | `/kitchen` → `PaginaController::kitchen()`. Solo cocina. |
+| 15 | `'/delivery' => ['PaginaController', 'delivery', ['delivery']],` | `/delivery` → `PaginaController::delivery()`. Solo el domiciliario. |
+| 16 | `];` | Cierra la lista. |
+| 17 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
-
-| Si se borra… | Qué pasa | Error que aparece |
-|---|---|---|
-| **El archivo completo** | Ninguna página abre (inicio, login, paneles). La API sí responde. | `Failed to open stream` (…`config/paginas.php`) |
-| Una línea | Esa página no abre. | `Pagina no encontrada.` (404) |
-| El rol de una página (ej. `['admin']` → `[]`) | Cualquiera puede abrir ese panel sin iniciar sesión (aunque la API sigue pidiendo el rol). | Ninguno |
+| Si se borra… | Qué pasa |
+|---|---|
+| el archivo completo | ninguna página abre |
+| una línea | esa página no abre: sale `Pagina no encontrada.` |
+| un rol (`['admin']` → `[]`) | **no sale error**: cualquiera puede abrir ese panel |

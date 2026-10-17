@@ -1,10 +1,14 @@
 # src/pages/admin/InventorySection.tsx
 
 ## ¿Para qué sirve?
-Es la pestaña **"Inventario Express"**: lista de insumos con su stock y valor, indicadores (insumos
-críticos, unidades totales, valor del inventario), botón para sumar stock, y una ventana para
-registrar o editar insumos (con foto, categoría, unidad, cantidad, costo y proveedor). También muestra
-el historial de movimientos.
+Es la pestaña **"Inventario Express"**: una **tabla de insumos** (igual de forma que la Lista de
+Personal) con su stock y valor, indicadores (insumos críticos, unidades totales, valor del inventario),
+botones para sumar o restar stock, y una ventana para registrar o editar insumos (con foto, categoría,
+unidad, cantidad, costo y proveedor). Debajo está la **tabla del historial de movimientos**.
+
+Las dos tablas muestran 8 filas por página, con los botones de página abajo (`<` `1` `2` `3` `>`).
+La tabla de insumos se ve en pantallas grandes (`xl:`, de 1280 px en adelante). En pantallas más pequeñas
+y en celular, cada insumo se ve como una tarjeta. Así nunca hay que mover la tabla de lado a lado.
 
 ## ¿Con qué se conecta?
 | Acción en pantalla | Función | Ruta PHP | Termina en |
@@ -34,6 +38,9 @@ el historial de movimientos.
 | `criticalItemsCount` | Insumos con stock de 10 o menos. |
 | `totalInventoryUnits` | Suma de todo el stock. |
 | `totalInventoryValuation` | Valor del inventario: `stock × costo unitario` de cada insumo. |
+| `POR_PAGINA` | Cuántas filas se ven por página en cada tabla (8). |
+| `invPage` / `logPage` | En qué página va la tabla de insumos / la del historial. Vuelven a 1 al escribir en el buscador. |
+| `paginatedInventory` / `paginatedLogs` | Solo las filas de la página actual (`slice` corta la lista). |
 
 ## Funciones
 | Función | Qué hace |
@@ -41,6 +48,14 @@ el historial de movimientos.
 | `handleOpenCreateModal()` / `handleOpenEditModal(insumo)` | Abren la ventana vacía o con los datos del insumo. |
 | `handleAddItem()` | Guarda. Al **crear**, calcula el **costo unitario = costo total ÷ cantidad** (ej: 10 kg por $50.000 → $5.000 el kg) y exige la cantidad. Al **editar**, no cambia el stock (eso se hace con "sumar stock"). |
 | `addStock(id, cantidad)` | Suma stock (debe ser un número mayor que 0). |
+| `costoUnitario(insumo)` | Cuánto cuesta una unidad del insumo. |
+| `colorStock(stock)` | Color del puntico: rojo (10 o menos), naranja (30 o menos), verde (más). |
+| `fotoInsumo(insumo)` | La foto del insumo, o el cuadrito gris si no tiene. |
+| `botonesInsumo(insumo, prefijo)` | La cajita **CANT.** y los botones restar (−), sumar (+), editar y eliminar. El `prefijo` es para que la caja de la tabla y la del celular no tengan el mismo nombre. |
+| `datosMovimiento(movimiento)` | Para el historial: si es entrada o salida, la unidad, el costo y la fecha. |
+| `iconoMovimiento(esEntrada)` | La flechita verde (entrada) o roja (salida). |
+| `cantidadMovimiento(...)` | La pastilla con `+5` o `−1` y la unidad. |
+| `paginacion(...)` | El pie de cada tabla: "Mostrando X de Y" y los botones de página. |
 
 La categoría **"Empaques & Desechables"** es especial: PHP la crea como empaque, y así esos insumos
 aparecen en el bloque de empaques de la receta de los productos y no en el catálogo de extras del cliente.

@@ -1,7 +1,7 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  ArrowDownRight, ArrowUpRight, Edit2, ImagePlus, Minus, Package, Plus, PlusCircle, Search, Trash2, TriangleAlert, Wallet, X
+  ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, Edit2, ImagePlus, Minus, Package, Plus, PlusCircle, Search, Trash2, TriangleAlert, Wallet, X
 } from 'lucide-react';
 
 import { formatCOP } from '../../lib/format';
@@ -172,6 +172,188 @@ export default function InventorySection({
       return acc + ((curr.stock || 0) * uCost);
     }, 0);
 
+    // Paginacion de las dos tablas (igual que la Lista de Personal)
+    const POR_PAGINA = 8;
+    const [invPage, setInvPage] = React.useState(1);
+    const [logPage, setLogPage] = React.useState(1);
+
+    const invTotalPages = Math.max(1, Math.ceil(filteredInventory.length / POR_PAGINA));
+    const invPageActual = Math.min(invPage, invTotalPages);
+    const paginatedInventory = filteredInventory.slice((invPageActual - 1) * POR_PAGINA, invPageActual * POR_PAGINA);
+
+    const logTotalPages = Math.max(1, Math.ceil(filteredInventoryLogs.length / POR_PAGINA));
+    const logPageActual = Math.min(logPage, logTotalPages);
+    const paginatedLogs = filteredInventoryLogs.slice((logPageActual - 1) * POR_PAGINA, logPageActual * POR_PAGINA);
+
+    const costoUnitario = (item: InventoryItem) => item.unitCost || (item.totalCost && item.stock ? item.totalCost / item.stock : 0);
+
+    const colorStock = (stock: number) => stock <= 10 ? 'bg-red-500' : (stock <= 30 ? 'bg-orange-500' : 'bg-emerald-500');
+
+    const fotoInsumo = (item: InventoryItem) => item.image ? (
+      <img src={item.image} alt={item.name} className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-stone-700" />
+    ) : (
+      <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-stone-800 text-gray-400 flex items-center justify-center shrink-0" title="Sin foto: agrégala al editar">
+        <ImagePlus className="w-5 h-5" />
+      </div>
+    );
+
+    // CANT., restar, sumar, editar y eliminar. "prefijo" separa el input de la tabla del de celular.
+    const botonesInsumo = (item: InventoryItem, prefijo: string) => (
+      <>
+        <div className="flex items-center border border-gray-200 dark:border-stone-700 rounded-full bg-white dark:bg-stone-900 overflow-hidden pr-2 pl-4 h-10 shrink-0">
+          <span className="text-[11px] font-bold text-gray-500 mr-1">CANT.</span>
+          <input
+            type="number"
+            id={prefijo + item.id}
+            className="w-10 text-base font-black bg-transparent border-none outline-none text-center text-gray-900 dark:text-white"
+            defaultValue="0"
+            min="0"
+          />
+        </div>
+        <button
+          onClick={async () => {
+            const input = document.getElementById(prefijo + item.id) as HTMLInputElement;
+            if (input) {
+              const amount = parseInt(input.value);
+              if (isNaN(amount) || amount <= 0) return;
+              try {
+                await updateInventoryStock(item.id, -amount);
+                showToast('inventory', 'La cantidad del insumo fue actualizada.', 'Stock Actualizado');
+                input.value = '0';
+              } catch (err) {
+                const mensaje = err instanceof ApiError ? err.message : 'No se pudo actualizar el stock.';
+                showToast('danger', mensaje, 'No se Actualizó el Stock');
+              }
+            }
+          }}
+          title="Registrar Merma / Restar"
+          className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors shadow-sm shrink-0 cursor-pointer"
+        >
+          <Minus className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => {
+            const input = document.getElementById(prefijo + item.id) as HTMLInputElement;
+            if (input) {
+              addStock(item.id, input.value);
+              input.value = '0';
+            }
+          }}
+          title="Sumar al stock"
+          className="w-10 h-10 rounded-full bg-brand-orange flex items-center justify-center text-white hover:bg-brand-orange/90 transition-colors shadow-sm shrink-0 cursor-pointer"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
+        <button
+          onClick={() => handleOpenEditModal(item)}
+          title="Editar insumo"
+          className="w-10 h-10 rounded-full border border-gray-200 dark:border-stone-700 flex items-center justify-center text-gray-500 dark:text-stone-400 hover:bg-gray-100 dark:hover:bg-stone-800 hover:text-brand-orange transition-colors shrink-0 cursor-pointer"
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => {
+            const itemName = item.name;
+            const itemId = item.id;
+            setConfirmModal({
+              isOpen: true,
+              title: 'Eliminar Insumo del Inventario',
+              message: `¿Estás seguro de eliminar el insumo "${itemName}"? Si forma parte de las recetas del menú, su disponibilidad automática se verá afectada.`,
+              confirmText: 'Sí, eliminar',
+              cancelText: 'Cancelar',
+              type: 'danger',
+              onConfirm: async () => {
+                try {
+                  await deleteInventoryItem(itemId);
+                  showToast('danger', 'El insumo fue eliminado del inventario.', 'Insumo Eliminado');
+                } catch (err) {
+                  const mensaje = err instanceof ApiError ? err.message : 'No se pudo eliminar el insumo.';
+                  showToast('danger', mensaje, 'No se Eliminó el Insumo');
+                } finally {
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }
+              }
+            });
+          }}
+          title="Eliminar insumo"
+          className="w-10 h-10 rounded-full border border-red-200 dark:border-red-900/30 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0 cursor-pointer"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </>
+    );
+
+    const datosMovimiento = (log: InventoryLog) => {
+      const logDate = new Date(log.date);
+      const invItem = inventory.find(i => i.id === log.itemId);
+      const unitCost = log.unitCost ?? invItem?.unitCost ?? 0;
+      return {
+        isEntrada: log.type === 'Entrada',
+        unit: invItem?.unit,
+        cost: log.totalCost ?? unitCost * Math.abs(log.amount),
+        fecha: logDate.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }) + ' · ' + logDate.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      };
+    };
+
+    const iconoMovimiento = (isEntrada: boolean) => (
+      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+        isEntrada
+          ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
+          : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
+      }`}>
+        {isEntrada ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
+      </div>
+    );
+
+    const cantidadMovimiento = (log: InventoryLog, mov: { isEntrada: boolean; unit?: string }) => (
+      <span className={`inline-flex items-baseline gap-1 px-3 py-1 rounded-full text-sm font-black tabular-nums whitespace-nowrap ${
+        mov.isEntrada
+          ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+          : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+      }`}>
+        {mov.isEntrada ? '+' : '−'}{Math.abs(log.amount)}
+        {mov.unit && <span className="text-[10px] font-bold opacity-70">{mov.unit}</span>}
+      </span>
+    );
+
+    // Pie de tabla: texto "Mostrando..." y botones de pagina (como en la Lista de Personal)
+    const paginacion = (pagina: number, totalPaginas: number, cambiarPagina: (p: number) => void, texto: string) => {
+      const desde = Math.max(1, Math.min(pagina - 2, totalPaginas - 4));
+      const hasta = Math.min(totalPaginas, desde + 4);
+      const paginas = [];
+      for (let p = desde; p <= hasta; p++) paginas.push(p);
+      return (
+        <div className="p-6 border-t border-gray-100 dark:border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-4 mt-auto">
+          <p className="text-xs font-medium text-gray-500">{texto}</p>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button
+              onClick={() => cambiarPagina(Math.max(1, pagina - 1))}
+              disabled={pagina === 1}
+              className="w-8 h-8 rounded-full border border-gray-200 dark:border-stone-700 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 dark:hover:bg-stone-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {paginas.map(p => (
+              <button
+                key={p}
+                onClick={() => cambiarPagina(p)}
+                className={`w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm transition-colors ${pagina === p ? 'bg-brand-orange text-white font-bold' : 'border border-gray-200 dark:border-stone-700 text-gray-600 dark:text-stone-400 hover:bg-gray-50 dark:hover:bg-stone-800'}`}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              onClick={() => cambiarPagina(Math.min(totalPaginas, pagina + 1))}
+              disabled={pagina === totalPaginas}
+              className="w-8 h-8 rounded-full border border-gray-200 dark:border-stone-700 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 dark:hover:bg-stone-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      );
+    };
+
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
         {/* Header with Registrar Insumo button */}
@@ -227,164 +409,124 @@ export default function InventorySection({
               type="text" 
               placeholder="Buscar insumo por nombre o categoría..." 
               value={inventorySearch}
-              onChange={(e) => setInventorySearch(e.target.value)}
+              onChange={(e) => { setInventorySearch(e.target.value); setInvPage(1); }}
               className="bg-transparent border-none outline-none text-sm w-full text-gray-800 dark:text-stone-300 placeholder-gray-400 font-medium" 
             />
           </div>
         </div>
 
-        {/* Items List */}
-        <div className="space-y-4">
-          {filteredInventory.map(item => {
-            const unitCost = item.unitCost || (item.totalCost && item.stock ? item.totalCost / item.stock : 0);
-            const totalItemValuation = item.stock * unitCost;
+        {/* Items Table */}
+        {inventory.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-[#151515] rounded-[32px] border border-gray-100 dark:border-stone-800 p-8">
+            <Package className="w-12 h-12 text-gray-300 dark:text-stone-700 mb-4" />
+            <p className="text-gray-500 font-medium mb-4">El inventario está vacío. Registra los insumos comprados.</p>
+            <button
+              onClick={handleOpenCreateModal}
+              className="bg-brand-orange text-white px-6 py-3 rounded-full font-bold hover:bg-brand-orange/90 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+            >
+              <Plus className="w-5 h-5" /> Registrar Primer Insumo
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-[#151515] rounded-[32px] border border-gray-100 dark:border-stone-800 shadow-sm overflow-hidden flex flex-col">
+            <div className="overflow-x-auto hidden xl:block">
+              <table className="w-full text-left">
+                <thead className="bg-gray-50 dark:bg-stone-900/40 border-b border-gray-100 dark:border-stone-800">
+                  <tr>
+                    <th className="px-4 py-4 whitespace-nowrap font-bold text-sm text-gray-500 dark:text-stone-400">Insumo</th>
+                    <th className="px-4 py-4 whitespace-nowrap font-bold text-sm text-gray-500 dark:text-stone-400">Categoría</th>
+                    <th className="px-4 py-4 whitespace-nowrap font-bold text-sm text-gray-500 dark:text-stone-400">Stock Actual</th>
+                    <th className="px-4 py-4 whitespace-nowrap font-bold text-sm text-gray-500 dark:text-stone-400">Costo/u</th>
+                    <th className="px-4 py-4 whitespace-nowrap font-bold text-sm text-gray-500 dark:text-stone-400">Valor en stock</th>
+                    <th className="px-4 py-4 whitespace-nowrap font-bold text-sm text-gray-500 dark:text-stone-400 text-right">Ajustar stock</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredInventory.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-gray-500 font-medium">No se encontraron insumos.</td>
+                    </tr>
+                  ) : paginatedInventory.map(item => {
+                    const unitCost = costoUnitario(item);
+                    return (
+                      <tr key={item.id} className="border-b border-gray-100 dark:border-stone-800/50 hover:bg-gray-50/50 dark:hover:bg-stone-900/20 transition-colors">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            {fotoInsumo(item)}
+                            <div className="min-w-0">
+                              <p className="font-bold text-gray-900 dark:text-white mb-0.5">{item.name}</p>
+                              {item.supplier && <p className="text-xs text-gray-500 dark:text-stone-400 truncate">Prov: {item.supplier}</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col items-start gap-1">
+                            {item.category && (
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 dark:bg-stone-800 text-gray-600 dark:text-stone-300">{item.category}</span>
+                            )}
+                            {item.unit && (
+                              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 dark:bg-orange-900/20 text-brand-orange whitespace-nowrap">{item.unit}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-1.5">
+                            <div className={`w-2.5 h-2.5 rounded-full ${colorStock(item.stock)}`}></div>
+                            <strong className="text-gray-900 dark:text-white font-black text-base">{item.stock}</strong>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-sm whitespace-nowrap">
+                          {unitCost > 0 ? <strong className="text-gray-900 dark:text-white font-bold">{formatCOP(unitCost)}</strong> : <span className="text-gray-400">—</span>}
+                        </td>
+                        <td className="px-4 py-4 text-sm whitespace-nowrap">
+                          {unitCost > 0 ? <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{formatCOP(item.stock * unitCost)}</strong> : <span className="text-gray-400">—</span>}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-wrap items-center justify-end gap-2">{botonesInsumo(item, 'add-stock-')}</div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-            return (
-              <div key={item.id} className="bg-white dark:bg-[#151515] rounded-[32px] border border-gray-100 dark:border-stone-800 p-6 md:px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:shadow-md transition-shadow">
-                {item.image ? (
-                  <img src={item.image} alt={item.name} className="w-16 h-16 rounded-2xl object-cover shrink-0 border border-gray-100 dark:border-stone-700" />
-                ) : (
-                  <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-stone-800 text-gray-400 flex items-center justify-center shrink-0" title="Sin foto: agrégala al editar">
-                    <ImagePlus className="w-6 h-6" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <h3 className="font-bold text-xl text-gray-900 dark:text-white">{item.name}</h3>
-                    {item.category && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 dark:bg-stone-800 text-gray-600 dark:text-stone-300">
-                        {item.category}
-                      </span>
-                    )}
-                    {item.unit && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 dark:bg-orange-900/20 text-brand-orange">
-                        {item.unit}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center gap-3 md:gap-4 flex-wrap text-sm text-gray-600 dark:text-stone-400">
-                    <div className="flex items-center gap-1.5">
-                      <div className={`w-2.5 h-2.5 rounded-full ${item.stock <= 10 ? 'bg-red-500' : (item.stock <= 30 ? 'bg-orange-500' : 'bg-emerald-500')}`}></div>
-                      <span>Stock Actual: <strong className="text-gray-900 dark:text-white font-black text-base">{item.stock}</strong></span>
+            {/* Mobile Cards */}
+            <div className="xl:hidden grid grid-cols-1 lg:grid-cols-2 gap-3 p-3">
+              {filteredInventory.length === 0 ? (
+                <div className="text-center text-gray-500 font-medium py-8">No se encontraron insumos.</div>
+              ) : paginatedInventory.map(item => {
+                const unitCost = costoUnitario(item);
+                return (
+                  <div key={item.id} className="bg-gray-50/50 dark:bg-stone-900/20 border border-gray-100 dark:border-stone-800 rounded-2xl p-4 flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      {fotoInsumo(item)}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-gray-900 dark:text-white mb-1 truncate">{item.name}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {item.category && <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 dark:bg-stone-800 text-gray-600 dark:text-stone-300">{item.category}</span>}
+                          {item.unit && <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 dark:bg-orange-900/20 text-brand-orange">{item.unit}</span>}
+                        </div>
+                      </div>
                     </div>
-
-                    {unitCost > 0 && (
-                      <>
-                        <span className="text-gray-300 dark:text-stone-700 hidden sm:inline">•</span>
-                        <span>Costo/u: <strong className="text-gray-900 dark:text-white font-bold">{formatCOP(unitCost)}</strong></span>
-                        <span className="text-gray-300 dark:text-stone-700 hidden sm:inline">•</span>
-                        <span>Valor en stock: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{formatCOP(totalItemValuation)}</strong></span>
-                      </>
-                    )}
-
-                    {item.supplier && (
-                      <>
-                        <span className="text-gray-300 dark:text-stone-700 hidden sm:inline">•</span>
-                        <span className="text-xs text-gray-500 dark:text-stone-400">Prov: {item.supplier}</span>
-                      </>
-                    )}
+                    <div className="flex items-center gap-3 flex-wrap text-sm text-gray-600 dark:text-stone-400">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-2.5 h-2.5 rounded-full ${colorStock(item.stock)}`}></div>
+                        <span>Stock Actual: <strong className="text-gray-900 dark:text-white font-black text-base">{item.stock}</strong></span>
+                      </div>
+                      {unitCost > 0 && <span>Costo/u: <strong className="text-gray-900 dark:text-white font-bold">{formatCOP(unitCost)}</strong></span>}
+                      {unitCost > 0 && <span>Valor en stock: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{formatCOP(item.stock * unitCost)}</strong></span>}
+                      {item.supplier && <span className="text-xs text-gray-500 dark:text-stone-400">Prov: {item.supplier}</span>}
+                    </div>
+                    <div className="pt-3 border-t border-gray-200/50 dark:border-stone-800 flex items-center gap-3 flex-wrap">{botonesInsumo(item, 'add-stock-m-')}</div>
                   </div>
-                </div>
-                
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="flex items-center border border-gray-200 dark:border-stone-700 rounded-full bg-white dark:bg-stone-900 overflow-hidden pr-4 pl-6 h-12">
-                    <span className="text-xs font-bold text-gray-500 mr-3">CANT.</span>
-                    <input 
-                      type="number" 
-                      id={`add-stock-${item.id}`}
-                      className="w-12 text-lg font-black bg-transparent border-none outline-none text-center text-gray-900 dark:text-white"
-                      defaultValue="0"
-                      min="0"
-                    />
-                  </div>
-                  <button
-                    onClick={async () => {
-                      const input = document.getElementById(`add-stock-${item.id}`) as HTMLInputElement;
-                      if (input) {
-                        const amount = parseInt(input.value);
-                        if (isNaN(amount) || amount <= 0) return;
-                        try {
-                          await updateInventoryStock(item.id, -amount);
-                          showToast('inventory', 'La cantidad del insumo fue actualizada.', 'Stock Actualizado');
-                          input.value = '0';
-                        } catch (err) {
-                          const mensaje = err instanceof ApiError ? err.message : 'No se pudo actualizar el stock.';
-                          showToast('danger', mensaje, 'No se Actualizó el Stock');
-                        }
-                      }
-                    }}
-                    title="Registrar Merma / Restar"
-                    className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors shadow-sm shrink-0 cursor-pointer"
-                  >
-                    <Minus className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={() => {
-                      const input = document.getElementById(`add-stock-${item.id}`) as HTMLInputElement;
-                      if (input) {
-                        addStock(item.id, input.value);
-                        input.value = '0';
-                      }
-                    }}
-                    title="Sumar al stock"
-                    className="w-12 h-12 rounded-full bg-brand-orange flex items-center justify-center text-white hover:bg-brand-orange/90 transition-colors shadow-sm shrink-0 cursor-pointer"
-                  >
-                    <Plus className="w-6 h-6" />
-                  </button>
-                  <button
-                    onClick={() => handleOpenEditModal(item)}
-                    title="Editar insumo"
-                    className="w-12 h-12 rounded-full border border-gray-200 dark:border-stone-700 flex items-center justify-center text-gray-500 dark:text-stone-400 hover:bg-gray-100 dark:hover:bg-stone-800 hover:text-brand-orange transition-colors shrink-0 cursor-pointer"
-                  >
-                    <Edit2 className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      const itemName = item.name;
-                      const itemId = item.id;
-                      setConfirmModal({
-                        isOpen: true,
-                        title: 'Eliminar Insumo del Inventario',
-                        message: `¿Estás seguro de eliminar el insumo "${itemName}"? Si forma parte de las recetas del menú, su disponibilidad automática se verá afectada.`,
-                        confirmText: 'Sí, eliminar',
-                        cancelText: 'Cancelar',
-                        type: 'danger',
-                        onConfirm: async () => {
-                          try {
-                            await deleteInventoryItem(itemId);
-                            showToast('danger', 'El insumo fue eliminado del inventario.', 'Insumo Eliminado');
-                          } catch (err) {
-                            const mensaje = err instanceof ApiError ? err.message : 'No se pudo eliminar el insumo.';
-                            showToast('danger', mensaje, 'No se Eliminó el Insumo');
-                          } finally {
-                            setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                          }
-                        }
-                      });
-                    }}
-                    title="Eliminar insumo"
-                    className="w-12 h-12 rounded-full border border-red-200 dark:border-red-900/30 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0 cursor-pointer"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-          {inventory.length === 0 && (
-             <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-[#151515] rounded-[32px] border border-gray-100 dark:border-stone-800 p-8">
-               <Package className="w-12 h-12 text-gray-300 dark:text-stone-700 mb-4" />
-               <p className="text-gray-500 font-medium mb-4">El inventario está vacío. Registra los insumos comprados.</p>
-               <button
-                 onClick={handleOpenCreateModal}
-                 className="bg-brand-orange text-white px-6 py-3 rounded-full font-bold hover:bg-brand-orange/90 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
-               >
-                 <Plus className="w-5 h-5" /> Registrar Primer Insumo
-               </button>
-             </div>
-          )}
-        </div>
+                );
+              })}
+            </div>
+
+            {paginacion(invPageActual, invTotalPages, setInvPage, 'Mostrando ' + paginatedInventory.length + ' de ' + filteredInventory.length + ' insumos encontrados')}
+          </div>
+        )}
 
         {/* Modal de Registro de Insumo (Nueva Vista Formulario) */}
         <AnimatePresence>
@@ -630,55 +772,77 @@ export default function InventorySection({
                 type="text" 
                 placeholder="Buscar por orden o producto..." 
                 value={inventoryHistorySearch}
-                onChange={(e) => setInventoryHistorySearch(e.target.value)}
+                onChange={(e) => { setInventoryHistorySearch(e.target.value); setLogPage(1); }}
                 className="bg-transparent border-none outline-none text-sm w-full text-gray-800 dark:text-stone-300 placeholder-gray-400 font-medium min-w-[250px]" 
               />
             </div>
           </div>
           
           
-        <div className="bg-white dark:bg-[#151515] rounded-[32px] border border-gray-100 dark:border-stone-800 overflow-hidden shadow-sm divide-y divide-gray-100 dark:divide-stone-800">
-          {filteredInventoryLogs.length > 0 ? filteredInventoryLogs.map((log) => {
-            const isEntrada = log.type === 'Entrada';
-            const logDate = new Date(log.date);
-            const invItem = inventory.find(i => i.id === log.itemId);
-            const unit = invItem?.unit;
-            const unitCost = log.unitCost ?? invItem?.unitCost ?? 0;
-            const cost = log.totalCost ?? unitCost * Math.abs(log.amount);
-            return (
-              <div key={log.id} className="flex items-center gap-4 p-5 md:p-6 hover:bg-gray-50/50 dark:hover:bg-[#1A1A1A]/50 transition-colors">
-                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-                  isEntrada
-                    ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
-                    : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
-                }`}>
-                  {isEntrada ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
+        <div className="bg-white dark:bg-[#151515] rounded-[32px] border border-gray-100 dark:border-stone-800 overflow-hidden shadow-sm flex flex-col">
+          <div className="overflow-x-auto hidden md:block">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 dark:bg-stone-900/40 border-b border-gray-100 dark:border-stone-800">
+                <tr>
+                  <th className="px-6 py-4 font-bold text-sm text-gray-500 dark:text-stone-400">Insumo</th>
+                  <th className="px-6 py-4 font-bold text-sm text-gray-500 dark:text-stone-400">Motivo</th>
+                  <th className="px-6 py-4 font-bold text-sm text-gray-500 dark:text-stone-400">Cantidad</th>
+                  <th className="px-6 py-4 font-bold text-sm text-gray-500 dark:text-stone-400">Costo</th>
+                  <th className="px-6 py-4 font-bold text-sm text-gray-500 dark:text-stone-400">Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredInventoryLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500 font-medium">No hay registros de movimientos.</td>
+                  </tr>
+                ) : paginatedLogs.map(log => {
+                  const mov = datosMovimiento(log);
+                  return (
+                    <tr key={log.id} className="border-b border-gray-100 dark:border-stone-800/50 hover:bg-gray-50/50 dark:hover:bg-[#1A1A1A]/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-4">
+                          {iconoMovimiento(mov.isEntrada)}
+                          <p className="font-bold text-gray-900 dark:text-white text-sm">{log.itemName}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-xs text-gray-500 dark:text-stone-500">{log.reason}</td>
+                      <td className="px-6 py-4">{cantidadMovimiento(log, mov)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {mov.cost > 0 ? <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">{formatCOP(mov.cost)}</p> : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-6 py-4 text-[11px] text-gray-400 dark:text-stone-500 whitespace-nowrap">{mov.fecha}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden divide-y divide-gray-100 dark:divide-stone-800">
+            {filteredInventoryLogs.length === 0 ? (
+              <div className="p-12 text-center text-gray-500 font-medium">No hay registros de movimientos.</div>
+            ) : paginatedLogs.map(log => {
+              const mov = datosMovimiento(log);
+              return (
+                <div key={log.id} className="flex items-center gap-4 p-5 hover:bg-gray-50/50 dark:hover:bg-[#1A1A1A]/50 transition-colors">
+                  {iconoMovimiento(mov.isEntrada)}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-900 dark:text-white text-sm truncate">{log.itemName}</p>
+                    <p className="text-xs text-gray-500 dark:text-stone-500 truncate mt-0.5">{log.reason}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    {cantidadMovimiento(log, mov)}
+                    {mov.cost > 0 && <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">{formatCOP(mov.cost)}</p>}
+                    <p className="text-[11px] text-gray-400 dark:text-stone-500 whitespace-nowrap">{mov.fecha}</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-900 dark:text-white text-sm truncate">{log.itemName}</p>
-                  <p className="text-xs text-gray-500 dark:text-stone-500 truncate mt-0.5">{log.reason}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1.5 shrink-0">
-                  <span className={`inline-flex items-baseline gap-1 px-3 py-1 rounded-full text-sm font-black tabular-nums ${
-                    isEntrada
-                      ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                      : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-                  }`}>
-                    {isEntrada ? '+' : '−'}{Math.abs(log.amount)}
-                    {unit && <span className="text-[10px] font-bold opacity-70">{unit}</span>}
-                  </span>
-                  {cost > 0 && (
-                    <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">{formatCOP(cost)}</p>
-                  )}
-                  <p className="text-[11px] text-gray-400 dark:text-stone-500 whitespace-nowrap">
-                    {logDate.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })} · {logDate.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
-              </div>
-            );
-          }) : (
-            <div className="p-12 text-center text-gray-500 font-medium">No hay registros de movimientos.</div>
-          )}
+              );
+            })}
+          </div>
+
+          {paginacion(logPageActual, logTotalPages, setLogPage, 'Mostrando ' + paginatedLogs.length + ' de ' + filteredInventoryLogs.length + ' movimientos encontrados')}
         </div>
         </div>
       </div>

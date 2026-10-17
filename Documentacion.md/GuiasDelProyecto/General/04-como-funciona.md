@@ -62,7 +62,7 @@ SyncDatos.tsx (en todas las pantallas)
 - Si no hay cambios por un rato, pregunta cada 6 s; si la pestaña está oculta, cada 20 s.
 - Cada rol recibe solo lo suyo: el cliente sus pedidos, el domiciliario los suyos y los disponibles, el admin todo.
 
-Detalle en [SyncController](../controllers/SyncController.md) y [SyncDatos](../src/components/SyncDatos.md).
+Detalle en [SyncController](../../controllers/SyncController.md) y [SyncDatos](../../src/components/SyncDatos.md).
 
 ## 4. Quién hace qué en PHP
 | Pieza | Carpeta | Trabajo | Ejemplo |

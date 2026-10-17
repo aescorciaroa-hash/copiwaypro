@@ -1,5 +1,5 @@
 # sql/create-admin.php
-¿No entiendes una palabra? Mira el [glosario](../GLOSARIO.md).
+¿No entiendes una palabra? Mira el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).
 
 ## ¿Para qué sirve?
 Crea el primer administrador desde la consola.
@@ -14,7 +14,7 @@ Crea el primer administrador desde la consola.
 
 ## Línea por línea
 
-Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GLOSARIO.md).
+Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).
 
 | # | Código | Qué hace |
 |---|---|---|

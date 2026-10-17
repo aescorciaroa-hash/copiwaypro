@@ -1,5 +1,5 @@
 # models/PagoService.php
-¿No entiendes una palabra? Mira el [glosario](../GLOSARIO.md).
+¿No entiendes una palabra? Mira el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).
 
 ## ¿Para qué sirve?
 Maneja los pagos en línea de prueba.
@@ -26,7 +26,7 @@ Maneja los pagos en línea de prueba.
 
 ## Línea por línea
 
-Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GLOSARIO.md).
+Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).
 
 | # | Código | Qué hace |
 |---|---|---|

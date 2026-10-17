@@ -316,6 +316,13 @@ src/
 
 ```
 ├── Documentacion.md/   → explicación de cada archivo
+│   └── GuiasDelProyecto/   → guías de todo el proyecto (no de un solo archivo)
+│       ├── Estructura&Glosario/
+│       │   ├── ESTRUCTURA.md   → este archivo: el árbol del proyecto
+│       │   └── GLOSARIO.md     → qué significa cada palabra y símbolo
+│       ├── General/            → guías por tema: instalar, arrancar, pedidos, seguridad...
+│       └── ManualUsuario&Logica/
+│           └── MANUAL_USUARIO_Y_LOGICA.md → cómo se usa el sistema y su lógica
 ├── Documentos/         → requerimientos e historias de usuario
 ├── node_modules/       → librerías de React (no se toca)
 └── vendor/             → librerías de PHP (no se toca)

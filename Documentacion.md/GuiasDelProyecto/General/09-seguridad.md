@@ -87,4 +87,4 @@ detalle queda solo en el log de PHP. Nunca se muestran datos de la conexión.
 - [ ] No cargar `seed.sql` (o cambiar todas sus contraseñas).
 - [ ] Usuario de MySQL con contraseña (no `root` sin clave).
 - [ ] HTTPS.
-- [ ] Revisar las observaciones de la sección 4 de [el índice principal](../README.md).
+- [ ] Revisar las observaciones de la sección 4 de [el índice principal](../../README.md).

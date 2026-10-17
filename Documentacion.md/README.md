@@ -15,7 +15,7 @@ Cada documento tiene las mismas partes:
 - **Variables importantes**: de dónde viene cada una, para qué sirve y a dónde va.
 - **Código explicado**: las partes del código, con ejemplos.
 - **¿Qué pasa si se borra?**: qué deja de funcionar y qué error aparece si se borra el archivo, una
-  línea `require_once`, un método o una ruta (ver también [la guía 15](general.md/15-si-algo-deja-de-funcionar.md)).
+  línea `require_once`, un método o una ruta (ver también [la guía 15](GuiasDelProyecto/General/15-si-algo-deja-de-funcionar.md)).
 
 Algunas carpetas tienen además un `README.md` que explica lo que tienen en común todos sus archivos
 (por ejemplo, [controllers/README.md](controllers/README.md) explica la forma de un controlador).
@@ -23,11 +23,11 @@ Algunas carpetas tienen además un `README.md` que explica lo que tienen en com�
 ---
 
 ## 🌳 Estructura completa
-[ESTRUCTURA.md](ESTRUCTURA.md): todo el proyecto en forma de árbol, con lo que hace cada archivo en una línea.
+[ESTRUCTURA.md](GuiasDelProyecto/Estructura&Glosario/ESTRUCTURA.md): todo el proyecto en forma de árbol, con lo que hace cada archivo en una línea.
 
 ## 📘 Guías generales (empieza aquí)
-Si es la primera vez, lee primero las guías por tema en [general.md/](general.md/README.md):
-[qué es](general.md/01-que-es-copiwaypro.md) · [instalación](general.md/02-instalacion.md) · [arrancar el sistema](general.md/03-arrancar-el-sistema.md) · [cómo funciona](general.md/04-como-funciona.md) · [roles](general.md/05-roles-y-usuarios.md) · [ciclo de un pedido](general.md/06-ciclo-de-un-pedido.md) · [base de datos](general.md/07-base-de-datos.md) · [configuración](general.md/08-configuracion.md) · [seguridad](general.md/09-seguridad.md) · [pagos](general.md/10-pagos.md) · [notificaciones y correo](general.md/11-notificaciones-y-correo.md) · [hacer cambios](general.md/12-como-hacer-cambios.md) · [problemas comunes](general.md/13-problemas-comunes.md) · [comandos](general.md/14-comandos.md) · [**si algo deja de funcionar**](general.md/15-si-algo-deja-de-funcionar.md)
+Si es la primera vez, lee primero las guías por tema en [GuiasDelProyecto/General/](GuiasDelProyecto/General/README.md):
+[qué es](GuiasDelProyecto/General/01-que-es-copiwaypro.md) · [instalación](GuiasDelProyecto/General/02-instalacion.md) · [arrancar el sistema](GuiasDelProyecto/General/03-arrancar-el-sistema.md) · [cómo funciona](GuiasDelProyecto/General/04-como-funciona.md) · [roles](GuiasDelProyecto/General/05-roles-y-usuarios.md) · [ciclo de un pedido](GuiasDelProyecto/General/06-ciclo-de-un-pedido.md) · [base de datos](GuiasDelProyecto/General/07-base-de-datos.md) · [configuración](GuiasDelProyecto/General/08-configuracion.md) · [seguridad](GuiasDelProyecto/General/09-seguridad.md) · [pagos](GuiasDelProyecto/General/10-pagos.md) · [notificaciones y correo](GuiasDelProyecto/General/11-notificaciones-y-correo.md) · [hacer cambios](GuiasDelProyecto/General/12-como-hacer-cambios.md) · [problemas comunes](GuiasDelProyecto/General/13-problemas-comunes.md) · [comandos](GuiasDelProyecto/General/14-comandos.md) · [**si algo deja de funcionar**](GuiasDelProyecto/General/15-si-algo-deja-de-funcionar.md)
 
 El resto de esta carpeta documenta **cada archivo** del proyecto.
 
@@ -164,7 +164,7 @@ Servicios (las reglas grandes, también en `models/`):
 | `package-lock.json` y `composer.lock` | Los genera el instalador solo: guardan la versión exacta de cada librería. No se editan a mano. |
 | `public/assets/` | Es `src/` compilado por `npm run build`. Se documenta su código fuente (`src/`). |
 | `Documentos/`, archivos `.docx` y `.xlsx` | Documentos del proyecto (requerimientos, historias de usuario), no código. |
-| [docs/MANUAL_USUARIO_Y_LOGICA.md](docs/MANUAL_USUARIO_Y_LOGICA.md) | Manual de usuario del sistema. |
+| [GuiasDelProyecto/ManualUsuario&Logica/MANUAL_USUARIO_Y_LOGICA.md](GuiasDelProyecto/ManualUsuario&Logica/MANUAL_USUARIO_Y_LOGICA.md) | Manual de usuario del sistema. |
 | `README.md` (raíz) | Descripción general del proyecto: arquitectura, instalación, cómo abrir el sitio, dónde se configura cada cosa y lista de rutas. Es el resumen; esta carpeta es el detalle. |
 
 ---

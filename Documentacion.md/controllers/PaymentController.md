@@ -1,5 +1,5 @@
 # controllers/PaymentController.php
-¿No entiendes una palabra? Mira el [glosario](../GLOSARIO.md).
+¿No entiendes una palabra? Mira el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).
 
 ## ¿Para qué sirve?
 Se encarga de los pagos en línea (de prueba).
@@ -23,7 +23,7 @@ Se encarga de los pagos en línea (de prueba).
 
 ## Línea por línea
 
-Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GLOSARIO.md).
+Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).
 
 | # | Código | Qué hace |
 |---|---|---|

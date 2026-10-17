@@ -7,9 +7,9 @@ Sistema para un restaurante de hamburguesas a domicilio con cinco roles: Cliente
 
 Corre en local con Laragon en **`http://localhost/copiwaypro/`**.
 
-> 📘 **Guías generales** (instalar, arrancar, cómo funciona, roles, pedidos, seguridad, problemas comunes...): [Documentacion.md/general.md/README.md](Documentacion.md/general.md/README.md).
+> 📘 **Guías generales** (instalar, arrancar, cómo funciona, roles, pedidos, seguridad, problemas comunes...): [Documentacion.md/GuiasDelProyecto/General/README.md](Documentacion.md/GuiasDelProyecto/General/README.md).
 >
-> 🌳 **Estructura completa en forma de árbol:** [Documentacion.md/ESTRUCTURA.md](Documentacion.md/ESTRUCTURA.md).
+> 🌳 **Estructura completa en forma de árbol:** [Documentacion.md/GuiasDelProyecto/Estructura&Glosario/ESTRUCTURA.md](Documentacion.md/GuiasDelProyecto/Estructura&Glosario/ESTRUCTURA.md).
 >
 > 📚 **Documentación archivo por archivo:** [Documentacion.md/README.md](Documentacion.md/README.md). Explica qué hace cada archivo, con qué se conecta y para qué sirve cada variable.
 

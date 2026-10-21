@@ -61,11 +61,11 @@ Describen qué campos tiene cada cosa. Coinciden con lo que arman las funciones 
 | `updateStaff` | `PUT /staff/{id}` | `update` | `StaffSection.tsx` (editar y **Dar de baja**) |
 | `deleteStaff` | `DELETE /staff/{id}?role=` | `destroy` | `StaffSection.tsx` (borrado permanente; si PHP lo permite, lo quita de la lista) |
 | `updateDriverLocation` | `PATCH /staff/{id}/location` | `updateLocation` | `DeliveryDashboard.tsx` (GPS) |
-| `addOrder(order, usePoints)` | `POST /orders` | OrderController `store` | `ClientDashboard.tsx` |
+| `addOrder(order, pointsToUse)` | `POST /orders` | OrderController `store` | `ClientDashboard.tsx` |
 | `addManualOrder` | `POST /orders/manual` | `storeManual` | `AdminDashboard.tsx` (devuelve el pedido creado) |
 | `updateOrderAddress` | `PATCH /orders/{id}/address` | `updateAddress` | `AdminDashboard.tsx` |
 | `saveOrderDestination` | `PATCH /orders/{id}/destination` | `updateDestination` | `DeliveryDashboard.tsx` |
-| `prepareOnlinePayment(order, usePoints)` | `POST /payments/prepare` | PaymentController `prepare` | `ClientDashboard.tsx` |
+| `prepareOnlinePayment(order, pointsToUse)` | `POST /payments/prepare` | PaymentController `prepare` | `ClientDashboard.tsx` |
 | `updateOrderStatus` | `PATCH /orders/{id}/preparing·ready·accept·deliver` | OrderController | Cocina, Domiciliario, Admin |
 | `takeOrder` | `PATCH /orders/{id}/take` | `take` | `DeliveryDashboard.tsx` |
 | `releaseOrder` | `PATCH /orders/{id}/release` | `release` | `DeliveryDashboard.tsx`, `admin/OrdersSection.tsx` |
@@ -81,8 +81,9 @@ Acciones que **no** llaman a PHP (solo cambian el estado local): `addInventoryLo
 `addClient`, `deleteClient`. Los comentarios del código explican por qué (por ejemplo, los pedidos no
 se borran, se archivan en el cierre de caja).
 
-`usePoints` (en `addOrder` y `prepareOnlinePayment`) le dice al servidor que el cliente quiere pagar
-parte con sus puntos. Se envía en los dos para que el monto de la pasarela y el del pedido coincidan.
+`pointsToUse` (en `addOrder` y `prepareOnlinePayment`) es **cuántos puntos** eligió usar el cliente
+(0 = ninguno). Se le manda al servidor como `usePoints` (sí o no) y `pointsToUse` (la cantidad). Se envía en
+los dos para que el monto de la pasarela y el del pedido coincidan.
 
 ## Código explicado
 ```ts

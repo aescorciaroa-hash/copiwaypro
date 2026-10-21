@@ -67,18 +67,18 @@ class AuthController
     {
         $email     = trim((string) ($this->datos['email'] ?? ''));
         $idCliente = $this->clienteModel->buscarIdPorCorreo($email);
+        // Si el correo no esta registrado, se avisa y no se envia nada.
+        if (!$idCliente) {
+            responderError('El correo es incorrecto o no existe.', 404);
+        }
 
-        // Se responde igual exista o no la cuenta, para no revelar que correos estan registrados.
-        if ($idCliente) {
-            $codigo = (string) random_int(100000, 999999);
-            $this->codigoModel->crearParaCliente($idCliente, $codigo);
-            $enviado = CorreoService::enviarCodigoRecuperacion($email, $codigo);
-
-            // Solo en local y si el correo no salio: se devuelve el codigo para poder probar.
-            global $config;
-            if (!$enviado && $config['entorno'] === 'local') {
-                responderJson(['ok' => true, 'debugCode' => $codigo]);
-            }
+        $codigo = (string) random_int(100000, 999999);
+        $this->codigoModel->crearParaCliente($idCliente, $codigo);
+        $enviado = CorreoService::enviarCodigoRecuperacion($email, $codigo, $this->clienteModel->buscarCrudo($idCliente)['nombre']);
+        // Solo en local y si el correo no salio: se devuelve el codigo para poder probar.
+        global $config;
+        if (!$enviado && $config['entorno'] === 'local') {
+            responderJson(['ok' => true, 'debugCode' => $codigo]);
         }
         responderJson(['ok' => true]);
     }
@@ -134,8 +134,8 @@ class AuthController
         $email = trim((string) $this->datos['email']);
         $ip    = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-        if ($this->intentoModel->excedeLimite($email, $ip)) {
-            responderError('Demasiados intentos fallidos. Intenta de nuevo en unos minutos.', 429);
+        if ($this->intentoModel->excedeLimite($email)) {
+            responderError('Demasiados intentos fallidos. Espera 1 minuto e intenta de nuevo.', 429);
         }
 
         if ($usaPin) {

@@ -80,6 +80,6 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | Si se borra… | Qué deja de funcionar | Error que sale |
 |---|---|---|
 | el archivo completo | **todo el sistema** (helpers.php no lo encuentra) | `Failed to open stream` |
-| la función `pedido_a_json()` | recargar los pedidos después del cierre de caja, hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp, cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario o administrador), salir a entregar ("En camino"), entregar pedidos con el PIN, calificar pedidos, cargar los datos de todas las pantallas | `Call to undefined function pedido_a_json()` |
+| la función `pedido_a_json()` | recargar los pedidos después del cierre de caja, hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp, cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario), salir a entregar ("En camino"), entregar pedidos con el PIN, calificar pedidos, cargar los datos de todas las pantallas | `Call to undefined function pedido_a_json()` |
 
 **Cómo ver el error:** en el navegador, **F12 → Red → la petición en rojo → Respuesta**.

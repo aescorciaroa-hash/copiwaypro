@@ -70,7 +70,7 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 ## ¿Qué pasa si se borra?
 | Si se borra… | Qué deja de funcionar | Error que sale |
 |---|---|---|
-| el archivo completo | recargar los pedidos después del cierre de caja, hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp, cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario o administrador), salir a entregar ("En camino"), entregar pedidos con el PIN, calificar pedidos, empezar un pago en línea, crear el pago, saber si el pago fue aprobado, activar las notificaciones | `Failed to open stream` |
+| el archivo completo | recargar los pedidos después del cierre de caja, hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp, cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario), salir a entregar ("En camino"), entregar pedidos con el PIN, calificar pedidos, empezar un pago en línea, crear el pago, saber si el pago fue aprobado, activar las notificaciones | `Failed to open stream` |
 | el método `guardar()` | activar las notificaciones | `Call to undefined method PushSuscripcion::guardar()` |
 | el método `eliminarPorEndpoint()` | entregar pedidos con el PIN | `Call to undefined method PushSuscripcion::eliminarPorEndpoint()` |
 | el método `listarPorCliente()` | entregar pedidos con el PIN | `Call to undefined method PushSuscripcion::listarPorCliente()` |

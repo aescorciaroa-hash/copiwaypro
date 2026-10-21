@@ -47,7 +47,7 @@ export default function CatalogSection({
     }
   });
 
-  const categoriesWithProducts = allCategories.filter(cat => 
+  const categoriesWithProducts = allCategories.filter(cat =>
     catalog.some(p => {
       const pCat = p.category || (
         p.name.toLowerCase().includes('hamburguesa') ? 'Hamburguesas de Pan' :
@@ -83,17 +83,19 @@ export default function CatalogSection({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-[28px] font-bold tracking-tight text-gray-900 dark:text-white">Catálogo de Productos</h2>
+        {lastOrder && (
+          <button
+            onClick={() => reorder(lastOrder)}
+            title="Agrega al carrito lo mismo de tu último pedido"
+            className="self-start sm:self-auto inline-flex items-center gap-2 pl-2 pr-4 py-2 rounded-full bg-brand-orange text-white text-sm font-bold hover:bg-brand-orange/90 shadow-md shadow-brand-orange/20 transition-all active:scale-[0.97] cursor-pointer whitespace-nowrap"
+          >
+            <span className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <RotateCcw className="w-4 h-4" />
+            </span>
+            Pedir lo mismo de la última vez
+          </button>
+        )}
       </div>
-
-      {lastOrder && (
-        <button 
-          onClick={() => reorder(lastOrder)}
-          className="w-full bg-brand-orange text-white py-4 rounded-2xl font-black text-lg hover:bg-brand-orange/90 flex items-center justify-center gap-3 shadow-lg shadow-brand-orange/20 transition-all hover:scale-[1.01] active:scale-[0.98] mb-2 uppercase tracking-wide"
-        >
-          <RotateCcw className="w-6 h-6" />
-          Pedir lo mismo de la última vez
-        </button>
-      )}
 
       {/* Category Filter Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
@@ -123,7 +125,7 @@ export default function CatalogSection({
           {filteredCatalog.map((prod) => {
             const isTopSeller = prod.badge === 'Más Vendido' || (catalog.length > 0 && prod.id === catalog[0].id && !prod.badge);
             const badgeText = prod.badge || (isTopSeller ? 'Más Vendido' : null);
-            
+
             // Check if product is available based on recipe inventory
             let isAvailable = true;
             if (prod.ingredients && prod.ingredients.length > 0) {
@@ -138,8 +140,8 @@ export default function CatalogSection({
             }
 
             return (
-              <div 
-                key={prod.id} 
+              <div
+                key={prod.id}
                 onClick={() => {
                   if (isAvailable) openCustomizer(prod);
                 }}

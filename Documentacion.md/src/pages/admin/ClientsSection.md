@@ -1,8 +1,12 @@
 # src/pages/admin/ClientsSection.tsx
 
 ## ¿Para qué sirve?
-Es la pestaña **"Directorio Clientes"**: tabla (en el celular, tarjetas) con todos los clientes, su
-cantidad de pedidos, total gastado y puntos, con un buscador.
+Es la pestaña **"Directorio Clientes"**: la tabla **"Lista de Clientes"** (igual de forma que la Lista de
+Personal) con todos los clientes, su cantidad de pedidos, el total gastado y la fecha del último pedido,
+con un buscador. En celular, cada cliente se ve como una tarjeta.
+
+Muestra 8 clientes por página, con los botones de página abajo (`<` `1` `2` `>`) y el texto
+"Mostrando X de Y clientes encontrados". Al escribir en el buscador vuelve a la página 1.
 
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |
@@ -19,12 +23,22 @@ cantidad de pedidos, total gastado y puntos, con un buscador.
 | `customerSearch` / `setCustomerSearch` | Texto del buscador. |
 | `setSelectedClientInfo` | Abrir el detalle de un cliente. |
 
+## Variables
+| Variable | Qué es |
+|---|---|
+| `POR_PAGINA` | Cuántos clientes se ven por página (8). |
+| `pagina` / `setPagina` | En qué página va la tabla. |
+| `totalPaginas` | Cuántas páginas hay (clientes ÷ 8, redondeado hacia arriba). |
+| `paginatedClients` | Solo los clientes de la página actual (`slice` corta la lista). |
+| `numerosPagina` | Los números de página que se ven abajo (máximo 5 a la vez). |
+
 | Columna | Sale de (React) | Sale de (MySQL) |
 |---|---|---|
-| Nombre, teléfono, correo | `name`, `phone`, `email` | `nombre`, `telefono`, `correo` |
+| Nombre y Contacto (nombre y, debajo, el correo) | `name`, `email` | `nombre`, `correo` |
+| Teléfono | `phone` | `telefono` |
 | Pedidos | `ordersCount` | `COUNT(*)` en `Cliente::comoJson()` |
-| Total gastado | `totalSpent` | `total_gastado` |
-| Puntos | `points` | `puntos_fidelidad` |
+| Total Gastado | `totalSpent` | `total_gastado` |
+| Último Pedido | `lastOrderDate` | `ultimo` (la fecha del pedido más reciente) en `Cliente::comoJson()` |
 
 ## ¿Qué pasa si se borra?
 

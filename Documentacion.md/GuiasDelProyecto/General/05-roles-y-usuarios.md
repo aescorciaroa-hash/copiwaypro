@@ -75,6 +75,6 @@ cuenta inactiva no puede iniciar sesión, y si tenía la sesión abierta la pier
 petición (el sistema vuelve a revisar la cuenta en cada una).
 
 ## Bloqueo por intentos
-Después de **5 intentos fallidos en 15 minutos** (por correo o por IP), el login responde
-"Demasiados intentos fallidos" hasta que pase el tiempo. Se configura con las constantes de `models/IntentoLogin.php`
+Después de **5 intentos fallidos en 1 minuto** con el **mismo correo**, el login responde
+"Demasiados intentos fallidos" hasta que pase ese minuto. Los otros perfiles pueden seguir entrando desde el mismo computador, y cuando se entra bien los fallos se borran. Se configura con las constantes de `models/IntentoLogin.php`
 (ver [Configuración](08-configuracion.md)).

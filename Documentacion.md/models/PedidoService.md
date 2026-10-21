@@ -359,342 +359,339 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 363 | `$saldo = (int) $cliente['puntos_fidelidad'];` | ...guarda cuántos puntos tiene. |
 | 364 | `if ($reglas['valor'] > 0 && $saldo > 0 && $saldo >= $reglas['minimo']) {` | ...si un punto vale algo, tiene puntos y llega al mínimo... |
 | 365 | `$maximoPorMonto = (int) floor(($subtotal - $descuento) / $reglas['valor']);` | ...calcula cuántos puntos se pueden usar como máximo para no pasarse del valor de los productos (`floor` redondea hacia abajo). |
-| 366 | `$puntosCanjeados = max(0, min($saldo, $maximoPorMonto));` | ...usa lo menor entre sus puntos y ese máximo (`min`), y nunca menos de 0 (`max`). |
-| 367 | `$descuentoPuntos = round($puntosCanjeados * $reglas['valor'], 2);` | ...el descuento = puntos × valor de un punto. |
-| 368 | `}` | Cierra el `if`. |
+| 366 | `$elegidos = isset($payload['pointsToUse']) ? (int) $payload['pointsToUse'] : $saldo;` | `$elegidos` = cuántos puntos **eligió** el cliente (`pointsToUse`, lo que escribió en la cajita del pago). `isset()` pregunta si lo mandó; si no lo mandó, se toman todos sus puntos (`$saldo`). `(int)` lo vuelve número entero. |
+| 367 | `$puntosCanjeados = max(0, min($saldo, $maximoPorMonto, $elegidos));` | Los puntos que se canjean = el **menor** de tres números (`min`): los que tiene, los que alcanzan a cubrir los productos, y los que eligió. `max(0, ...)` evita que quede negativo (por si alguien manda un número negativo). |
+| 368 | `$descuentoPuntos = round($puntosCanjeados * $reglas['valor'], 2);` | ...el descuento = puntos × valor de un punto. |
 | 369 | `}` | Cierra el `if`. |
-| 371 | `return [` | Devuelve el cálculo: |
-| 372 | `'items'           => $resueltos,` | los productos revisados, |
-| 373 | `'subtotal'        => $subtotal,` | el subtotal, |
-| 374 | `'envio'           => $envio,` | el domicilio, |
-| 375 | `'descuento'       => $descuento,` | el descuento de cumpleaños, |
-| 376 | `'puntosCanjeados' => $puntosCanjeados,` | los puntos usados, |
-| 377 | `'descuentoPuntos' => $descuentoPuntos,` | el descuento por puntos, |
-| 378 | `'total'           => round($subtotal - $descuento - $descuentoPuntos + $envio, 2),` | y el total = subtotal − descuentos + domicilio (redondeado a 2 decimales). |
-| 379 | `];` | Cierra la lista. |
-| 380 | `}` | Cierra la función `calcular()`. |
-| 382 | `private function sumarPrecios($ingredientes)` | Método `sumarPrecios($ingredientes)` (privado): suma el precio de varios ingredientes. |
-| 383 | `{` | Abre la función `sumarPrecios()`. |
-| 384 | `$suma = 0;` | `$suma` empieza en 0. |
-| 385 | `foreach ($ingredientes as $ing) {` | Recorre cada ingrediente. |
-| 386 | `$suma += (float) $ing['precio_extra'];` | Le suma su precio (`+=`). |
-| 387 | `}` | Cierra el `foreach`. |
-| 388 | `return $suma;` | Devuelve la suma. |
-| 389 | `}` | Cierra la función `sumarPrecios()`. |
-| 391 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Total que se cobraria por este carrito (para abrir la pasarela de pago)."* |
-| 392 | `public function cotizar($idCliente, $payload)` | Método `cotizar($idCliente, $payload)`: calcula el total antes de pagar (para la pasarela). Lo usa `PaymentController::prepare()`. |
-| 393 | `{` | Abre la función `cotizar()`. |
-| 394 | `$configModel = new Configuracion();` | Crea el modelo `Configuracion`. |
-| 395 | `if (!$configModel->tiendaAbiertaAhora()) {` | Si la tienda no está abierta... |
-| 396 | `throw new Exception('La tienda está cerrada o pausada en este momento. No se pueden procesar pagos.');` | ...lanza el error. |
-| 397 | `}` | Cierra el `if`. |
-| 398 | `$cliente = $this->buscarCliente($idCliente);` | Busca al cliente. |
-| 399 | `if (!$cliente) {` | Si no existe... |
-| 400 | `throw new InvalidArgumentException('Cliente no encontrado.');` | ...lanza el error "Cliente no encontrado.". |
-| 401 | `}` | Cierra el `if`. |
-| 402 | `return $this->calcular($cliente, $payload, $configModel, !empty($payload['usePoints']))['total'];` | Calcula todo (`calcular()`) y devuelve solo el total (`['total']`). |
-| 403 | `}` | Cierra la función `cotizar()`. |
-| 405 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Producto oculto que sirve de base para las hamburguesas del creador interactivo. Se crea una sola vez."* |
-| 406 | `private function productoPersonalizadoOculto()` | Método `productoPersonalizadoOculto()` (privado): trae el producto oculto "Hamburguesa Personalizada" (la base de las hamburguesas armadas por el cliente). Si no existe, lo crea una sola vez. |
-| 407 | `{` | Abre la función `productoPersonalizadoOculto()`. |
-| 408 | `$sql = "SELECT * FROM PRODUCTO WHERE nombre = 'Hamburguesa Personalizada' AND estado = 'oculto' LIMIT 1";` | Guarda en `$sql` la consulta: "busca el producto 'Hamburguesa Personalizada' oculto". |
-| 410 | `$stmt = $this->conn->prepare($sql);` | La prepara. |
-| 411 | `$stmt->execute();` | Ejecuta la consulta. |
-| 412 | `$producto = $stmt->get_result()->fetch_assoc();` | Lo guarda en `$producto`. |
-| 413 | `$stmt->close();` | Cierra la consulta. |
-| 414 | `if ($producto) {` | Si existe... |
-| 415 | `return $producto;` | ...lo devuelve. |
-| 416 | `}` | Cierra el `if`. |
-| 418 | `$stmtC = $this->conn->prepare("SELECT id_categoria FROM CATEGORIA WHERE nombre = 'Personalizado' AND ambito = 'menu' LIMIT 1");` | Si no, prepara la consulta: "busca la categoría 'Personalizado' del menú". |
-| 419 | `$stmtC->execute();` | Ejecuta la consulta. |
-| 420 | `$categoria = $stmtC->get_result()->fetch_assoc();` | La guarda en `$categoria`. |
-| 421 | `$stmtC->close();` | Cierra la consulta. |
-| 423 | `if ($categoria) {` | Si existe... |
-| 424 | `$idCategoria = $categoria['id_categoria'];` | ...guarda su número. |
-| 425 | `} else {` | Si no... |
-| 426 | `$stmtN = $this->conn->prepare("INSERT INTO CATEGORIA (nombre, ambito) VALUES ('Personalizado', 'menu')");` | ...prepara la consulta: "crea la categoría 'Personalizado'". |
-| 427 | `$stmtN->execute();` | Ejecuta la consulta. |
-| 428 | `$stmtN->close();` | Cierra la consulta. |
-| 429 | `$idCategoria = $this->conn->insert_id;` | ...y guarda su número. |
-| 430 | `}` | Cierra el `else`. |
-| 432 | `$stmtI = $this->conn->prepare(` | Prepara la consulta: "crea el producto 'Hamburguesa Personalizada', con precio 0 y oculto". |
-| 433 | `"INSERT INTO PRODUCTO (id_categoria, nombre, precio, estado)` | ↑ (sigue la misma instrucción) |
-| 434 | `VALUES (?, 'Hamburguesa Personalizada', 0, 'oculto')"` | ↑ (sigue la misma instrucción) |
-| 435 | `);` | ↑ (sigue la misma instrucción) |
-| 436 | `$stmtI->bind_param("i", $idCategoria);` | Llena los `?` de la consulta, en orden: `$idCategoria` (número entero). |
-| 437 | `$stmtI->execute();` | Ejecuta la consulta. |
-| 438 | `$stmtI->close();` | Cierra la consulta. |
-| 440 | `$stmtF = $this->conn->prepare($sql);` | Vuelve a preparar la consulta de búsqueda (`$sql`). |
-| 441 | `$stmtF->execute();` | Ejecuta la consulta. |
-| 442 | `$producto = $stmtF->get_result()->fetch_assoc();` | Guarda el producto recién creado. |
-| 443 | `$stmtF->close();` | Cierra la consulta. |
-| 444 | `return $producto;` | Lo devuelve. |
-| 445 | `}` | Cierra la función `productoPersonalizadoOculto()`. |
-| 447-451 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Busca cada ingrediente por id (o por nombre) y calcula su precio de venta: costo unitario + margen, redondeado a la centena (igual que en el frontend). Los ingredientes que no existen se ignoran."* |
-| 452 | `private function resolverIngredientes($referencias, $margen = 0.0)` | Método `resolverIngredientes($referencias, $margen)` (privado): busca cada ingrediente (por número o por nombre) y calcula su precio de venta. Los que no existen se saltan. |
-| 453 | `{` | Abre la función `resolverIngredientes()`. |
-| 454 | `$resueltos = [];` | `$resueltos` empieza vacía. |
-| 455 | `foreach ($referencias as $ref) {` | Recorre cada ingrediente que mandó la pantalla (`$ref`). |
-| 456 | `$row = null;` | `$row` empieza en `null` (todavía no lo encontró). |
-| 457 | `if (!empty($ref['id'])) {` | Si trae número... |
-| 458 | `$stmt = $this->conn->prepare("SELECT * FROM INGREDIENTE WHERE id_ingrediente = ? LIMIT 1");` | ...prepara la consulta: "busca el ingrediente con ese número". |
-| 459 | `$stmt->bind_param("s", $ref['id']);` | Llena los `?` de la consulta, en orden: `$ref['id']` (texto). |
-| 460 | `$stmt->execute();` | Ejecuta la consulta. |
-| 461 | `$row = $stmt->get_result()->fetch_assoc();` | ...lo guarda en `$row`. |
-| 462 | `$stmt->close();` | Cierra la consulta. |
-| 463 | `}` | Cierra el `if`. |
-| 464 | `if (!$row && !empty($ref['name'])) {` | Si no lo encontró y trae nombre... |
-| 465 | `$stmt = $this->conn->prepare("SELECT * FROM INGREDIENTE WHERE LOWER(nombre) = LOWER(?) LIMIT 1");` | ...prepara la consulta: "busca el ingrediente con ese nombre, sin importar mayúsculas". |
-| 466 | `$stmt->bind_param("s", $ref['name']);` | Llena los `?` de la consulta, en orden: `$ref['name']` (texto). |
-| 467 | `$stmt->execute();` | Ejecuta la consulta. |
-| 468 | `$row = $stmt->get_result()->fetch_assoc();` | ...lo guarda en `$row`. |
-| 469 | `$stmt->close();` | Cierra la consulta. |
-| 470 | `}` | Cierra el `if`. |
-| 471 | `if (!$row) {` | Si no lo encontró de ninguna forma... |
-| 472 | `continue;` | ...lo salta. |
-| 473 | `}` | Cierra el `if`. |
-| 474 | `$costo = (float) $row['costo_unitario'];` | Guarda en `$costo` lo que cuesta una unidad. |
-| 475 | `$resueltos[] = [` | Lo agrega a `$resueltos` con: |
-| 476 | `'id_ingrediente' => $row['id_ingrediente'],` | su número, |
-| 477 | `'nombre'         => $row['nombre'],` | su nombre, |
-| 478 | `'precio_extra'   => round(($costo * (1 + $margen / 100)) / 100) * 100,` | y su precio de venta: costo + margen de ganancia, redondeado a la centena (ej. 2.025 → 2.000). Así lo calcula también la pantalla. |
-| 479 | `];` | Cierra los datos. |
-| 480 | `}` | Cierra el `foreach`. |
-| 481 | `return $resueltos;` | Devuelve la lista. |
-| 482 | `}` | Cierra la función `resolverIngredientes()`. |
-| 484 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"15% de descuento si hoy es el cumpleanos del cliente."* |
-| 485 | `private function descuentoCumpleanos($cliente, $subtotal)` | Método `descuentoCumpleanos($cliente, $subtotal)` (privado): da 15% de descuento si hoy es el cumpleaños del cliente. |
-| 486 | `{` | Abre la función `descuentoCumpleanos()`. |
-| 487 | `if (empty($cliente['fecha_nacimiento'])) {` | Si no tiene fecha de nacimiento... |
-| 488 | `return 0.0;` | ...no hay descuento (0). |
-| 489 | `}` | Cierra el `if`. |
-| 490 | `$cumple = date('m-d', strtotime($cliente['fecha_nacimiento']));` | Saca el mes y el día del cumpleaños (`date('m-d', ...)`, ej. `10-17`). |
-| 491 | `return $cumple === date('m-d') ? round($subtotal * 0.15, 2) : 0.0;` | Si es igual al mes y día de hoy, el descuento es el 15% del subtotal (`× 0.15`); si no, 0. |
-| 492 | `}` | Cierra la función `descuentoCumpleanos()`. |
-| 494 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---------------------------------------------------------------"* |
-| 495 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Cambios de estado"* |
-| 496 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---------------------------------------------------------------"* |
-| 498 | `public function marcarPreparando($idPedido, $idAyudante = null)` | Método `marcarPreparando($idPedido, $idAyudante)`: pasa el pedido a "En preparación". Lo usa `OrderController::markPreparing()`. |
-| 499 | `{` | Abre la función `marcarPreparando()`. |
-| 500 | `$this->transicion($idPedido, ['pendiente'], 'en_preparacion');` | Cambia el estado de `'pendiente'` a `'en_preparacion'` (`transicion()` de abajo). Si no estaba pendiente, da error. |
-| 501 | `$this->registrarAyudante($idPedido, $idAyudante);` | Anota quién de cocina lo prepara (`registrarAyudante()` de abajo). |
-| 502 | `}` | Cierra la función `marcarPreparando()`. |
-| 504 | `public function marcarListo($idPedido, $idAyudante = null)` | Método `marcarListo($idPedido, $idAyudante)`: pasa el pedido a "Listo". Lo usa `OrderController::markReady()`. |
-| 505 | `{` | Abre la función `marcarListo()`. |
-| 506 | `$this->transicion($idPedido, ['pendiente', 'en_preparacion'], 'listo');` | Cambia el estado a `'listo'` (solo si estaba pendiente o en preparación). |
-| 508 | `$stmt = $this->conn->prepare("UPDATE PEDIDO SET fecha_listo = NOW() WHERE id_pedido = ?");` | Prepara la consulta: "anota la hora en que quedó listo (`NOW()`)". |
-| 509 | `$stmt->bind_param("i", $idPedido);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero). |
-| 510 | `$stmt->execute();` | Ejecuta la consulta. |
-| 511 | `$stmt->close();` | Cierra la consulta. |
-| 513 | `$this->registrarAyudante($idPedido, $idAyudante);` | Anota quién de cocina lo preparó. |
-| 514 | `}` | Cierra la función `marcarListo()`. |
-| 516 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Guarda quien de cocina preparo el pedido (solo el primero)."* |
-| 517 | `private function registrarAyudante($idPedido, $idAyudante)` | Método `registrarAyudante($idPedido, $idAyudante)` (privado): guarda quién de cocina preparó el pedido (solo el primero). |
-| 518 | `{` | Abre la función `registrarAyudante()`. |
-| 519 | `if (!$idAyudante) {` | Si no hay ayudante (lo hizo el administrador)... |
-| 520 | `return;` | ...sale. |
-| 521 | `}` | Cierra el `if`. |
-| 522 | `$stmt = $this->conn->prepare("UPDATE PEDIDO SET id_ayudante = ? WHERE id_pedido = ? AND id_ayudante IS NULL");` | Prepara la consulta: "anota el ayudante en el pedido, solo si todavía no tiene uno (`IS NULL`)". |
-| 523 | `$stmt->bind_param("si", $idAyudante, $idPedido);` | Llena los `?` de la consulta, en orden: `$idAyudante` (texto), `$idPedido` (número entero). |
-| 524 | `$stmt->execute();` | Ejecuta la consulta. |
-| 525 | `$stmt->close();` | Cierra la consulta. |
-| 526 | `}` | Cierra la función `registrarAyudante()`. |
-| 528 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Lee estado y domiciliario del pedido bloqueando la fila (FOR UPDATE)."* |
-| 529 | `private function bloquearPedido($idPedido)` | Método `bloquearPedido($idPedido)` (privado): lee el estado y el domiciliario del pedido y lo bloquea (`FOR UPDATE`), para que dos domiciliarios no lo tomen al mismo tiempo. |
-| 530 | `{` | Abre la función `bloquearPedido()`. |
-| 531 | `$stmt = $this->conn->prepare("SELECT estado, id_domiciliario FROM PEDIDO WHERE id_pedido = ? FOR UPDATE");` | Prepara la consulta: "trae el estado y el domiciliario del pedido, y bloquéalo". |
-| 532 | `$stmt->bind_param("i", $idPedido);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero). |
-| 533 | `$stmt->execute();` | Ejecuta la consulta. |
-| 534 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
-| 535 | `$stmt->close();` | Cierra la consulta. |
-| 536 | `return $row ?: null;` | Devuelve `$row`; si está vacío, devuelve `null` (nada). |
-| 537 | `}` | Cierra la función `bloquearPedido()`. |
-| 539 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"El domiciliario toma un pedido 'listo' (queda asignado, sin salir todavia)."* |
-| 540 | `public function tomarPedido($idPedido, $idDomiciliario)` | Método `tomarPedido($idPedido, $idDomiciliario)`: el domiciliario toma un pedido listo (queda asignado, pero todavía no sale). Lo usa `OrderController::take()`. |
-| 541 | `{` | Abre la función `tomarPedido()`. |
-| 542 | `$this->conn->begin_transaction();` | Empieza una transacción. |
-| 543 | `try {` | Intenta... |
-| 544 | `$row = $this->bloquearPedido($idPedido);` | ...lee y bloquea el pedido. |
-| 545 | `if (!$row \|\| $row['estado'] !== 'listo'` | ...si no existe, o no está listo, o ya lo tiene **otro** domiciliario... |
-| 546 | `\|\| ($row['id_domiciliario'] !== null && $row['id_domiciliario'] !== $idDomiciliario)) {` | ↑ (sigue la misma instrucción) |
-| 547 | `throw new Exception('Este pedido ya no está disponible para reparto.');` | ...lanza el error "Este pedido ya no está disponible para reparto.". |
-| 548 | `}` | Cierra el bloque. |
-| 550 | `$stmt = $this->conn->prepare("UPDATE PEDIDO SET id_domiciliario = ? WHERE id_pedido = ?");` | ...prepara la consulta: "asígnale este domiciliario al pedido". |
-| 551 | `$stmt->bind_param("si", $idDomiciliario, $idPedido);` | Llena los `?` de la consulta, en orden: `$idDomiciliario` (texto), `$idPedido` (número entero). |
-| 552 | `$stmt->execute();` | Ejecuta la consulta. |
-| 553 | `$stmt->close();` | Cierra la consulta. |
-| 555 | `$this->conn->commit();` | ...confirma la transacción. |
-| 556 | `} catch (Exception $e) {` | Si algo falló... |
-| 557 | `$this->conn->rollback();` | ...deshace todo. |
-| 558 | `throw $e;` | ...y lanza el error. |
-| 559 | `}` | Cierra el `catch`. |
-| 560 | `}` | Cierra la función `tomarPedido()`. |
-| 562-565 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Suelta un pedido para que otro domiciliario lo tome. El domiciliario solo suelta los suyos en 'listo'; el admin puede soltar uno 'listo' o 'en_camino'."* |
-| 566 | `public function liberarPedido($idPedido, $rol, $idActor)` | Método `liberarPedido($idPedido, $rol, $idActor)`: suelta un pedido para que otro domiciliario lo tome. Lo usa `OrderController::release()`. |
-| 567 | `{` | Abre la función `liberarPedido()`. |
-| 568 | `$this->conn->begin_transaction();` | Empieza una transacción. |
-| 569 | `try {` | Intenta... |
-| 570 | `$row = $this->bloquearPedido($idPedido);` | ...lee y bloquea el pedido. |
-| 571 | `if (!$row \|\| $row['id_domiciliario'] === null) {` | ...si no existe o no tiene domiciliario... |
-| 572 | `throw new Exception('Este pedido no tiene domiciliario asignado.');` | ...lanza el error "Este pedido no tiene domiciliario asignado.". |
-| 573 | `}` | Cierra el `if`. |
-| 574 | `if ($rol === 'delivery') {` | ...si quien lo suelta es un domiciliario... |
-| 575 | `if ($row['id_domiciliario'] !== $idActor \|\| $row['estado'] !== 'listo') {` | ...y no es suyo, o ya salió a entregarlo... |
+| 370 | `}` | Cierra el `if`. |
+| 372 | `return [` | Devuelve el cálculo: |
+| 373 | `'items'           => $resueltos,` | los productos revisados, |
+| 374 | `'subtotal'        => $subtotal,` | el subtotal, |
+| 375 | `'envio'           => $envio,` | el domicilio, |
+| 376 | `'descuento'       => $descuento,` | el descuento de cumpleaños, |
+| 377 | `'puntosCanjeados' => $puntosCanjeados,` | los puntos usados, |
+| 378 | `'descuentoPuntos' => $descuentoPuntos,` | el descuento por puntos, |
+| 379 | `'total'           => round($subtotal - $descuento - $descuentoPuntos + $envio, 2),` | y el total = subtotal − descuentos + domicilio (redondeado a 2 decimales). |
+| 380 | `];` | Cierra la lista. |
+| 381 | `}` | Cierra la función `calcular()`. |
+| 383 | `private function sumarPrecios($ingredientes)` | Método `sumarPrecios($ingredientes)` (privado): suma el precio de varios ingredientes. |
+| 384 | `{` | Abre la función `sumarPrecios()`. |
+| 385 | `$suma = 0;` | `$suma` empieza en 0. |
+| 386 | `foreach ($ingredientes as $ing) {` | Recorre cada ingrediente. |
+| 387 | `$suma += (float) $ing['precio_extra'];` | Le suma su precio (`+=`). |
+| 388 | `}` | Cierra el `foreach`. |
+| 389 | `return $suma;` | Devuelve la suma. |
+| 390 | `}` | Cierra la función `sumarPrecios()`. |
+| 392 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Total que se cobraria por este carrito (para abrir la pasarela de pago)."* |
+| 393 | `public function cotizar($idCliente, $payload)` | Método `cotizar($idCliente, $payload)`: calcula el total antes de pagar (para la pasarela). Lo usa `PaymentController::prepare()`. |
+| 394 | `{` | Abre la función `cotizar()`. |
+| 395 | `$configModel = new Configuracion();` | Crea el modelo `Configuracion`. |
+| 396 | `if (!$configModel->tiendaAbiertaAhora()) {` | Si la tienda no está abierta... |
+| 397 | `throw new Exception('La tienda está cerrada o pausada en este momento. No se pueden procesar pagos.');` | ...lanza el error. |
+| 398 | `}` | Cierra el `if`. |
+| 399 | `$cliente = $this->buscarCliente($idCliente);` | Busca al cliente. |
+| 400 | `if (!$cliente) {` | Si no existe... |
+| 401 | `throw new InvalidArgumentException('Cliente no encontrado.');` | ...lanza el error "Cliente no encontrado.". |
+| 402 | `}` | Cierra el `if`. |
+| 403 | `return $this->calcular($cliente, $payload, $configModel, !empty($payload['usePoints']))['total'];` | Calcula todo (`calcular()`) y devuelve solo el total (`['total']`). |
+| 404 | `}` | Cierra la función `cotizar()`. |
+| 406 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Producto oculto que sirve de base para las hamburguesas del creador interactivo. Se crea una sola vez."* |
+| 407 | `private function productoPersonalizadoOculto()` | Método `productoPersonalizadoOculto()` (privado): trae el producto oculto "Hamburguesa Personalizada" (la base de las hamburguesas armadas por el cliente). Si no existe, lo crea una sola vez. |
+| 408 | `{` | Abre la función `productoPersonalizadoOculto()`. |
+| 409 | `$sql = "SELECT * FROM PRODUCTO WHERE nombre = 'Hamburguesa Personalizada' AND estado = 'oculto' LIMIT 1";` | Guarda en `$sql` la consulta: "busca el producto 'Hamburguesa Personalizada' oculto". |
+| 411 | `$stmt = $this->conn->prepare($sql);` | La prepara. |
+| 412 | `$stmt->execute();` | Ejecuta la consulta. |
+| 413 | `$producto = $stmt->get_result()->fetch_assoc();` | Lo guarda en `$producto`. |
+| 414 | `$stmt->close();` | Cierra la consulta. |
+| 415 | `if ($producto) {` | Si existe... |
+| 416 | `return $producto;` | ...lo devuelve. |
+| 417 | `}` | Cierra el `if`. |
+| 419 | `$stmtC = $this->conn->prepare("SELECT id_categoria FROM CATEGORIA WHERE nombre = 'Personalizado' AND ambito = 'menu' LIMIT 1");` | Si no, prepara la consulta: "busca la categoría 'Personalizado' del menú". |
+| 420 | `$stmtC->execute();` | Ejecuta la consulta. |
+| 421 | `$categoria = $stmtC->get_result()->fetch_assoc();` | La guarda en `$categoria`. |
+| 422 | `$stmtC->close();` | Cierra la consulta. |
+| 424 | `if ($categoria) {` | Si existe... |
+| 425 | `$idCategoria = $categoria['id_categoria'];` | ...guarda su número. |
+| 426 | `} else {` | Si no... |
+| 427 | `$stmtN = $this->conn->prepare("INSERT INTO CATEGORIA (nombre, ambito) VALUES ('Personalizado', 'menu')");` | ...prepara la consulta: "crea la categoría 'Personalizado'". |
+| 428 | `$stmtN->execute();` | Ejecuta la consulta. |
+| 429 | `$stmtN->close();` | Cierra la consulta. |
+| 430 | `$idCategoria = $this->conn->insert_id;` | ...y guarda su número. |
+| 431 | `}` | Cierra el `else`. |
+| 433 | `$stmtI = $this->conn->prepare(` | Prepara la consulta: "crea el producto 'Hamburguesa Personalizada', con precio 0 y oculto". |
+| 434 | `"INSERT INTO PRODUCTO (id_categoria, nombre, precio, estado)` | ↑ (sigue la misma instrucción) |
+| 435 | `VALUES (?, 'Hamburguesa Personalizada', 0, 'oculto')"` | ↑ (sigue la misma instrucción) |
+| 436 | `);` | ↑ (sigue la misma instrucción) |
+| 437 | `$stmtI->bind_param("i", $idCategoria);` | Llena los `?` de la consulta, en orden: `$idCategoria` (número entero). |
+| 438 | `$stmtI->execute();` | Ejecuta la consulta. |
+| 439 | `$stmtI->close();` | Cierra la consulta. |
+| 441 | `$stmtF = $this->conn->prepare($sql);` | Vuelve a preparar la consulta de búsqueda (`$sql`). |
+| 442 | `$stmtF->execute();` | Ejecuta la consulta. |
+| 443 | `$producto = $stmtF->get_result()->fetch_assoc();` | Guarda el producto recién creado. |
+| 444 | `$stmtF->close();` | Cierra la consulta. |
+| 445 | `return $producto;` | Lo devuelve. |
+| 446 | `}` | Cierra la función `productoPersonalizadoOculto()`. |
+| 448-452 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Busca cada ingrediente por id (o por nombre) y calcula su precio de venta: costo unitario + margen, redondeado a la centena (igual que en el frontend). Los ingredientes que no existen se ignoran."* |
+| 453 | `private function resolverIngredientes($referencias, $margen = 0.0)` | Método `resolverIngredientes($referencias, $margen)` (privado): busca cada ingrediente (por número o por nombre) y calcula su precio de venta. Los que no existen se saltan. |
+| 454 | `{` | Abre la función `resolverIngredientes()`. |
+| 455 | `$resueltos = [];` | `$resueltos` empieza vacía. |
+| 456 | `foreach ($referencias as $ref) {` | Recorre cada ingrediente que mandó la pantalla (`$ref`). |
+| 457 | `$row = null;` | `$row` empieza en `null` (todavía no lo encontró). |
+| 458 | `if (!empty($ref['id'])) {` | Si trae número... |
+| 459 | `$stmt = $this->conn->prepare("SELECT * FROM INGREDIENTE WHERE id_ingrediente = ? LIMIT 1");` | ...prepara la consulta: "busca el ingrediente con ese número". |
+| 460 | `$stmt->bind_param("s", $ref['id']);` | Llena los `?` de la consulta, en orden: `$ref['id']` (texto). |
+| 461 | `$stmt->execute();` | Ejecuta la consulta. |
+| 462 | `$row = $stmt->get_result()->fetch_assoc();` | ...lo guarda en `$row`. |
+| 463 | `$stmt->close();` | Cierra la consulta. |
+| 464 | `}` | Cierra el `if`. |
+| 465 | `if (!$row && !empty($ref['name'])) {` | Si no lo encontró y trae nombre... |
+| 466 | `$stmt = $this->conn->prepare("SELECT * FROM INGREDIENTE WHERE LOWER(nombre) = LOWER(?) LIMIT 1");` | ...prepara la consulta: "busca el ingrediente con ese nombre, sin importar mayúsculas". |
+| 467 | `$stmt->bind_param("s", $ref['name']);` | Llena los `?` de la consulta, en orden: `$ref['name']` (texto). |
+| 468 | `$stmt->execute();` | Ejecuta la consulta. |
+| 469 | `$row = $stmt->get_result()->fetch_assoc();` | ...lo guarda en `$row`. |
+| 470 | `$stmt->close();` | Cierra la consulta. |
+| 471 | `}` | Cierra el `if`. |
+| 472 | `if (!$row) {` | Si no lo encontró de ninguna forma... |
+| 473 | `continue;` | ...lo salta. |
+| 474 | `}` | Cierra el `if`. |
+| 475 | `$costo = (float) $row['costo_unitario'];` | Guarda en `$costo` lo que cuesta una unidad. |
+| 476 | `$resueltos[] = [` | Lo agrega a `$resueltos` con: |
+| 477 | `'id_ingrediente' => $row['id_ingrediente'],` | su número, |
+| 478 | `'nombre'         => $row['nombre'],` | su nombre, |
+| 479 | `'precio_extra'   => round(($costo * (1 + $margen / 100)) / 100) * 100,` | y su precio de venta: costo + margen de ganancia, redondeado a la centena (ej. 2.025 → 2.000). Así lo calcula también la pantalla. |
+| 480 | `];` | Cierra los datos. |
+| 481 | `}` | Cierra el `foreach`. |
+| 482 | `return $resueltos;` | Devuelve la lista. |
+| 483 | `}` | Cierra la función `resolverIngredientes()`. |
+| 485 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"15% de descuento si hoy es el cumpleanos del cliente."* |
+| 486 | `private function descuentoCumpleanos($cliente, $subtotal)` | Método `descuentoCumpleanos($cliente, $subtotal)` (privado): da 15% de descuento si hoy es el cumpleaños del cliente. |
+| 487 | `{` | Abre la función `descuentoCumpleanos()`. |
+| 488 | `if (empty($cliente['fecha_nacimiento'])) {` | Si no tiene fecha de nacimiento... |
+| 489 | `return 0.0;` | ...no hay descuento (0). |
+| 490 | `}` | Cierra el `if`. |
+| 491 | `$cumple = date('m-d', strtotime($cliente['fecha_nacimiento']));` | Saca el mes y el día del cumpleaños (`date('m-d', ...)`, ej. `10-17`). |
+| 492 | `return $cumple === date('m-d') ? round($subtotal * 0.15, 2) : 0.0;` | Si es igual al mes y día de hoy, el descuento es el 15% del subtotal (`× 0.15`); si no, 0. |
+| 493 | `}` | Cierra la función `descuentoCumpleanos()`. |
+| 495 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---------------------------------------------------------------"* |
+| 496 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Cambios de estado"* |
+| 497 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---------------------------------------------------------------"* |
+| 499 | `public function marcarPreparando($idPedido, $idAyudante = null)` | Método `marcarPreparando($idPedido, $idAyudante)`: pasa el pedido a "En preparación". Lo usa `OrderController::markPreparing()`. |
+| 500 | `{` | Abre la función `marcarPreparando()`. |
+| 501 | `$this->transicion($idPedido, ['pendiente'], 'en_preparacion');` | Cambia el estado de `'pendiente'` a `'en_preparacion'` (`transicion()` de abajo). Si no estaba pendiente, da error. |
+| 502 | `$this->registrarAyudante($idPedido, $idAyudante);` | Anota quién de cocina lo prepara (`registrarAyudante()` de abajo). |
+| 503 | `}` | Cierra la función `marcarPreparando()`. |
+| 505 | `public function marcarListo($idPedido, $idAyudante = null)` | Método `marcarListo($idPedido, $idAyudante)`: pasa el pedido a "Listo". Lo usa `OrderController::markReady()`. |
+| 506 | `{` | Abre la función `marcarListo()`. |
+| 507 | `$this->transicion($idPedido, ['pendiente', 'en_preparacion'], 'listo');` | Cambia el estado a `'listo'` (solo si estaba pendiente o en preparación). |
+| 509 | `$stmt = $this->conn->prepare("UPDATE PEDIDO SET fecha_listo = NOW() WHERE id_pedido = ?");` | Prepara la consulta: "anota la hora en que quedó listo (`NOW()`)". |
+| 510 | `$stmt->bind_param("i", $idPedido);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero). |
+| 511 | `$stmt->execute();` | Ejecuta la consulta. |
+| 512 | `$stmt->close();` | Cierra la consulta. |
+| 514 | `$this->registrarAyudante($idPedido, $idAyudante);` | Anota quién de cocina lo preparó. |
+| 515 | `}` | Cierra la función `marcarListo()`. |
+| 517 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Guarda quien de cocina preparo el pedido (solo el primero)."* |
+| 518 | `private function registrarAyudante($idPedido, $idAyudante)` | Método `registrarAyudante($idPedido, $idAyudante)` (privado): guarda quién de cocina preparó el pedido (solo el primero). |
+| 519 | `{` | Abre la función `registrarAyudante()`. |
+| 520 | `if (!$idAyudante) {` | Si no hay ayudante (lo hizo el administrador)... |
+| 521 | `return;` | ...sale. |
+| 522 | `}` | Cierra el `if`. |
+| 523 | `$stmt = $this->conn->prepare("UPDATE PEDIDO SET id_ayudante = ? WHERE id_pedido = ? AND id_ayudante IS NULL");` | Prepara la consulta: "anota el ayudante en el pedido, solo si todavía no tiene uno (`IS NULL`)". |
+| 524 | `$stmt->bind_param("si", $idAyudante, $idPedido);` | Llena los `?` de la consulta, en orden: `$idAyudante` (texto), `$idPedido` (número entero). |
+| 525 | `$stmt->execute();` | Ejecuta la consulta. |
+| 526 | `$stmt->close();` | Cierra la consulta. |
+| 527 | `}` | Cierra la función `registrarAyudante()`. |
+| 529 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Lee estado y domiciliario del pedido bloqueando la fila (FOR UPDATE)."* |
+| 530 | `private function bloquearPedido($idPedido)` | Método `bloquearPedido($idPedido)` (privado): lee el estado y el domiciliario del pedido y lo bloquea (`FOR UPDATE`), para que dos domiciliarios no lo tomen al mismo tiempo. |
+| 531 | `{` | Abre la función `bloquearPedido()`. |
+| 532 | `$stmt = $this->conn->prepare("SELECT estado, id_domiciliario FROM PEDIDO WHERE id_pedido = ? FOR UPDATE");` | Prepara la consulta: "trae el estado y el domiciliario del pedido, y bloquéalo". |
+| 533 | `$stmt->bind_param("i", $idPedido);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero). |
+| 534 | `$stmt->execute();` | Ejecuta la consulta. |
+| 535 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
+| 536 | `$stmt->close();` | Cierra la consulta. |
+| 537 | `return $row ?: null;` | Devuelve `$row`; si está vacío, devuelve `null` (nada). |
+| 538 | `}` | Cierra la función `bloquearPedido()`. |
+| 540 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"El domiciliario toma un pedido 'listo' (queda asignado, sin salir todavia)."* |
+| 541 | `public function tomarPedido($idPedido, $idDomiciliario)` | Método `tomarPedido($idPedido, $idDomiciliario)`: el domiciliario toma un pedido listo (queda asignado, pero todavía no sale). Lo usa `OrderController::take()`. |
+| 542 | `{` | Abre la función `tomarPedido()`. |
+| 543 | `$this->conn->begin_transaction();` | Empieza una transacción. |
+| 544 | `try {` | Intenta... |
+| 545 | `$row = $this->bloquearPedido($idPedido);` | ...lee y bloquea el pedido. |
+| 546 | `if (!$row \|\| $row['estado'] !== 'listo'` | ...si no existe, o no está listo, o ya lo tiene **otro** domiciliario... |
+| 547 | `\|\| ($row['id_domiciliario'] !== null && $row['id_domiciliario'] !== $idDomiciliario)) {` | ↑ (sigue la misma instrucción) |
+| 548 | `throw new Exception('Este pedido ya no está disponible para reparto.');` | ...lanza el error "Este pedido ya no está disponible para reparto.". |
+| 549 | `}` | Cierra el bloque. |
+| 551 | `$stmt = $this->conn->prepare("UPDATE PEDIDO SET id_domiciliario = ? WHERE id_pedido = ?");` | ...prepara la consulta: "asígnale este domiciliario al pedido". |
+| 552 | `$stmt->bind_param("si", $idDomiciliario, $idPedido);` | Llena los `?` de la consulta, en orden: `$idDomiciliario` (texto), `$idPedido` (número entero). |
+| 553 | `$stmt->execute();` | Ejecuta la consulta. |
+| 554 | `$stmt->close();` | Cierra la consulta. |
+| 556 | `$this->conn->commit();` | ...confirma la transacción. |
+| 557 | `} catch (Exception $e) {` | Si algo falló... |
+| 558 | `$this->conn->rollback();` | ...deshace todo. |
+| 559 | `throw $e;` | ...y lanza el error. |
+| 560 | `}` | Cierra el `catch`. |
+| 561 | `}` | Cierra la función `tomarPedido()`. |
+| 563-566 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"El domiciliario suelta su pedido para que otro lo tome. Solo puede soltar los suyos que siguen en 'listo' (que todavia no salio a entregar)."* |
+| 567 | `public function liberarPedido($idPedido, $idActor)` | Método `liberarPedido($idPedido, $idActor)`: el domiciliario suelta su pedido para que otro lo tome. Lo usa `OrderController::release()`. `$idActor` = el número del domiciliario que lo suelta. |
+| 568 | `{` | Abre la función `liberarPedido()`. |
+| 569 | `$this->conn->begin_transaction();` | Empieza una transacción. |
+| 570 | `try {` | Intenta... |
+| 571 | `$row = $this->bloquearPedido($idPedido);` | ...lee y bloquea el pedido. |
+| 572 | `if (!$row \|\| $row['id_domiciliario'] === null) {` | ...si no existe o no tiene domiciliario... |
+| 573 | `throw new Exception('Este pedido no tiene domiciliario asignado.');` | ...lanza el error "Este pedido no tiene domiciliario asignado.". |
+| 574 | `}` | Cierra el `if`. |
+| 575 | `if ($row['id_domiciliario'] !== $idActor \|\| $row['estado'] !== 'listo') {` | ...si el pedido no es de este domiciliario (`!==` = "no es igual"), o ya no está en "listo" (ya salió a entregarlo)... |
 | 576 | `throw new Exception('Solo puedes soltar un pedido tuyo que aún no has iniciado.');` | ...lanza el error "Solo puedes soltar un pedido tuyo que aún no has iniciado.". |
 | 577 | `}` | Cierra el `if`. |
-| 578 | `} elseif (!in_array($row['estado'], ['listo', 'en_camino'], true)) {` | ...si es el administrador y el pedido no está listo ni en camino... |
-| 579 | `throw new Exception('Este pedido ya no se puede reasignar.');` | ...lanza el error "Este pedido ya no se puede reasignar.". |
-| 580 | `}` | Cierra el `elseif`. |
-| 582 | `$stmt = $this->conn->prepare("UPDATE PEDIDO SET estado = 'listo', id_domiciliario = NULL WHERE id_pedido = ?");` | ...prepara la consulta: "deja el pedido en 'listo' y sin domiciliario (`NULL`)". |
-| 583 | `$stmt->bind_param("i", $idPedido);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero). |
-| 584 | `$stmt->execute();` | Ejecuta la consulta. |
-| 585 | `$stmt->close();` | Cierra la consulta. |
-| 587 | `$this->conn->commit();` | ...confirma la transacción. |
-| 588 | `} catch (Exception $e) {` | Si algo falló... |
-| 589 | `$this->conn->rollback();` | ...deshace todo. |
-| 590 | `throw $e;` | ...y lanza el error. |
-| 591 | `}` | Cierra el `catch`. |
-| 592 | `}` | Cierra la función `liberarPedido()`. |
-| 594 | `public function aceptarEntrega($idPedido, $idDomiciliario)` | Método `aceptarEntrega($idPedido, $idDomiciliario)`: el domiciliario sale a entregar: el pedido pasa a "En camino". Lo usa `OrderController::accept()`. |
-| 595 | `{` | Abre la función `aceptarEntrega()`. |
-| 596 | `$this->conn->begin_transaction();` | Empieza una transacción. |
-| 597 | `try {` | Intenta... |
-| 598 | `$row = $this->bloquearPedido($idPedido);` | ...lee y bloquea el pedido. |
-| 599 | `if (!$row \|\| $row['estado'] !== 'listo'` | ...si no existe, o no está listo, o lo tiene otro domiciliario... |
-| 600 | `\|\| ($row['id_domiciliario'] !== null && $row['id_domiciliario'] !== $idDomiciliario)) {` | ↑ (sigue la misma instrucción) |
-| 601 | `throw new Exception('Este pedido ya no está disponible para reparto.');` | ...lanza el error "Este pedido ya no está disponible para reparto.". |
-| 602 | `}` | Cierra el bloque. |
-| 604 | `$stmt = $this->conn->prepare("UPDATE PEDIDO SET estado = 'en_camino', id_domiciliario = ? WHERE id_pedido = ?");` | ...prepara la consulta: "pasa el pedido a 'en_camino' con este domiciliario". |
-| 605 | `$stmt->bind_param("si", $idDomiciliario, $idPedido);` | Llena los `?` de la consulta, en orden: `$idDomiciliario` (texto), `$idPedido` (número entero). |
-| 606 | `$stmt->execute();` | Ejecuta la consulta. |
-| 607 | `$stmt->close();` | Cierra la consulta. |
-| 609 | `$this->conn->commit();` | ...confirma la transacción. |
-| 610 | `} catch (Exception $e) {` | Si algo falló... |
-| 611 | `$this->conn->rollback();` | ...deshace todo. |
-| 612 | `throw $e;` | ...y lanza el error. |
-| 613 | `}` | Cierra el `catch`. |
-| 614 | `}` | Cierra la función `aceptarEntrega()`. |
-| 616 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Entrega: solo con el PIN de 4 digitos correcto."* |
-| 617 | `public function confirmarEntrega($idPedido, $idDomiciliario, $pin)` | Método `confirmarEntrega($idPedido, $idDomiciliario, $pin)`: entrega el pedido, solo con el PIN correcto. Lo usa `OrderController::deliver()`. |
-| 618 | `{` | Abre la función `confirmarEntrega()`. |
-| 619 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "trae el PIN, el estado, el domiciliario, el cliente, los puntos y el total del pedido". |
-| 620 | `"SELECT pin_entrega, estado, id_domiciliario, id_cliente, puntos_ganados, total FROM PEDIDO WHERE id_pedido = ?"` | ↑ (sigue la misma instrucción) |
-| 621 | `);` | ↑ (sigue la misma instrucción) |
-| 622 | `$stmt->bind_param("i", $idPedido);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero). |
-| 623 | `$stmt->execute();` | Ejecuta la consulta. |
-| 624 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
-| 625 | `$stmt->close();` | Cierra la consulta. |
-| 627 | `if (!$row \|\| $row['estado'] !== 'en_camino' \|\| $row['id_domiciliario'] !== $idDomiciliario) {` | Si no existe, o no va en camino, o no es de este domiciliario... |
-| 628 | `throw new Exception('No puedes confirmar la entrega de este pedido.');` | ...lanza el error "No puedes confirmar la entrega de este pedido.". |
+| 579 | `$stmt = $this->conn->prepare("UPDATE PEDIDO SET estado = 'listo', id_domiciliario = NULL WHERE id_pedido = ?");` | ...prepara la consulta: "deja el pedido en 'listo' y sin domiciliario (`NULL`)". |
+| 580 | `$stmt->bind_param("i", $idPedido);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero). |
+| 581 | `$stmt->execute();` | Ejecuta la consulta. |
+| 582 | `$stmt->close();` | Cierra la consulta. |
+| 584 | `$this->conn->commit();` | ...confirma la transacción. |
+| 585 | `} catch (Exception $e) {` | Si algo falló... |
+| 586 | `$this->conn->rollback();` | ...deshace todo. |
+| 587 | `throw $e;` | ...y lanza el error. |
+| 588 | `}` | Cierra el `catch`. |
+| 589 | `}` | Cierra la función `liberarPedido()`. |
+| 591 | `public function aceptarEntrega($idPedido, $idDomiciliario)` | Método `aceptarEntrega($idPedido, $idDomiciliario)`: el domiciliario sale a entregar: el pedido pasa a "En camino". Lo usa `OrderController::accept()`. |
+| 592 | `{` | Abre la función `aceptarEntrega()`. |
+| 593 | `$this->conn->begin_transaction();` | Empieza una transacción. |
+| 594 | `try {` | Intenta... |
+| 595 | `$row = $this->bloquearPedido($idPedido);` | ...lee y bloquea el pedido. |
+| 596 | `if (!$row \|\| $row['estado'] !== 'listo'` | ...si no existe, o no está listo, o lo tiene otro domiciliario... |
+| 597 | `\|\| ($row['id_domiciliario'] !== null && $row['id_domiciliario'] !== $idDomiciliario)) {` | ↑ (sigue la misma instrucción) |
+| 598 | `throw new Exception('Este pedido ya no está disponible para reparto.');` | ...lanza el error "Este pedido ya no está disponible para reparto.". |
+| 599 | `}` | Cierra el bloque. |
+| 601 | `$stmt = $this->conn->prepare("UPDATE PEDIDO SET estado = 'en_camino', id_domiciliario = ? WHERE id_pedido = ?");` | ...prepara la consulta: "pasa el pedido a 'en_camino' con este domiciliario". |
+| 602 | `$stmt->bind_param("si", $idDomiciliario, $idPedido);` | Llena los `?` de la consulta, en orden: `$idDomiciliario` (texto), `$idPedido` (número entero). |
+| 603 | `$stmt->execute();` | Ejecuta la consulta. |
+| 604 | `$stmt->close();` | Cierra la consulta. |
+| 606 | `$this->conn->commit();` | ...confirma la transacción. |
+| 607 | `} catch (Exception $e) {` | Si algo falló... |
+| 608 | `$this->conn->rollback();` | ...deshace todo. |
+| 609 | `throw $e;` | ...y lanza el error. |
+| 610 | `}` | Cierra el `catch`. |
+| 611 | `}` | Cierra la función `aceptarEntrega()`. |
+| 613 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Entrega: solo con el PIN de 4 digitos correcto."* |
+| 614 | `public function confirmarEntrega($idPedido, $idDomiciliario, $pin)` | Método `confirmarEntrega($idPedido, $idDomiciliario, $pin)`: entrega el pedido, solo con el PIN correcto. Lo usa `OrderController::deliver()`. |
+| 615 | `{` | Abre la función `confirmarEntrega()`. |
+| 616 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "trae el PIN, el estado, el domiciliario, el cliente, los puntos y el total del pedido". |
+| 617 | `"SELECT pin_entrega, estado, id_domiciliario, id_cliente, puntos_ganados, total FROM PEDIDO WHERE id_pedido = ?"` | ↑ (sigue la misma instrucción) |
+| 618 | `);` | ↑ (sigue la misma instrucción) |
+| 619 | `$stmt->bind_param("i", $idPedido);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero). |
+| 620 | `$stmt->execute();` | Ejecuta la consulta. |
+| 621 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
+| 622 | `$stmt->close();` | Cierra la consulta. |
+| 624 | `if (!$row \|\| $row['estado'] !== 'en_camino' \|\| $row['id_domiciliario'] !== $idDomiciliario) {` | Si no existe, o no va en camino, o no es de este domiciliario... |
+| 625 | `throw new Exception('No puedes confirmar la entrega de este pedido.');` | ...lanza el error "No puedes confirmar la entrega de este pedido.". |
+| 626 | `}` | Cierra el `if`. |
+| 627 | `if (!hash_equals($row['pin_entrega'], $pin)) {` | Si el PIN no es igual al del pedido (`hash_equals` los compara de forma segura)... |
+| 628 | `throw new Exception('PIN incorrecto.');` | ...lanza el error "PIN incorrecto.". |
 | 629 | `}` | Cierra el `if`. |
-| 630 | `if (!hash_equals($row['pin_entrega'], $pin)) {` | Si el PIN no es igual al del pedido (`hash_equals` los compara de forma segura)... |
-| 631 | `throw new Exception('PIN incorrecto.');` | ...lanza el error "PIN incorrecto.". |
-| 632 | `}` | Cierra el `if`. |
-| 634 | `$this->conn->begin_transaction();` | Empieza una transacción. |
-| 635 | `try {` | Intenta... |
-| 636 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Al entregar, el pago queda aprobado (en efectivo se cobro en la puerta)."* |
-| 637 | `$stmtU = $this->conn->prepare(` | ...prepara la consulta: "pasa el pedido a 'entregado', el pago a 'aprobado' y, si no tenía fecha de pago, pone la de ahora (`COALESCE`)". |
-| 638 | `"UPDATE PEDIDO SET estado = 'entregado',` | ↑ (sigue la misma instrucción) |
-| 639 | `estado_pago = 'aprobado',` | ↑ (sigue la misma instrucción) |
-| 640 | `fecha_pago = COALESCE(fecha_pago, NOW())` | ↑ (sigue la misma instrucción) |
-| 641 | `WHERE id_pedido = ?"` | ↑ (sigue la misma instrucción) |
-| 642 | `);` | ↑ (sigue la misma instrucción) |
-| 643 | `$stmtU->bind_param("i", $idPedido);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero). |
-| 644 | `$stmtU->execute();` | Ejecuta la consulta. |
-| 645 | `$stmtU->close();` | Cierra la consulta. |
-| 647 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Puntos de fidelidad y total gastado del cliente (un invitado no tiene cuenta)."* |
-| 648 | `if ($row['id_cliente'] !== null) {` | ...si el pedido tiene cliente registrado (no es invitado)... |
-| 649 | `$puntos = (int) $row['puntos_ganados'];` | ...guarda los puntos que ganó. |
-| 650 | `$total = (float) $row['total'];` | ...guarda el total. |
-| 651 | `$stmtC = $this->conn->prepare(` | ...prepara la consulta: "súmale al cliente los puntos y el total gastado". |
-| 652 | `"UPDATE CLIENTE SET puntos_fidelidad = puntos_fidelidad + ?, total_gastado = total_gastado + ? WHERE id_cliente = ?"` | ↑ (sigue la misma instrucción) |
-| 653 | `);` | ↑ (sigue la misma instrucción) |
-| 654 | `$stmtC->bind_param("idi", $puntos, $total, $row['id_cliente']);` | Llena los `?` de la consulta, en orden: `$puntos` (número entero), `$total` (número con decimales), `$row['id_cliente']` (número entero). |
-| 655 | `$stmtC->execute();` | Ejecuta la consulta. |
-| 656 | `$stmtC->close();` | Cierra la consulta. |
-| 657 | `}` | Cierra el `if`. |
-| 659 | `$this->conn->commit();` | ...confirma la transacción. |
-| 660 | `} catch (Exception $e) {` | Si algo falló... |
-| 661 | `$this->conn->rollback();` | ...deshace todo. |
-| 662 | `throw $e;` | ...y lanza el error. |
-| 663 | `}` | Cierra el `catch`. |
-| 665 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Notificacion push al cliente; si falla, la entrega ya quedo confirmada."* |
-| 666 | `if ($row['id_cliente'] === null) {` | Si el cliente es invitado (sin cuenta)... |
-| 667 | `return;` | ...termina (no hay a quién enviar la notificación). |
-| 668 | `}` | Cierra el `if`. |
-| 669 | `try {` | Intenta... |
-| 670 | `$pushService = new PushNotificationService();` | ...crea el servicio de notificaciones. |
-| 671 | `$pushService->notificarPedidoEntregado($idPedido, (int) $row['id_cliente']);` | ...le avisa al cliente que su pedido llegó (`notificarPedidoEntregado()` de `models/PushNotificationService.php`). |
-| 672 | `} catch (Exception $e) {` | Si el envío falla (por ejemplo, el servidor de notificaciones no responde)... |
-| 673 | `error_log('No se pudo enviar la notificacion push de entrega: ' . $e->getMessage());` | ...lo anota en el archivo de errores. La entrega ya quedó guardada. |
-| 674 | `}` | Cierra el `catch`. |
-| 675 | `}` | Cierra la función `confirmarEntrega()`. |
-| 677-680 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"El admin corrige la direccion de un pedido que aun no se entrega. Las coordenadas se borran para que el mapa del domiciliario vuelva a ubicarla."* |
-| 681 | `public function cambiarDireccion($idPedido, $direccion)` | Método `cambiarDireccion($idPedido, $direccion)`: el administrador cambia la dirección de un pedido que todavía no se entrega. Lo usa `OrderController::updateAddress()`. |
-| 682 | `{` | Abre la función `cambiarDireccion()`. |
-| 683 | `$direccion = trim((string) $direccion);` | Le quita los espacios a la dirección. |
-| 684 | `if ($direccion === '') {` | Si quedó vacía... |
-| 685 | `throw new InvalidArgumentException('La dirección es obligatoria.');` | ...lanza el error "La dirección es obligatoria.". |
-| 686 | `}` | Cierra el `if`. |
-| 688 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "cambia la dirección y borra las coordenadas (para que el domiciliario la vuelva a ubicar en el mapa), solo si el pedido no se ha entregado". |
-| 689 | `"UPDATE PEDIDO SET direccion_entrega = ?, destino_lat = NULL, destino_lng = NULL` | ↑ (sigue la misma instrucción) |
-| 690 | `WHERE id_pedido = ? AND estado IN ('pendiente', 'en_preparacion', 'listo', 'en_camino')"` | ↑ (sigue la misma instrucción) |
-| 691 | `);` | ↑ (sigue la misma instrucción) |
-| 692 | `$stmt->bind_param("si", $direccion, $idPedido);` | Llena los `?` de la consulta, en orden: `$direccion` (texto), `$idPedido` (número entero). |
-| 693 | `$stmt->execute();` | Ejecuta la consulta. |
-| 694 | `$cambiadas = $stmt->affected_rows;` | Guarda cuántas filas cambiaron (`affected_rows`). |
-| 695 | `$stmt->close();` | Cierra la consulta. |
-| 697 | `if ($cambiadas === 0 && $this->pedidoModel->buscarCrudo($idPedido)['direccion_entrega'] !== $direccion) {` | Si no cambió nada y la dirección guardada es distinta (o sea, el pedido ya se entregó)... |
-| 698 | `throw new Exception('Este pedido ya fue entregado y no se puede cambiar su dirección.');` | ...lanza el error "Este pedido ya fue entregado y no se puede cambiar su dirección.". |
-| 699 | `}` | Cierra el `if`. |
-| 700 | `}` | Cierra la función `cambiarDireccion()`. |
-| 702 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Coordenadas del destino que el domiciliario ubico en el mapa (solo de su pedido en curso)."* |
-| 703 | `public function guardarDestino($idPedido, $idDomiciliario, $lat, $lng)` | Método `guardarDestino(...)`: guarda las coordenadas del destino que el domiciliario marcó en el mapa. Lo usa `OrderController::updateDestination()`. |
-| 704 | `{` | Abre la función `guardarDestino()`. |
-| 705 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "guarda la latitud y longitud del destino, solo si el pedido es de este domiciliario y está listo o en camino". |
-| 706 | `"UPDATE PEDIDO SET destino_lat = ?, destino_lng = ?` | ↑ (sigue la misma instrucción) |
-| 707 | `WHERE id_pedido = ? AND id_domiciliario = ? AND estado IN ('listo', 'en_camino')"` | ↑ (sigue la misma instrucción) |
-| 708 | `);` | ↑ (sigue la misma instrucción) |
-| 709 | `$stmt->bind_param("ddis", $lat, $lng, $idPedido, $idDomiciliario);` | Llena los `?` de la consulta, en orden: `$lat` (número con decimales), `$lng` (número con decimales), `$idPedido` (número entero), `$idDomiciliario` (texto). |
-| 710 | `$stmt->execute();` | Ejecuta la consulta. |
-| 711 | `$stmt->close();` | Cierra la consulta. |
-| 712 | `}` | Cierra la función `guardarDestino()`. |
-| 714 | `private function transicion($idPedido, $desdeValidos, $hacia)` | Método `transicion($idPedido, $desdeValidos, $hacia)` (privado): cambia el estado del pedido, solo si el estado actual es uno de los permitidos. Lo usan `marcarPreparando()` y `marcarListo()`. |
-| 715 | `{` | Abre la función `transicion()`. |
-| 716 | `$stmt = $this->conn->prepare("SELECT estado FROM PEDIDO WHERE id_pedido = ?");` | Prepara la consulta: "trae el estado del pedido". |
-| 717 | `$stmt->bind_param("i", $idPedido);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero). |
-| 718 | `$stmt->execute();` | Ejecuta la consulta. |
-| 719 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
-| 720 | `$stmt->close();` | Cierra la consulta. |
-| 722 | `if (!$row \|\| !in_array($row['estado'], $desdeValidos, true)) {` | Si no existe o su estado no está en la lista permitida... |
-| 723 | `throw new Exception('Transición de estado no permitida.');` | ...lanza el error "Transición de estado no permitida.". |
-| 724 | `}` | Cierra el `if`. |
-| 726 | `$stmtU = $this->conn->prepare("UPDATE PEDIDO SET estado = ? WHERE id_pedido = ?");` | Prepara la consulta: "cambia el estado del pedido al nuevo". |
-| 727 | `$stmtU->bind_param("si", $hacia, $idPedido);` | Llena los `?` de la consulta, en orden: `$hacia` (texto), `$idPedido` (número entero). |
-| 728 | `$stmtU->execute();` | Ejecuta la consulta. |
-| 729 | `$stmtU->close();` | Cierra la consulta. |
-| 730 | `}` | Cierra la función `transicion()`. |
-| 732 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---------------------------------------------------------------"* |
-| 733 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Resena"* |
-| 734 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---------------------------------------------------------------"* |
-| 736 | `public function calificar($idPedido, $puntaje, $comentario)` | Método `calificar($idPedido, $puntaje, $comentario)`: guarda la calificación del pedido. Si ya tenía una, la cambia. Lo usa `OrderController::review()`. |
-| 737 | `{` | Abre la función `calificar()`. |
-| 738 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "guarda en `RESENA` las estrellas y el comentario; si ya había una reseña de ese pedido (`ON DUPLICATE KEY UPDATE`), la actualiza". |
-| 739 | `"INSERT INTO RESENA (id_pedido, puntaje, comentario)` | ↑ (sigue la misma instrucción) |
-| 740 | `VALUES (?, ?, ?)` | ↑ (sigue la misma instrucción) |
-| 741 | `ON DUPLICATE KEY UPDATE puntaje = VALUES(puntaje), comentario = VALUES(comentario)"` | ↑ (sigue la misma instrucción) |
-| 742 | `);` | ↑ (sigue la misma instrucción) |
-| 743 | `$stmt->bind_param("iis", $idPedido, $puntaje, $comentario);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero), `$puntaje` (número entero), `$comentario` (texto). |
-| 744 | `$stmt->execute();` | Ejecuta la consulta. |
-| 745 | `$stmt->close();` | Cierra la consulta. |
-| 746 | `}` | Cierra la función `calificar()`. |
-| 747 | `}` | Cierra la clase `PedidoService`. |
-| 748 | `?>` | Cierra el código PHP. |
+| 631 | `$this->conn->begin_transaction();` | Empieza una transacción. |
+| 632 | `try {` | Intenta... |
+| 633 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Al entregar, el pago queda aprobado (en efectivo se cobro en la puerta)."* |
+| 634 | `$stmtU = $this->conn->prepare(` | ...prepara la consulta: "pasa el pedido a 'entregado', el pago a 'aprobado' y, si no tenía fecha de pago, pone la de ahora (`COALESCE`)". |
+| 635 | `"UPDATE PEDIDO SET estado = 'entregado',` | ↑ (sigue la misma instrucción) |
+| 636 | `estado_pago = 'aprobado',` | ↑ (sigue la misma instrucción) |
+| 637 | `fecha_pago = COALESCE(fecha_pago, NOW())` | ↑ (sigue la misma instrucción) |
+| 638 | `WHERE id_pedido = ?"` | ↑ (sigue la misma instrucción) |
+| 639 | `);` | ↑ (sigue la misma instrucción) |
+| 640 | `$stmtU->bind_param("i", $idPedido);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero). |
+| 641 | `$stmtU->execute();` | Ejecuta la consulta. |
+| 642 | `$stmtU->close();` | Cierra la consulta. |
+| 644 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Puntos de fidelidad y total gastado del cliente (un invitado no tiene cuenta)."* |
+| 645 | `if ($row['id_cliente'] !== null) {` | ...si el pedido tiene cliente registrado (no es invitado)... |
+| 646 | `$puntos = (int) $row['puntos_ganados'];` | ...guarda los puntos que ganó. |
+| 647 | `$total = (float) $row['total'];` | ...guarda el total. |
+| 648 | `$stmtC = $this->conn->prepare(` | ...prepara la consulta: "súmale al cliente los puntos y el total gastado". |
+| 649 | `"UPDATE CLIENTE SET puntos_fidelidad = puntos_fidelidad + ?, total_gastado = total_gastado + ? WHERE id_cliente = ?"` | ↑ (sigue la misma instrucción) |
+| 650 | `);` | ↑ (sigue la misma instrucción) |
+| 651 | `$stmtC->bind_param("idi", $puntos, $total, $row['id_cliente']);` | Llena los `?` de la consulta, en orden: `$puntos` (número entero), `$total` (número con decimales), `$row['id_cliente']` (número entero). |
+| 652 | `$stmtC->execute();` | Ejecuta la consulta. |
+| 653 | `$stmtC->close();` | Cierra la consulta. |
+| 654 | `}` | Cierra el `if`. |
+| 656 | `$this->conn->commit();` | ...confirma la transacción. |
+| 657 | `} catch (Exception $e) {` | Si algo falló... |
+| 658 | `$this->conn->rollback();` | ...deshace todo. |
+| 659 | `throw $e;` | ...y lanza el error. |
+| 660 | `}` | Cierra el `catch`. |
+| 662 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Notificacion push al cliente; si falla, la entrega ya quedo confirmada."* |
+| 663 | `if ($row['id_cliente'] === null) {` | Si el cliente es invitado (sin cuenta)... |
+| 664 | `return;` | ...termina (no hay a quién enviar la notificación). |
+| 665 | `}` | Cierra el `if`. |
+| 666 | `try {` | Intenta... |
+| 667 | `$pushService = new PushNotificationService();` | ...crea el servicio de notificaciones. |
+| 668 | `$pushService->notificarPedidoEntregado($idPedido, (int) $row['id_cliente']);` | ...le avisa al cliente que su pedido llegó (`notificarPedidoEntregado()` de `models/PushNotificationService.php`). |
+| 669 | `} catch (Exception $e) {` | Si el envío falla (por ejemplo, el servidor de notificaciones no responde)... |
+| 670 | `error_log('No se pudo enviar la notificacion push de entrega: ' . $e->getMessage());` | ...lo anota en el archivo de errores. La entrega ya quedó guardada. |
+| 671 | `}` | Cierra el `catch`. |
+| 672 | `}` | Cierra la función `confirmarEntrega()`. |
+| 674-677 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"El admin corrige la direccion de un pedido que aun no se entrega. Las coordenadas se borran para que el mapa del domiciliario vuelva a ubicarla."* |
+| 678 | `public function cambiarDireccion($idPedido, $direccion)` | Método `cambiarDireccion($idPedido, $direccion)`: el administrador cambia la dirección de un pedido que todavía no se entrega. Lo usa `OrderController::updateAddress()`. |
+| 679 | `{` | Abre la función `cambiarDireccion()`. |
+| 680 | `$direccion = trim((string) $direccion);` | Le quita los espacios a la dirección. |
+| 681 | `if ($direccion === '') {` | Si quedó vacía... |
+| 682 | `throw new InvalidArgumentException('La dirección es obligatoria.');` | ...lanza el error "La dirección es obligatoria.". |
+| 683 | `}` | Cierra el `if`. |
+| 685 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "cambia la dirección y borra las coordenadas (para que el domiciliario la vuelva a ubicar en el mapa), solo si el pedido no se ha entregado". |
+| 686 | `"UPDATE PEDIDO SET direccion_entrega = ?, destino_lat = NULL, destino_lng = NULL` | ↑ (sigue la misma instrucción) |
+| 687 | `WHERE id_pedido = ? AND estado IN ('pendiente', 'en_preparacion', 'listo', 'en_camino')"` | ↑ (sigue la misma instrucción) |
+| 688 | `);` | ↑ (sigue la misma instrucción) |
+| 689 | `$stmt->bind_param("si", $direccion, $idPedido);` | Llena los `?` de la consulta, en orden: `$direccion` (texto), `$idPedido` (número entero). |
+| 690 | `$stmt->execute();` | Ejecuta la consulta. |
+| 691 | `$cambiadas = $stmt->affected_rows;` | Guarda cuántas filas cambiaron (`affected_rows`). |
+| 692 | `$stmt->close();` | Cierra la consulta. |
+| 694 | `if ($cambiadas === 0 && $this->pedidoModel->buscarCrudo($idPedido)['direccion_entrega'] !== $direccion) {` | Si no cambió nada y la dirección guardada es distinta (o sea, el pedido ya se entregó)... |
+| 695 | `throw new Exception('Este pedido ya fue entregado y no se puede cambiar su dirección.');` | ...lanza el error "Este pedido ya fue entregado y no se puede cambiar su dirección.". |
+| 696 | `}` | Cierra el `if`. |
+| 697 | `}` | Cierra la función `cambiarDireccion()`. |
+| 699 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Coordenadas del destino que el domiciliario ubico en el mapa (solo de su pedido en curso)."* |
+| 700 | `public function guardarDestino($idPedido, $idDomiciliario, $lat, $lng)` | Método `guardarDestino(...)`: guarda las coordenadas del destino que el domiciliario marcó en el mapa. Lo usa `OrderController::updateDestination()`. |
+| 701 | `{` | Abre la función `guardarDestino()`. |
+| 702 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "guarda la latitud y longitud del destino, solo si el pedido es de este domiciliario y está listo o en camino". |
+| 703 | `"UPDATE PEDIDO SET destino_lat = ?, destino_lng = ?` | ↑ (sigue la misma instrucción) |
+| 704 | `WHERE id_pedido = ? AND id_domiciliario = ? AND estado IN ('listo', 'en_camino')"` | ↑ (sigue la misma instrucción) |
+| 705 | `);` | ↑ (sigue la misma instrucción) |
+| 706 | `$stmt->bind_param("ddis", $lat, $lng, $idPedido, $idDomiciliario);` | Llena los `?` de la consulta, en orden: `$lat` (número con decimales), `$lng` (número con decimales), `$idPedido` (número entero), `$idDomiciliario` (texto). |
+| 707 | `$stmt->execute();` | Ejecuta la consulta. |
+| 708 | `$stmt->close();` | Cierra la consulta. |
+| 709 | `}` | Cierra la función `guardarDestino()`. |
+| 711 | `private function transicion($idPedido, $desdeValidos, $hacia)` | Método `transicion($idPedido, $desdeValidos, $hacia)` (privado): cambia el estado del pedido, solo si el estado actual es uno de los permitidos. Lo usan `marcarPreparando()` y `marcarListo()`. |
+| 712 | `{` | Abre la función `transicion()`. |
+| 713 | `$stmt = $this->conn->prepare("SELECT estado FROM PEDIDO WHERE id_pedido = ?");` | Prepara la consulta: "trae el estado del pedido". |
+| 714 | `$stmt->bind_param("i", $idPedido);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero). |
+| 715 | `$stmt->execute();` | Ejecuta la consulta. |
+| 716 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
+| 717 | `$stmt->close();` | Cierra la consulta. |
+| 719 | `if (!$row \|\| !in_array($row['estado'], $desdeValidos, true)) {` | Si no existe o su estado no está en la lista permitida... |
+| 720 | `throw new Exception('Transición de estado no permitida.');` | ...lanza el error "Transición de estado no permitida.". |
+| 721 | `}` | Cierra el `if`. |
+| 723 | `$stmtU = $this->conn->prepare("UPDATE PEDIDO SET estado = ? WHERE id_pedido = ?");` | Prepara la consulta: "cambia el estado del pedido al nuevo". |
+| 724 | `$stmtU->bind_param("si", $hacia, $idPedido);` | Llena los `?` de la consulta, en orden: `$hacia` (texto), `$idPedido` (número entero). |
+| 725 | `$stmtU->execute();` | Ejecuta la consulta. |
+| 726 | `$stmtU->close();` | Cierra la consulta. |
+| 727 | `}` | Cierra la función `transicion()`. |
+| 729 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---------------------------------------------------------------"* |
+| 730 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Resena"* |
+| 731 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---------------------------------------------------------------"* |
+| 733 | `public function calificar($idPedido, $puntaje, $comentario)` | Método `calificar($idPedido, $puntaje, $comentario)`: guarda la calificación del pedido. Si ya tenía una, la cambia. Lo usa `OrderController::review()`. |
+| 734 | `{` | Abre la función `calificar()`. |
+| 735 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "guarda en `RESENA` las estrellas y el comentario; si ya había una reseña de ese pedido (`ON DUPLICATE KEY UPDATE`), la actualiza". |
+| 736 | `"INSERT INTO RESENA (id_pedido, puntaje, comentario)` | ↑ (sigue la misma instrucción) |
+| 737 | `VALUES (?, ?, ?)` | ↑ (sigue la misma instrucción) |
+| 738 | `ON DUPLICATE KEY UPDATE puntaje = VALUES(puntaje), comentario = VALUES(comentario)"` | ↑ (sigue la misma instrucción) |
+| 739 | `);` | ↑ (sigue la misma instrucción) |
+| 740 | `$stmt->bind_param("iis", $idPedido, $puntaje, $comentario);` | Llena los `?` de la consulta, en orden: `$idPedido` (número entero), `$puntaje` (número entero), `$comentario` (texto). |
+| 741 | `$stmt->execute();` | Ejecuta la consulta. |
+| 742 | `$stmt->close();` | Cierra la consulta. |
+| 743 | `}` | Cierra la función `calificar()`. |
+| 744 | `}` | Cierra la clase `PedidoService`. |
+| 745 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
 | Si se borra… | Qué deja de funcionar | Error que sale |
 |---|---|---|
-| el archivo completo | recargar los pedidos después del cierre de caja, hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp, cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario o administrador), salir a entregar ("En camino"), entregar pedidos con el PIN, calificar pedidos, empezar un pago en línea, crear el pago, saber si el pago fue aprobado | `Failed to open stream` |
+| el archivo completo | recargar los pedidos después del cierre de caja, hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp, cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario), salir a entregar ("En camino"), entregar pedidos con el PIN, calificar pedidos, empezar un pago en línea, crear el pago, saber si el pago fue aprobado | `Failed to open stream` |
 | el método `crear()` | hacer pedidos (cliente) | `Call to undefined method PedidoService::crear()` |
 | el método `crearManual()` | registrar pedidos por llamada o WhatsApp | `Call to undefined method PedidoService::crearManual()` |
 | el método `guardar()` | hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp | `Call to undefined method PedidoService::guardar()` |
@@ -709,9 +706,9 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | el método `marcarPreparando()` | pasar pedidos a "En preparación" | `Call to undefined method PedidoService::marcarPreparando()` |
 | el método `marcarListo()` | pasar pedidos a "Listo" | `Call to undefined method PedidoService::marcarListo()` |
 | el método `registrarAyudante()` | pasar pedidos a "En preparación", pasar pedidos a "Listo" | `Call to undefined method PedidoService::registrarAyudante()` |
-| el método `bloquearPedido()` | tomar pedidos (domiciliario), soltar pedidos (domiciliario o administrador), salir a entregar ("En camino") | `Call to undefined method PedidoService::bloquearPedido()` |
+| el método `bloquearPedido()` | tomar pedidos (domiciliario), soltar pedidos (domiciliario), salir a entregar ("En camino") | `Call to undefined method PedidoService::bloquearPedido()` |
 | el método `tomarPedido()` | tomar pedidos (domiciliario) | `Call to undefined method PedidoService::tomarPedido()` |
-| el método `liberarPedido()` | soltar pedidos (domiciliario o administrador) | `Call to undefined method PedidoService::liberarPedido()` |
+| el método `liberarPedido()` | soltar pedidos (domiciliario) | `Call to undefined method PedidoService::liberarPedido()` |
 | el método `aceptarEntrega()` | salir a entregar ("En camino") | `Call to undefined method PedidoService::aceptarEntrega()` |
 | el método `confirmarEntrega()` | entregar pedidos con el PIN | `Call to undefined method PedidoService::confirmarEntrega()` |
 | el método `cambiarDireccion()` | cambiar la dirección de un pedido | `Call to undefined method PedidoService::cambiarDireccion()` |

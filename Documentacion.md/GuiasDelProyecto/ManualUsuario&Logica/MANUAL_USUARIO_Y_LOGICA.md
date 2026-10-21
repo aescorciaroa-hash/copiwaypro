@@ -113,8 +113,8 @@ exactamente el mismo recorrido (pasos 3 a 11), con dos diferencias:
 
 ### 5.1 Registro e inicio de sesión
 *   **Registro**: nombre completo, celular, correo, fecha de nacimiento, contraseña (mínimo 8 caracteres) y su confirmación. La casilla de **Habeas Data** es obligatoria: sin marcarla no se crea la cuenta.
-*   **Inicio de sesión**: correo y contraseña. Después de **5 intentos fallidos en 15 minutos**, el acceso se bloquea temporalmente.
-*   **¿Olvidaste tu contraseña?**: el cliente escribe su correo y recibe un **código de 6 dígitos**. El código sirve una sola vez, vence a los 15 minutos y se anula después de 5 intentos equivocados. Por seguridad, el sistema responde lo mismo exista o no el correo.
+*   **Inicio de sesión**: correo y contraseña. Después de **5 intentos fallidos en 1 minuto** con el mismo correo, ese correo se bloquea por 1 minuto. Los demás perfiles pueden seguir entrando.
+*   **¿Olvidaste tu contraseña?**: el cliente escribe su correo y recibe un **código de 6 dígitos**. El código sirve una sola vez, vence a los 15 minutos y se anula después de 5 intentos equivocados. Si el correo no está registrado, aparece el mensaje "El correo es incorrecto o no existe."
 
 ### 5.2 Catálogo
 *   Productos organizados por **categorías** (Hamburguesas, Perros, Bebidas, Extras, etc.).
@@ -145,7 +145,7 @@ El precio se recalcula mientras el cliente elige.
 2.  **Método de pago**:
     *   **Efectivo**: se paga al domiciliario al recibir.
     *   **Digital**: Nequi, Daviplata o Bancolombia. Para Nequi y Daviplata se pide el número de celular.
-3.  **Usar mis puntos** (opcional): una casilla muestra cuántos puntos tiene el cliente. Al marcarla, el descuento aparece en el resumen antes de pagar (ver 5.11).
+3.  **Usar mis puntos** (opcional): una casilla muestra cuántos puntos tiene el cliente. Al marcarla, el cliente elige **cuántos puntos** usar y el descuento aparece en el resumen antes de pagar (ver 5.11).
 4.  **Pasarela de pago**: una ventana muestra los pasos "Conectando", "Esperando aprobación", "Verificando" y "Aprobado" (o "Rechazado").
 5.  Si el pago es aprobado, aparece el aviso **"¡Pedido confirmado! Tu orden ha sido enviada a cocina"**.
 
@@ -173,7 +173,8 @@ Si los precios, el domicilio o la disponibilidad cambiaron desde la última vez,
 
 ### 5.10 Perfil
 *   Editar datos personales (nombre, correo, celular, dirección y fecha de nacimiento).
-*   Cambiar la contraseña (pide la actual y la nueva, mínimo 8 caracteres).
+*   Cambiar la contraseña (pide la actual y la nueva, mínimo 8 caracteres). **Si la contraseña actual no es correcta, no se cambia**: la caja se pone en rojo con el aviso "La contraseña actual no es correcta.".
+*   **¿No recuerdas tu contraseña actual?** Dentro de la misma ventana está la opción **Recibir un código en mi correo**: llega un código de 6 dígitos (vence en 15 minutos). Se escribe el código en lugar de la contraseña actual, junto con la nueva.
 *   Activar las **notificaciones** en el celular o computador.
 *   Cerrar sesión.
 
@@ -181,7 +182,8 @@ Si los precios, el domicilio o la disponibilidad cambiaron desde la última vez,
 *   **Ganar puntos**: 1 punto por cada $1.000 del total pagado. Se suman cuando el pedido se **entrega**.
 *   **Usar puntos**: al pagar, el cliente marca **"Usar mis puntos"**. Cada punto descuenta un valor fijo que define el administrador (por defecto **$10**, es decir, el 1 % de lo comprado), y se pueden usar desde un mínimo de puntos (por defecto **100**).
     *   El descuento aplica **solo a los productos**, nunca al domicilio.
-    *   Se usan los puntos necesarios hasta cubrir los productos; si sobran, quedan guardados para la próxima compra.
+    *   Al marcar la casilla aparece **"¿Cuántos puntos quieres usar?"**: el cliente escribe cuántos quiere gastar (empieza con el máximo) o toca **"Usar todos"**. No puede usar más de los que tiene ni más de lo que cuestan los productos.
+    *   Los puntos que no use quedan guardados para la próxima compra.
     *   Si el pedido no se completa (por ejemplo, el pago es rechazado o falta un ingrediente), los puntos **no se pierden**.
 *   **Cumpleaños**: el día del cumpleaños del cliente se descuenta automáticamente el **15 % del subtotal** de los productos. El descuento **no aplica** al domicilio.
 
@@ -260,7 +262,6 @@ El panel tiene un menú lateral con ocho secciones, además de una campana de **
 ### 8.2 Comandas Activas
 *   **Órdenes en tiempo real**: todos los pedidos del día con su estado, cliente, dirección y domiciliario.
 *   **Ver detalles**: productos, pago, datos del cliente y del domiciliario asignado (nombre, vehículo y placa).
-*   **Soltar pedido**: el administrador puede quitarle un pedido a un domiciliario que todavía no ha salido, para que lo tome otro.
 *   **Mapa de entregas**: ubicación real de los domiciliarios y la ruta de cada uno hasta su pedido en curso.
 *   **Editar dirección**: corrige la dirección de un pedido que todavía no se entrega. El cambio se guarda y le llega al domiciliario en pocos segundos, con un aviso en su pantalla.
 *   **Ingreso de Orden Manual** (pedidos por llamada o WhatsApp):
@@ -385,7 +386,7 @@ Si dos clientes intentan comprar al mismo tiempo la última unidad de un ingredi
 ## 12. SEGURIDAD Y PRIVACIDAD
 
 *   **Contraseñas y PIN cifrados**: el sistema nunca guarda la contraseña real, ni siquiera el administrador puede verla.
-*   **Bloqueo por intentos**: 5 intentos fallidos en 15 minutos bloquean temporalmente el acceso.
+*   **Bloqueo por intentos**: 5 intentos fallidos en 1 minuto bloquean ese correo por 1 minuto. Al entrar bien, el conteo vuelve a 0.
 *   **Sesión**: se cierra sola después de un tiempo sin uso (por defecto, 2 horas). Si un empleado es dado de baja, pierde el acceso al instante.
 *   **Permisos por rol**: cada persona solo puede ver y hacer lo que corresponde a su rol. Un cliente solo ve sus propios pedidos y su perfil.
 *   **Datos visibles solo cuando hacen falta**:
@@ -475,7 +476,7 @@ El sistema **no envía WhatsApp automáticamente**: cuando el pedido va En Camin
 | "PIN incorrecto" | El PIN de entrega no coincide. | Pedir al cliente que lo revise en Órdenes Activas. |
 | "Transición de estado no permitida" | Se intentó saltar un paso del pedido. | Seguir el orden normal de estados. |
 | "Ya se generó un cierre de caja hoy" | Ya hubo un cierre ese día. | Esperar al día siguiente. |
-| "Demasiados intentos fallidos" | 5 intentos de acceso fallidos en 15 minutos. | Esperar 15 minutos o recuperar la contraseña. |
+| "Demasiados intentos fallidos" | 5 intentos fallidos en 1 minuto con ese correo. | Esperar 1 minuto o recuperar la contraseña. |
 | "Correo o contraseña incorrectos" (con datos correctos) | La cuenta puede estar dada de baja. | El administrador debe reactivarla. |
 | "Tu saldo de puntos cambió" | Mientras pagaba, el saldo de puntos del cliente cambió. | Revisar el pedido e intentar de nuevo. |
 | "Este colaborador ya tiene pedidos en su historial y no se puede eliminar" | Se intentó eliminar a alguien que ya trabajó. | Dejarlo dado de baja. |

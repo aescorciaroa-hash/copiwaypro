@@ -11,12 +11,12 @@ de pedido manual.
 |---|---|---|
 | ← la muestra | `AdminDashboard.tsx` cuando `activeTab === 'orders'` | |
 | ← los pedidos vienen de | `orders` del almacén (`/api/sync`) — el admin recibe **todos** (`Pedido::porRol('admin')`) | |
-| → `releaseOrder(id)` (almacén) | `PATCH /api/orders/{id}/release` → `PedidoService::liberarPedido()` | Soltar el pedido de un domiciliario. |
 | → `handleViewOrder(id)` | ventana de detalle en el padre | |
 | → `setEditingAddressOrder`, `setNewAddress` | ventana "Editar dirección" del padre | La guarda en el servidor (`PATCH /api/orders/{id}/address`). No se puede en pedidos entregados. |
 | → `setShowManualForm(true)` | ventana de pedido manual del padre | |
 | → `setSelectedDriverInfo` | ventana de datos del domiciliario | |
-| → usa | `react-leaflet`, `RoutePolyline` (rutas OSRM), `vehicleWithModel`, `formatCOP`, `modificacionesDe` (SIN / EXTRA de cada producto) | |
+| → usa | `react-leaflet`, `RoutePolyline` (rutas OSRM), `vehicleWithModel`, `formatCOP` | |
+| → usa | `products` del almacén (`useStore`) | Para buscar la **foto** de cada producto del pedido por su `productId`. |
 
 ## Props
 | Prop | Qué es |
@@ -32,6 +32,17 @@ de pedido manual.
 - **Rutas:** de cada domiciliario a su pedido en curso (`destCoords`, el destino que él ubicó en su
   mapa), dibujadas con OSRM.
 - Usa el estilo oscuro `leaflet-dark-tiles` (de `index.css`) cuando el tema es oscuro.
+
+## Detalle del pedido en cada comanda
+En cada tarjeta, el "Detalle del Pedido" muestra **solo la foto, la cantidad y el nombre** de cada producto
+(ej. `1x Street Food`). No muestra los ingredientes ni los SIN / EXTRA, para que la tarjeta sea más corta.
+
+- La foto se busca así: `products.find(p => p.id === item.productId)?.image` = "en la lista de productos del
+  menú, busca el que tenga el mismo número que este producto del pedido, y toma su imagen".
+- Si el producto no tiene foto (por ejemplo la **Hamburguesa Personalizada**, que no está en el menú), se ve
+  un cuadrito con el ícono de cubiertos (`Utensils`).
+- Los ingredientes, SIN y EXTRA **siguen viéndose** en la ventana del ojo (detalle del pedido, en
+  `AdminDashboard.tsx`) y en la pantalla de cocina (`KitchenDashboard.tsx`).
 
 ## ¿Qué pasa si se borra?
 

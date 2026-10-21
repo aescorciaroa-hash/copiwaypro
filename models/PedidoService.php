@@ -363,7 +363,8 @@ class PedidoService
             $saldo = (int) $cliente['puntos_fidelidad'];
             if ($reglas['valor'] > 0 && $saldo > 0 && $saldo >= $reglas['minimo']) {
                 $maximoPorMonto = (int) floor(($subtotal - $descuento) / $reglas['valor']);
-                $puntosCanjeados = max(0, min($saldo, $maximoPorMonto));
+                $elegidos = isset($payload['pointsToUse']) ? (int) $payload['pointsToUse'] : $saldo;
+                $puntosCanjeados = max(0, min($saldo, $maximoPorMonto, $elegidos));
                 $descuentoPuntos = round($puntosCanjeados * $reglas['valor'], 2);
             }
         }
@@ -560,10 +561,10 @@ class PedidoService
     }
 
     /**
-     * Suelta un pedido para que otro domiciliario lo tome. El domiciliario solo
-     * suelta los suyos en 'listo'; el admin puede soltar uno 'listo' o 'en_camino'.
+     * El domiciliario suelta su pedido para que otro lo tome. Solo puede
+     * soltar los suyos que siguen en 'listo' (que todavia no salio a entregar).
      */
-    public function liberarPedido($idPedido, $rol, $idActor)
+    public function liberarPedido($idPedido, $idActor)
     {
         $this->conn->begin_transaction();
         try {
@@ -571,12 +572,8 @@ class PedidoService
             if (!$row || $row['id_domiciliario'] === null) {
                 throw new Exception('Este pedido no tiene domiciliario asignado.');
             }
-            if ($rol === 'delivery') {
-                if ($row['id_domiciliario'] !== $idActor || $row['estado'] !== 'listo') {
-                    throw new Exception('Solo puedes soltar un pedido tuyo que aún no has iniciado.');
-                }
-            } elseif (!in_array($row['estado'], ['listo', 'en_camino'], true)) {
-                throw new Exception('Este pedido ya no se puede reasignar.');
+            if ($row['id_domiciliario'] !== $idActor || $row['estado'] !== 'listo') {
+                throw new Exception('Solo puedes soltar un pedido tuyo que aún no has iniciado.');
             }
 
             $stmt = $this->conn->prepare("UPDATE PEDIDO SET estado = 'listo', id_domiciliario = NULL WHERE id_pedido = ?");

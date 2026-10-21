@@ -41,8 +41,9 @@ Todo pasa en `PedidoService::crear()` (`models/PedidoService.php`):
    - Precio de cada ingrediente = `costo unitario × (1 + margen %)`, redondeado a la centena.
 3. **Domicilio** = la tarifa plana de los ajustes.
 4. **Descuento de cumpleaños** = 15 % del subtotal si hoy es su cumpleaños.
-5. **Canje de puntos** (si el cliente marcó "Usar mis puntos" y tiene el mínimo de Ajustes): cada
-   punto descuenta su valor configurado, solo sobre los productos (nunca sobre el domicilio).
+5. **Canje de puntos** (si el cliente marcó "Usar mis puntos" y tiene el mínimo de Ajustes): se usan
+   los puntos que el cliente **eligió** (`pointsToUse`), pero nunca más de los que tiene ni más de lo que
+   cuestan los productos. Cada punto descuenta su valor configurado, solo sobre los productos (nunca sobre el domicilio).
 6. **Total** = subtotal − cumpleaños − puntos + domicilio. **Puntos ganados** = 1 por cada $1.000 del total.
 7. **Pago:**
    - Efectivo → queda "pendiente" hasta la entrega.

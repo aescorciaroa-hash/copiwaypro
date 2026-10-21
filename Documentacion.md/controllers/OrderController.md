@@ -13,7 +13,7 @@ Se encarga de los pedidos.
 - pasar pedidos a "En preparación"
 - pasar pedidos a "Listo"
 - tomar pedidos (domiciliario)
-- soltar pedidos (domiciliario o administrador)
+- soltar pedidos (domiciliario)
 - salir a entregar ("En camino")
 - entregar pedidos con el PIN
 - calificar pedidos
@@ -29,7 +29,7 @@ Se encarga de los pedidos.
 | `markPreparing()` | pasar pedidos a "En preparación" | `PATCH /api/orders/{id}/preparing` |
 | `markReady()` | pasar pedidos a "Listo" | `PATCH /api/orders/{id}/ready` |
 | `take()` | tomar pedidos (domiciliario) | `PATCH /api/orders/{id}/take` |
-| `release()` | soltar pedidos (domiciliario o administrador) | `PATCH /api/orders/{id}/release` |
+| `release()` | soltar pedidos (domiciliario) | `PATCH /api/orders/{id}/release` |
 | `accept()` | salir a entregar ("En camino") | `PATCH /api/orders/{id}/accept` |
 | `deliver()` | entregar pedidos con el PIN | `PATCH /api/orders/{id}/deliver` |
 | `review()` | calificar pedidos | `PATCH /api/orders/{id}/review` |
@@ -194,13 +194,13 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 162 | `}` | Cierra el `catch`. |
 | 163 | `$this->responderPedido($id);` | Responde con el pedido actualizado. |
 | 164 | `}` | Cierra la función `take()`. |
-| 166 | `public function release()` | Función `release()`: suelta un pedido para que lo tome otro domiciliario. Ruta: `PATCH /api/orders/{id}/release`. |
+| 166 | `public function release()` | Función `release()`: el domiciliario suelta su pedido para que lo tome otro domiciliario. Ruta: `PATCH /api/orders/{id}/release`. Solo la puede usar el domiciliario. |
 | 167 | `{` | Abre la función `release()`. |
-| 168 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Domiciliario suelta su pedido (o el admin lo reasigna)"* |
+| 168 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Domiciliario suelta su pedido"* |
 | 169 | `$id = $_GET['id'];` | Guarda en `$id` el número que viene en la dirección (ej. el `6` de `/api/products/6`). Lo puso `cargarControlador()` de `helpers.php`. |
 | 170 | `$pedido = $this->buscarPedido($id);` | Busca el pedido. |
 | 171 | `try {` | Intenta... |
-| 172 | `$this->pedidoService->liberarPedido($pedido['id_pedido'], Auth::rol(), Auth::id());` | ...soltarlo (`liberarPedido()`), diciendo quién lo hace (rol y número). |
+| 172 | `$this->pedidoService->liberarPedido($pedido['id_pedido'], Auth::id());` | ...soltarlo (`liberarPedido()` de `models/PedidoService.php`), diciendo qué domiciliario lo hace (`Auth::id()` = su número). |
 | 173 | `} catch (Exception $e) {` | Si falló... |
 | 174 | `responderError($e->getMessage(), 409);` | ...responde 409. |
 | 175 | `}` | Cierra el `catch`. |
@@ -288,7 +288,7 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 ## ¿Qué pasa si se borra?
 | Si se borra… | Qué deja de funcionar | Error que sale |
 |---|---|---|
-| el archivo completo | recargar los pedidos después del cierre de caja, hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp, cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario o administrador), salir a entregar ("En camino"), entregar pedidos con el PIN, calificar pedidos | `Failed to open stream` |
+| el archivo completo | recargar los pedidos después del cierre de caja, hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp, cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario), salir a entregar ("En camino"), entregar pedidos con el PIN, calificar pedidos | `Failed to open stream` |
 | el `require_once` de `PedidoService.php` | todas sus acciones | `Class "Pedido" not found` |
 | el método `index()` | recargar los pedidos después del cierre de caja | `Call to undefined method OrderController::index()` |
 | el método `store()` | hacer pedidos (cliente) | `Call to undefined method OrderController::store()` |
@@ -298,12 +298,12 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | el método `markPreparing()` | pasar pedidos a "En preparación" | `Call to undefined method OrderController::markPreparing()` |
 | el método `markReady()` | pasar pedidos a "Listo" | `Call to undefined method OrderController::markReady()` |
 | el método `take()` | tomar pedidos (domiciliario) | `Call to undefined method OrderController::take()` |
-| el método `release()` | soltar pedidos (domiciliario o administrador) | `Call to undefined method OrderController::release()` |
+| el método `release()` | soltar pedidos (domiciliario) | `Call to undefined method OrderController::release()` |
 | el método `accept()` | salir a entregar ("En camino") | `Call to undefined method OrderController::accept()` |
 | el método `deliver()` | entregar pedidos con el PIN | `Call to undefined method OrderController::deliver()` |
 | el método `review()` | calificar pedidos | `Call to undefined method OrderController::review()` |
-| el método `buscarPedido()` | cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario o administrador), salir a entregar ("En camino"), entregar pedidos con el PIN | `Call to undefined method OrderController::buscarPedido()` |
-| el método `responderPedido()` | cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario o administrador), salir a entregar ("En camino"), entregar pedidos con el PIN | `Call to undefined method OrderController::responderPedido()` |
+| el método `buscarPedido()` | cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario), salir a entregar ("En camino"), entregar pedidos con el PIN | `Call to undefined method OrderController::buscarPedido()` |
+| el método `responderPedido()` | cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario), salir a entregar ("En camino"), entregar pedidos con el PIN | `Call to undefined method OrderController::responderPedido()` |
 | una línea `elseif ($accion === '...')` del final | esa acción | `Ruta no encontrada.` |
 | su línea en `config/rutas.php` | esa acción | `Ruta no encontrada.` |
 

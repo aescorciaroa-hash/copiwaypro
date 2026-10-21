@@ -26,7 +26,7 @@ del último pedido y, al tocar un producto, abre la ventana para personalizarlo.
 ## Variables
 | Variable | Qué es |
 |---|---|
-| `lastOrder` | El pedido más reciente (ordena por fecha). Si existe, aparece el botón "Pedir lo mismo de nuevo". |
+| `lastOrder` | El pedido más reciente (ordena por fecha). Si existe, aparece el botón redondo **"Pedir lo mismo de la última vez"** a la derecha del título "Catálogo de Productos" (en celular, debajo del título). Al tocarlo llama `reorder()` y mete al carrito los mismos productos. |
 | `getProductImage(url)` | Imagen del producto o una de ejemplo. |
 | `configuredCategories` | Categorías del admin. Si no hay, usa una lista fija de ejemplo (Hamburguesas de Pan, Perros Calientes...). |
 | `availableCategories` | `'Todas'` + las categorías que tienen productos. |

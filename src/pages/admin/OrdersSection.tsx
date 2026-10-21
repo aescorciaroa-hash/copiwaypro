@@ -7,7 +7,7 @@ import {
 
 import { Order, OrderItem, Staff, useStore } from '../../store/almacenAplicacion';
 import { CustomZoomControl, RoutePolyline, DriverMockInfo } from '../AdminDashboard';
-import { vehicleWithModel, modificacionesDe } from '../../lib/format';
+import { vehicleWithModel } from '../../lib/format';
 
 interface OrdersSectionProps {
   orders: Order[];
@@ -38,7 +38,7 @@ export default function OrdersSection({
   setNewAddress,
   handleViewOrder,
 }: OrdersSectionProps) {
-  const releaseOrder = useStore(state => state.releaseOrder);
+  const products = useStore(state => state.products);
 
     const pendientes = orders.filter(o => o.status === 'Pendiente' || o.status === 'Pagado').length;
     const enCocina = orders.filter(o => o.status === 'En Preparación').length;
@@ -185,27 +185,25 @@ export default function OrdersSection({
                       {order.items && order.items.length > 0 && (
                         <div className="bg-gray-50 dark:bg-stone-900 rounded-xl p-3 border border-gray-100 dark:border-stone-800">
                           <p className="text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Detalle del Pedido</p>
-                          <ul className="space-y-1.5">
-                            {order.items.map((item: OrderItem, idx: number) => (
-                              <li key={idx} className="text-xs">
-                                <div className="font-bold text-gray-800 dark:text-stone-200 flex items-start gap-1.5">
-                                  <span className="text-brand-orange font-black">{item.quantity}x</span>
-                                  <span>{item.name}</span>
-                                </div>
-                                {modificacionesDe(item).length > 0 && (
-                                  <ul className="mt-0.5 pl-4 space-y-0.5">
-                                    {modificacionesDe(item).map(({ texto, tipo }, mIdx) => (
-                                      <li key={mIdx} className={`text-[10px] font-black ${
-                                        tipo === 'sin' ? 'text-red-500' :
-                                        tipo === 'extra' ? 'text-emerald-500' : 'text-gray-500'
-                                      }`}>
-                                        {texto}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </li>
-                            ))}
+                          <ul className="space-y-2">
+                            {order.items.map((item: OrderItem, idx: number) => {
+                              const foto = products.find(p => p.id === item.productId)?.image;
+                              return (
+                                <li key={idx} className="flex items-center gap-2.5 text-xs">
+                                  {foto ? (
+                                    <img src={foto} alt={item.name} className="w-10 h-10 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-stone-700" />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-lg bg-white dark:bg-stone-800 text-gray-400 flex items-center justify-center shrink-0 border border-gray-100 dark:border-stone-700">
+                                      <Utensils className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                  <div className="font-bold text-gray-800 dark:text-stone-200 flex items-start gap-1.5 min-w-0">
+                                    <span className="text-brand-orange font-black">{item.quantity}x</span>
+                                    <span>{item.name}</span>
+                                  </div>
+                                </li>
+                              );
+                            })}
                           </ul>
                         </div>
                       )}
@@ -235,18 +233,6 @@ export default function OrdersSection({
                           <span className="text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-brand-orange/20 text-brand-orange shrink-0">
                             {order.status === 'Entregado' ? 'Completado' : 'En Camino'}
                           </span>
-                          {order.driverName && (order.status === 'Listos' || order.status === 'En Camino') && (
-                            <button
-                              onClick={() => {
-                                if (window.confirm('¿Quitar este pedido al domiciliario y dejarlo disponible para otro?')) {
-                                  releaseOrder(order.id).catch(() => window.alert('No se pudo liberar el pedido.'));
-                                }
-                              }}
-                              className="text-[10px] font-bold text-gray-500 hover:text-red-600 underline underline-offset-2 shrink-0"
-                            >
-                              Liberar
-                            </button>
-                          )}
                         </div>
                       )}
                     </div>

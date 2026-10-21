@@ -6,9 +6,9 @@ import {
   LogOut, Settings, ShoppingBag, Calendar, 
   Sun, Moon, Utensils, LayoutGrid, RotateCcw, 
   ShoppingCart, Gift, AlertCircle, CheckCircle2, Trash2, X,
-  ChefHat, Minus, Plus, MessageCircle, Star, Smartphone, Layers, CreditCard, Banknote,
+  ChefHat, Minus, Plus, Star, Smartphone, Layers, CreditCard, Banknote,
   Flame, Sparkles, Award, Search, MapPin, Truck, FileText, Wallet, Bell, Eye, EyeOff, User,
-  Clock, Receipt, Percent
+  Clock, Receipt, Percent, Lock, KeyRound, ShieldCheck, Check, Mail, ArrowLeft
 } from 'lucide-react';
 
 import { formatCOP, orderCode } from '../lib/format';
@@ -125,6 +125,12 @@ export default function ClientDashboard() {
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [confirmNewPasswordInput, setConfirmNewPasswordInput] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  // 'actual' = cambia la contraseña escribiendo la actual; 'codigo' = con un código que llega al correo
+  const [modoClave, setModoClave] = useState<'actual' | 'codigo'>('actual');
+  const [mostrarAyudaClave, setMostrarAyudaClave] = useState(false);
+  const [codigoInput, setCodigoInput] = useState('');
+  const [errorClaveActual, setErrorClaveActual] = useState('');
+  const [enviandoCodigo, setEnviandoCodigo] = useState(false);
 
   const resetPasswordModalFields = () => {
     setCurrentPasswordInput('');
@@ -133,12 +139,41 @@ export default function ClientDashboard() {
     setShowCurrentPassword(false);
     setShowNewPassword(false);
     setShowConfirmNewPassword(false);
+    setModoClave('actual');
+    setMostrarAyudaClave(false);
+    setCodigoInput('');
+    setErrorClaveActual('');
+  };
+
+  // Correo de la cuenta (el guardado; si no, el que se ve en el perfil)
+  const correoCuenta = () => clients.find(c => c.id === currentUserId)?.email || userProfile.email || '';
+
+  // "¿No recuerdas tu contraseña?": manda un código de 6 dígitos al correo del cliente
+  const enviarCodigoClave = async () => {
+    const correo = correoCuenta();
+    if (!correo) {
+      showToast('danger', 'Tu cuenta no tiene correo. Contacta al restaurante para recuperar tu contraseña.', 'Sin Correo');
+      return;
+    }
+    setEnviandoCodigo(true);
+    try {
+      const respuesta = await api.post<{ ok: boolean; debugCode?: string }>('/auth/forgot-password/request', { email: correo });
+      setModoClave('codigo');
+      setMostrarAyudaClave(false);
+      setCodigoInput('');
+      // debugCode solo llega en local cuando el correo no se pudo enviar (para poder probar)
+      showToast('success', respuesta.debugCode ? 'Modo de prueba: tu código es ' + respuesta.debugCode : 'Te enviamos un código de 6 dígitos a ' + correo + '.', 'Código Enviado');
+    } catch (err) {
+      showToast('danger', err instanceof ApiError ? err.message : 'No se pudo enviar el código.', 'No se Envió el Código');
+    } finally {
+      setEnviandoCodigo(false);
+    }
   };
 
   const handleChangePassword = async () => {
     if (!currentUserId || currentUserId === 'guest') return;
-    if (!currentPasswordInput || !newPasswordInput) {
-      showToast('danger', 'Completa tu contraseña actual y la nueva.', 'Faltan Datos');
+    if ((modoClave === 'actual' ? !currentPasswordInput : !codigoInput) || !newPasswordInput) {
+      showToast('danger', modoClave === 'actual' ? 'Completa tu contraseña actual y la nueva.' : 'Completa el código y la nueva contraseña.', 'Faltan Datos');
       return;
     }
     if (newPasswordInput.length < 8) {
@@ -151,23 +186,41 @@ export default function ClientDashboard() {
     }
     setIsChangingPassword(true);
     try {
-      await changeClientPassword(currentUserId, currentPasswordInput, newPasswordInput);
+      if (modoClave === 'codigo') {
+        await api.post('/auth/forgot-password/reset', { email: correoCuenta(), code: codigoInput, newPassword: newPasswordInput });
+      } else {
+        await changeClientPassword(currentUserId, currentPasswordInput, newPasswordInput);
+      }
       showToast('success', 'Tu contraseña se actualizó correctamente.', 'Contraseña Actualizada');
       resetPasswordModalFields();
       setShowPasswordModal(false);
     } catch (err) {
       const mensaje = err instanceof ApiError ? err.message : 'No se pudo cambiar la contraseña.';
+      // Si la contraseña actual está mal, se marca en rojo debajo de su caja
+      if (err instanceof ApiError && err.errors?.currentPassword) {
+        setErrorClaveActual(err.errors.currentPassword[0]);
+      }
       showToast('danger', mensaje, 'No se Cambió la Contraseña');
     } finally {
       setIsChangingPassword(false);
     }
   };
   const [showNotifications, setShowNotifications] = useState(false);
+  // Nombre, icono y frase de cada pantalla (se muestran a la izquierda de la barra de arriba)
+  const secciones: Record<string, { titulo: string; frase: string; icono: React.ComponentType<{ className?: string }> }> = {
+    catalog: { titulo: 'Explorar Menú', frase: 'Elige lo que se te antoja', icono: Utensils },
+    builder: { titulo: 'Creador Interactivo', frase: 'Arma tu hamburguesa a tu gusto', icono: Plus },
+    cart: { titulo: 'Carrito de Pedidos', frase: 'Revisa y paga tu pedido', icono: ShoppingCart },
+    activeOrders: { titulo: 'Órdenes Activas', frase: 'Sigue tus pedidos en camino', icono: CheckCircle2 },
+    history: { titulo: 'Historial y Recompras', frase: 'Tus pedidos anteriores', icono: RotateCcw },
+    profile: { titulo: 'Mi Perfil', frase: 'Gestión de tu cuenta', icono: Settings },
+  };
+  const seccionActual = secciones[activeTab] || secciones.catalog;
   const [showCalendar, setShowCalendar] = useState(false);
   const [catalogCategory, setCatalogCategory] = useState('Todas');
 
   // Datos Simulados & Sincronización en Tiempo Real
-  const { products, ingredients, inventory, orders, addOrder, prepareOnlinePayment, updateOrderStatus, storeConfig, updateStoreConfig, updateOrder, clients, updateClient, changeClientPassword } = useStore();
+  const { products, ingredients, inventory, orders, addOrder, prepareOnlinePayment, updateOrderStatus, storeConfig, updateOrder, clients, updateClient, changeClientPassword } = useStore();
   const catalog = products.filter(p => p.active);
   
   const orderHistory = orders.filter(o => o.status === 'Entregado' || o.status === 'entregado');
@@ -450,8 +503,14 @@ export default function ClientDashboard() {
   const availablePoints = userProfile.points || 0;
   const canRedeemPoints = pointValue > 0 && availablePoints > 0 && availablePoints >= minPointsToRedeem;
   const redeemPoints = usePoints && canRedeemPoints;
-  const pointsRedeemed = redeemPoints
+  // Lo máximo que se puede usar: los puntos que tiene, sin pasarse del valor de los productos
+  const maxPointsToUse = canRedeemPoints
     ? Math.max(0, Math.min(availablePoints, Math.floor((cartSubtotal - birthdayDiscount) / pointValue)))
+    : 0;
+  // Cuántos puntos escribió el cliente (al marcar la casilla empieza con el máximo)
+  const [pointsToUseInput, setPointsToUseInput] = useState('');
+  const pointsRedeemed = redeemPoints
+    ? Math.max(0, Math.min(maxPointsToUse, parseInt(pointsToUseInput, 10) || 0))
     : 0;
   const pointsDiscount = pointsRedeemed * pointValue;
 
@@ -559,7 +618,7 @@ export default function ClientDashboard() {
     setSimulationStep('Conectando con ' + bankName + '...');
 
     try {
-      const datos = await prepareOnlinePayment({ items: [...cart] as unknown as Order['items'], address: userProfile.address || '' }, redeemPoints);
+      const datos = await prepareOnlinePayment({ items: [...cart] as unknown as Order['items'], address: userProfile.address || '' }, pointsRedeemed);
       setGatewayReference(datos.reference);
       await esperar(900);
 
@@ -616,7 +675,7 @@ export default function ClientDashboard() {
     };
 
     try {
-      await addOrder(newOrder as unknown as Order, redeemPoints);
+      await addOrder(newOrder as unknown as Order, pointsRedeemed);
     } catch (err) {
       // El servidor rechazó el pedido (tienda cerrada, sin stock, pago no
       // confirmado, etc.) — se muestra el motivo real en vez de fingir éxito.
@@ -634,6 +693,7 @@ export default function ClientDashboard() {
     setTimeout(() => {
       setCart([]);
       setUsePoints(false);
+      setPointsToUseInput('');
       setIsCheckingOut(false);
       setPaymentStatus('idle');
       setSimulationStep('');
@@ -1255,50 +1315,73 @@ export default function ClientDashboard() {
 
       {/* Área Principal */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-gray-50/50 dark:bg-stone-950 pb-20 md:pb-0 min-w-0">
-        <header className="h-[70px] md:h-24 border-b border-gray-200 dark:border-white/5 bg-white dark:bg-[#0c0a09] flex items-center justify-between px-4 sm:px-6 md:px-10 shrink-0 sticky top-0 z-50 transition-colors duration-300">
-          <div className="flex items-center gap-2">
-            <div className="md:hidden w-8 h-8 rounded-lg bg-brand-orange flex items-center justify-center shadow-lg shadow-brand-orange/20 shrink-0">
+        <header className="h-[70px] md:h-24 border-b border-gray-100 dark:border-white/5 bg-white/80 dark:bg-[#0c0a09]/80 backdrop-blur-xl flex items-center justify-between gap-3 px-4 sm:px-6 md:px-10 shrink-0 sticky top-0 z-50 transition-colors duration-300">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="md:hidden w-9 h-9 rounded-xl bg-brand-orange flex items-center justify-center shadow-lg shadow-brand-orange/20 shrink-0">
               <Layers className="w-4 h-4 text-white" />
             </div>
-             {activeTab === 'profile' && <h1 className="text-[18px] md:text-[22px] font-bold text-gray-900 dark:text-white hidden sm:block">Gestión de Cuenta</h1>}
+            <div className="hidden sm:flex items-center gap-3 min-w-0">
+              <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-orange-50 dark:bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0">
+                <seccionActual.icono className="w-5 h-5 md:w-6 md:h-6" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-lg md:text-xl font-black tracking-tight text-gray-900 dark:text-white truncate">{seccionActual.titulo}</h1>
+                <p className="text-xs font-medium text-gray-500 dark:text-stone-400 truncate">{seccionActual.frase}</p>
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Indicador Moderno en Vivo del Estado del Local (Dark Kitchen) */}
-            <div className="relative group">
-              <button 
-                onClick={() => updateStoreConfig({ isOpen: !storeConfig.isOpen })}
-                title="Haz clic para alternar estado manual (Modo Prueba / Admin)"
-                className={`flex items-center gap-2 px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-bold transition-all border shadow-sm ${
-                  isStoreOpen 
-                    ? 'bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20' 
-                    : 'bg-rose-500/10 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30 hover:bg-rose-500/20'
-                }`}
-              >
-                <span className="relative flex h-2.5 w-2.5 shrink-0">
-                  {isStoreOpen ? (
-                    <>
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-                    </>
-                  )}
+            {/* Estado del local: solo se muestra (abrir o cerrar lo hace el administrador en Ajustes) */}
+            <div
+              title={isStoreOpen ? 'Estamos recibiendo pedidos' : 'En este momento no recibimos pedidos'}
+              className={`flex items-center gap-2.5 pl-1.5 pr-3.5 py-1.5 md:pr-4 rounded-full border bg-white dark:bg-[#151515] shadow-sm ${
+                isStoreOpen ? 'border-emerald-200 dark:border-emerald-900/50' : 'border-rose-200 dark:border-rose-900/50'
+              }`}
+            >
+              <span className={`relative w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shrink-0 ${
+                isStoreOpen ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400'
+              }`}>
+                <ChefHat className="w-4 h-4" />
+                <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                  {isStoreOpen && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+                  <span className={`relative inline-flex rounded-full h-2.5 w-2.5 border-2 border-white dark:border-[#151515] ${isStoreOpen ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
                 </span>
-                <span className="tracking-wide">{isStoreOpen ? 'Cocina Abierta' : 'Cocina Cerrada'}</span>
-                <span className="text-[10px] font-normal opacity-70 hidden lg:inline-block border-l border-current pl-2 ml-0.5">
-                  {isStoreOpen ? `${storeConfig.openTime || '11:00'} - ${storeConfig.closeTime || '23:00'}` : `Abre ${storeConfig.openTime || '11:00'}`}
+              </span>
+              <span className="flex flex-col leading-tight">
+                <span className={`text-xs font-black ${isStoreOpen ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
+                  {isStoreOpen ? 'Cocina Abierta' : 'Cocina Cerrada'}
                 </span>
-              </button>
+                <span className="hidden sm:flex items-center gap-1 text-[10px] font-semibold text-gray-500 dark:text-stone-400">
+                  <Clock className="w-3 h-3" />
+                  {isStoreOpen ? `Hoy ${storeConfig.openTime || '11:00'} - ${storeConfig.closeTime || '23:00'}` : `Abre a las ${storeConfig.openTime || '11:00'}`}
+                </span>
+              </span>
             </div>
 
+            {/* Mi perfil: iniciales, nombre y puntos (lleva a "Mi Perfil") */}
+            <button
+              onClick={() => setActiveTab('profile')}
+              title="Mi Perfil"
+              className={`hidden md:flex items-center gap-3 pl-1.5 pr-4 py-1.5 rounded-full border transition-colors cursor-pointer ${activeTab === 'profile' ? 'border-brand-orange bg-orange-50 dark:bg-brand-orange/10' : 'border-gray-200 dark:border-stone-800 bg-white dark:bg-[#151515] hover:border-brand-orange/40'}`}
+            >
+              <span className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-orange to-orange-600 text-white text-xs font-black flex items-center justify-center shrink-0">
+                {(userProfile.name || '?').split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+              </span>
+              <span className="flex flex-col items-start leading-tight">
+                <span className="text-xs font-bold text-gray-900 dark:text-white max-w-[120px] truncate">{(userProfile.name || 'Cliente').split(' ')[0]}</span>
+                <span className="flex items-center gap-1 text-[10px] font-bold text-brand-orange">
+                  <Gift className="w-3 h-3" /> {userProfile.points || 0} pts
+                </span>
+              </span>
+            </button>
+
             <div className="relative">
-              <button onClick={() => setShowNotifications(!showNotifications)} className="w-10 h-10 relative flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-600 dark:text-stone-300 transition-colors">
+              <button onClick={() => setShowNotifications(!showNotifications)} title="Notificaciones" className={`w-10 h-10 md:w-11 md:h-11 relative flex items-center justify-center rounded-full border transition-colors cursor-pointer ${showNotifications ? 'border-brand-orange bg-orange-50 dark:bg-brand-orange/10 text-brand-orange' : 'border-gray-200 dark:border-stone-800 bg-white dark:bg-[#151515] text-gray-600 dark:text-stone-300 hover:border-brand-orange/40 hover:text-brand-orange'}`}>
                 <Bell className="w-5 h-5" />
                 {userProfile.notifications?.some(n => !n.read) && (
-                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-brand-orange rounded-full border-2 border-white dark:border-[#0c0a09]"></span>
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-brand-orange text-white text-[10px] font-black rounded-full border-2 border-white dark:border-[#0c0a09] flex items-center justify-center">
+                    {userProfile.notifications.filter(n => !n.read).length}
+                  </span>
                 )}
               </button>
               
@@ -1370,7 +1453,7 @@ export default function ClientDashboard() {
               </AnimatePresence>
             </div>
 
-            <button onClick={toggleTheme} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-600 dark:text-stone-300 transition-colors">
+            <button onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'} className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-full border border-gray-200 dark:border-stone-800 bg-white dark:bg-[#151515] text-gray-600 dark:text-stone-300 hover:border-brand-orange/40 hover:text-brand-orange transition-colors cursor-pointer">
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
           </div>
@@ -1454,7 +1537,10 @@ export default function ClientDashboard() {
                   pointValue,
                   canRedeem: canRedeemPoints,
                   use: redeemPoints,
-                  setUse: setUsePoints,
+                  setUse: (use: boolean) => { setUsePoints(use); setPointsToUseInput(use ? String(maxPointsToUse) : ''); },
+                  maximum: maxPointsToUse,
+                  amount: pointsToUseInput,
+                  setAmount: setPointsToUseInput,
                   redeemed: pointsRedeemed,
                   discount: pointsDiscount,
                 }}
@@ -1667,49 +1753,148 @@ export default function ClientDashboard() {
       <AnimatePresence>
         {showPasswordModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={() => setShowPasswordModal(false)} className="absolute inset-0 bg-stone-900/60 dark:bg-black/80 backdrop-blur-sm" />
-            <motion.div initial={{opacity:0, scale:0.95, y:20}} animate={{opacity:1, scale:1, y:0}} exit={{opacity:0, scale:0.95, y:20}} className="relative bg-white dark:bg-[#151515] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 dark:border-stone-800">
-              <div className="p-6 border-b border-gray-100 dark:border-stone-800 flex justify-between items-center">
-                <h3 className="font-bold text-xl text-gray-900 dark:text-white">Cambiar Contraseña</h3>
-                <button onClick={() => setShowPasswordModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-stone-800 rounded-full transition-colors"><X className="w-5 h-5"/></button>
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={() => { setShowPasswordModal(false); resetPasswordModalFields(); }} className="absolute inset-0 bg-stone-900/60 dark:bg-black/80 backdrop-blur-sm" />
+            <motion.div initial={{opacity:0, scale:0.95, y:20}} animate={{opacity:1, scale:1, y:0}} exit={{opacity:0, scale:0.95, y:20}} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="relative bg-white dark:bg-[#151515] rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 dark:border-stone-800">
+              {/* Encabezado */}
+              <div className="p-6 md:px-8 border-b border-gray-100 dark:border-stone-800 flex items-center justify-between gap-3 bg-gradient-to-br from-brand-orange/5 to-transparent">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-orange-900/20 text-brand-orange flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-xl text-gray-900 dark:text-white">Cambiar Contraseña</h3>
+                    <p className="text-xs text-gray-500 dark:text-stone-400">{modoClave === 'actual' ? 'Escribe tu contraseña actual y elige una nueva.' : 'Escribe el código que te llegó y elige una nueva.'}</p>
+                  </div>
+                </div>
+                <button onClick={() => { setShowPasswordModal(false); resetPasswordModalFields(); }} className="w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-stone-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-stone-300 transition-colors cursor-pointer shrink-0"><X className="w-5 h-5"/></button>
               </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-stone-300 mb-2">Contraseña Actual</label>
-                  <div className="relative">
-                    <input type={showCurrentPassword ? 'text' : 'password'} value={currentPasswordInput} onChange={e => setCurrentPasswordInput(e.target.value)} placeholder="••••••••" className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-[#151515] text-sm outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all text-gray-900 dark:text-white" />
-                    <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} tabIndex={-1} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer">
-                      {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+
+              {/* Campos */}
+              <div className="p-6 md:px-8 space-y-5">
+                {modoClave === 'actual' ? (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-stone-300 mb-2">Contraseña Actual</label>
+                    <div className="relative">
+                      <Lock className={`w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${errorClaveActual ? 'text-red-400' : 'text-gray-400'}`} />
+                      <input
+                        type={showCurrentPassword ? 'text' : 'password'}
+                        value={currentPasswordInput}
+                        onChange={e => { setCurrentPasswordInput(e.target.value); setErrorClaveActual(''); }}
+                        placeholder="••••••••"
+                        className={`w-full pl-12 pr-12 py-3.5 rounded-2xl border text-sm font-medium outline-none focus:ring-2 transition-all text-gray-900 dark:text-white ${errorClaveActual ? 'border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/20 focus:ring-red-200' : 'border-gray-200 dark:border-stone-700 bg-gray-50 dark:bg-stone-900 focus:border-brand-orange focus:bg-white dark:focus:bg-stone-900 focus:ring-brand-orange/20'}`}
+                      />
+                      <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} tabIndex={-1} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-orange transition-colors cursor-pointer">
+                        {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    {errorClaveActual && (
+                      <p className="flex items-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400 mt-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" /> {errorClaveActual}
+                      </p>
+                    )}
+                    <button type="button" onClick={() => setMostrarAyudaClave(!mostrarAyudaClave)} className="text-xs font-bold text-brand-orange hover:underline mt-2 cursor-pointer">
+                      ¿No recuerdas tu contraseña actual?
                     </button>
+
+                    {/* Opciones para recuperarla */}
+                    {mostrarAyudaClave && (
+                      <div className="mt-3 space-y-2">
+                        <button
+                          type="button"
+                          onClick={enviarCodigoClave}
+                          disabled={enviandoCodigo}
+                          className="w-full flex items-center gap-3 p-3 rounded-2xl border border-gray-200 dark:border-stone-700 hover:border-brand-orange hover:bg-orange-50/50 dark:hover:bg-brand-orange/10 transition-colors text-left cursor-pointer disabled:opacity-50"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-900/20 text-brand-orange flex items-center justify-center shrink-0">
+                            <Mail className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-gray-900 dark:text-white">{enviandoCodigo ? 'Enviando código...' : 'Recibir un código en mi correo'}</p>
+                            <p className="text-xs text-gray-500 dark:text-stone-400 truncate">{correoCuenta() || 'Tu cuenta no tiene correo'}</p>
+                          </div>
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-stone-300 mb-2">Nueva Contraseña</label>
-                  <div className="relative">
-                    <input type={showNewPassword ? 'text' : 'password'} value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} placeholder="••••••••" className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-[#151515] text-sm outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all text-gray-900 dark:text-white" />
-                    <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} tabIndex={-1} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer">
-                      {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                ) : (
+                  <div>
+                    <div className="flex items-start gap-3 p-4 rounded-2xl bg-orange-50 dark:bg-brand-orange/10 border border-brand-orange/20 mb-4">
+                      <Mail className="w-5 h-5 text-brand-orange shrink-0 mt-0.5" />
+                      <p className="text-xs text-gray-700 dark:text-stone-300">
+                        Te enviamos un código de 6 dígitos a <strong>{correoCuenta()}</strong>. Vence en 15 minutos.
+                      </p>
+                    </div>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-stone-300 mb-2">Código de Verificación</label>
+                    <div className="relative">
+                      <KeyRound className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={codigoInput}
+                        onChange={e => setCodigoInput(e.target.value.replace(/\D/g, ''))}
+                        placeholder="000000"
+                        className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-200 dark:border-stone-700 bg-gray-50 dark:bg-stone-900 text-lg font-black tracking-[0.4em] outline-none focus:border-brand-orange focus:bg-white dark:focus:bg-stone-900 focus:ring-2 focus:ring-brand-orange/20 transition-all text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-2 mt-2">
+                      <button type="button" onClick={() => { setModoClave('actual'); setCodigoInput(''); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-stone-800 text-xs font-bold text-gray-600 dark:text-stone-300 hover:bg-orange-50 hover:text-brand-orange dark:hover:bg-brand-orange/10 transition-colors cursor-pointer">
+                        <ArrowLeft className="w-3.5 h-3.5" /> Usar mi contraseña actual
+                      </button>
+                      <button type="button" onClick={enviarCodigoClave} disabled={enviandoCodigo} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-brand-orange/10 text-xs font-bold text-brand-orange hover:bg-orange-100 dark:hover:bg-brand-orange/20 transition-colors cursor-pointer disabled:opacity-50">
+                        <RotateCcw className={`w-3.5 h-3.5 ${enviandoCodigo ? 'animate-spin' : ''}`} /> {enviandoCodigo ? 'Enviando...' : 'Reenviar código'}
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-stone-400 mt-1.5">Mínimo 8 caracteres.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-stone-300 mb-2">Confirmar Nueva Contraseña</label>
-                  <div className="relative">
-                    <input type={showConfirmNewPassword ? 'text' : 'password'} value={confirmNewPasswordInput} onChange={e => setConfirmNewPasswordInput(e.target.value)} placeholder="••••••••" className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-[#151515] text-sm outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all text-gray-900 dark:text-white" />
-                    <button type="button" onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)} tabIndex={-1} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer">
-                      {showConfirmNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                )}
+
+                {[
+                  { titulo: 'Nueva Contraseña', valor: newPasswordInput, cambiar: setNewPasswordInput, ver: showNewPassword, setVer: setShowNewPassword },
+                  { titulo: 'Confirmar Nueva Contraseña', valor: confirmNewPasswordInput, cambiar: setConfirmNewPasswordInput, ver: showConfirmNewPassword, setVer: setShowConfirmNewPassword },
+                ].map(c => (
+                  <div key={c.titulo}>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-stone-300 mb-2">{c.titulo}</label>
+                    <div className="relative">
+                      <KeyRound className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type={c.ver ? 'text' : 'password'}
+                        value={c.valor}
+                        onChange={e => c.cambiar(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full pl-12 pr-12 py-3.5 rounded-2xl border border-gray-200 dark:border-stone-700 bg-gray-50 dark:bg-stone-900 text-sm font-medium outline-none focus:border-brand-orange focus:bg-white dark:focus:bg-stone-900 focus:ring-2 focus:ring-brand-orange/20 transition-all text-gray-900 dark:text-white"
+                      />
+                      <button type="button" onClick={() => c.setVer(!c.ver)} tabIndex={-1} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-orange transition-colors cursor-pointer">
+                        {c.ver ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
                   </div>
+                ))}
+
+                {/* Requisitos: se ponen en verde mientras se escribe */}
+                <div className="rounded-2xl bg-gray-50 dark:bg-stone-900/60 border border-gray-100 dark:border-stone-800 p-4 space-y-2">
+                  {[
+                    { texto: 'Mínimo 8 caracteres', cumple: newPasswordInput.length >= 8 },
+                    { texto: 'Las contraseñas nuevas coinciden', cumple: newPasswordInput !== '' && newPasswordInput === confirmNewPasswordInput },
+                  ].map(r => (
+                    <div key={r.texto} className={`flex items-center gap-2 text-xs font-semibold transition-colors ${r.cumple ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-stone-400'}`}>
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors ${r.cumple ? 'bg-emerald-500 text-white' : 'bg-gray-200 dark:bg-stone-700 text-transparent'}`}>
+                        <Check className="w-3 h-3" />
+                      </span>
+                      {r.texto}
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="p-6 border-t border-gray-100 dark:border-stone-800 flex gap-4">
-                <button onClick={() => { setShowPasswordModal(false); resetPasswordModalFields(); }} className="flex-1 px-4 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors min-w-0 cursor-pointer">Cancelar</button>
+
+              {/* Botones */}
+              <div className="p-6 md:px-8 border-t border-gray-100 dark:border-stone-800 bg-gray-50 dark:bg-stone-900/50 flex gap-3">
+                <button onClick={() => { setShowPasswordModal(false); resetPasswordModalFields(); }} className="flex-1 py-3.5 rounded-full font-bold text-gray-700 dark:text-white bg-white dark:bg-stone-800 border border-gray-200 dark:border-stone-700 hover:bg-gray-100 dark:hover:bg-stone-700 transition-colors min-w-0 cursor-pointer">Cancelar</button>
                 <button
                   onClick={handleChangePassword}
-                  disabled={isChangingPassword || !currentPasswordInput || !newPasswordInput || !confirmNewPasswordInput}
-                  className="flex-1 px-4 py-3 rounded-xl font-bold text-white bg-brand-orange hover:bg-brand-orange/90 transition-colors shadow-md min-w-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isChangingPassword || (modoClave === 'actual' ? !currentPasswordInput : codigoInput.length !== 6) || !newPasswordInput || !confirmNewPasswordInput}
+                  className="flex-1 py-3.5 rounded-full font-bold text-white bg-brand-orange hover:bg-brand-orange/90 transition-all shadow-lg shadow-brand-orange/20 min-w-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
+                  <ShieldCheck className="w-5 h-5" />
                   {isChangingPassword ? 'Actualizando...' : 'Actualizar'}
                 </button>
               </div>

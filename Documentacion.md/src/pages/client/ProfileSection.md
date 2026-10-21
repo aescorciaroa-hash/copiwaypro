@@ -25,6 +25,20 @@ cumpleaños; ve sus puntos; cambia su contraseña; y (en el celular) cierra sesi
 | `onSaveProfile`, `onDiscardProfile` | Guardar / descartar. |
 | `isSavingProfile` | `true` mientras se guarda (desactiva el botón). |
 
+## Cómo se ve
+- **Encabezado naranja:** un círculo con las **iniciales** del cliente, su nombre y correo, y a la derecha
+  una tarjeta con sus **puntos** ("Úsalos al pagar tu pedido").
+- **Información Personal:** los campos van en dos columnas (en celular, una), cada uno con su ícono
+  (persona, sobre, teléfono, calendario, ubicación). Abajo, el aviso del 15 % de cumpleaños: cambia el texto
+  si el cliente ya puso su fecha o no.
+- **Seguridad:** una fila con el candado, el texto y el botón "Cambiar Contraseña".
+
+## Variables
+| Variable | Qué es |
+|---|---|
+| `campo`, `etiqueta`, `icono` | El estilo (clases de Tailwind) que comparten todas las cajas de texto, sus títulos y sus íconos. Se escriben una sola vez y se reusan. |
+| `iniciales` | Las primeras letras del nombre (ej. "Edgar Escorcia" → "EE"), para el círculo del encabezado. `split(' ')` separa las palabras, `map(n => n[0])` toma la primera letra de cada una y `substring(0, 2)` deja solo dos. |
+
 Escribir en los campos **no guarda** nada en el servidor: solo el botón "Guardar Cambios" lo hace.
 Cambiar la fecha de cumpleaños cambia el día en que se aplica el 15 % de descuento.
 

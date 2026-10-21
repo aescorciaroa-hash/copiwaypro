@@ -240,12 +240,12 @@ interface AppState {
   deleteStaff: (id: string, role?: string) => Promise<void>;
 
   setOrders: (orders: Order[]) => void;
-  /** usePoints: el cliente quiere pagar parte del pedido con sus puntos. */
-  addOrder: (order: Order, usePoints?: boolean) => Promise<void>;
+  /** pointsToUse: cuántos puntos quiere canjear el cliente en este pedido (0 = ninguno). */
+  addOrder: (order: Order, pointsToUse?: number) => Promise<void>;
   /** Pedido manual del administrador; devuelve el pedido creado (con su número real). */
   addManualOrder: (input: ManualOrderInput) => Promise<Order>;
   /** Pide al servidor monto, referencia y firma para iniciar el pago digital (pasarela de prueba). */
-  prepareOnlinePayment: (order: Pick<Order, 'items' | 'address'>, usePoints?: boolean) => Promise<DatosCheckout>;
+  prepareOnlinePayment: (order: Pick<Order, 'items' | 'address'>, pointsToUse?: number) => Promise<DatosCheckout>;
   /** El admin corrige la dirección de un pedido en curso (se guarda en el servidor). */
   updateOrderAddress: (id: string, address: string) => Promise<void>;
   /** El domiciliario guarda las coordenadas del destino que ubicó en su mapa. */
@@ -382,14 +382,15 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   setOrders: (orders) => set({ orders, ordersSynced: true }),
-  addOrder: async (order, usePoints = false) => {
+  addOrder: async (order, pointsToUse = 0) => {
     const payload = {
       items: (order.items || []).map(toApiOrderItem),
       address: order.address,
       paymentMethod: order.paymentMethod === 'online' ? 'online' : 'cash',
       bank: order.paymentMethod === 'online' ? order.digitalBank : undefined,
       paymentTransactionId: order.paymentMethod === 'online' ? order.paymentTransactionId : undefined,
-      usePoints,
+      usePoints: pointsToUse > 0,
+      pointsToUse,
     };
     const created = await api.post<Order>('/orders', payload);
     set(state => ({ orders: [created, ...state.orders] }));
@@ -402,11 +403,12 @@ export const useStore = create<AppState>()((set, get) => ({
     set(state => ({ orders: [created, ...state.orders] }));
     return created;
   },
-  prepareOnlinePayment: async (order, usePoints = false) => {
+  prepareOnlinePayment: async (order, pointsToUse = 0) => {
     return api.post<DatosCheckout>('/payments/prepare', {
       items: (order.items || []).map(toApiOrderItem),
       address: order.address,
-      usePoints,
+      usePoints: pointsToUse > 0,
+      pointsToUse,
     });
   },
   updateOrderAddress: async (id, address) => {

@@ -37,6 +37,11 @@ export interface PointsRedemption {
   canRedeem: boolean;
   use: boolean;
   setUse: (use: boolean) => void;
+  /** Lo máximo que puede canjear en este pedido. */
+  maximum: number;
+  /** Lo que el cliente escribió en la cajita de cuántos puntos usar. */
+  amount: string;
+  setAmount: (amount: string) => void;
   redeemed: number;
   discount: number;
 }
@@ -236,6 +241,39 @@ export default function CheckoutSection({
                   </span>
                 </span>
               </label>
+
+              {/* Cuántos puntos usar */}
+              {pointsRedemption.use && (
+                <div className="mt-3 pl-7">
+                  <p className="text-xs font-bold text-gray-700 dark:text-stone-300 mb-1.5">¿Cuántos puntos quieres usar?</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max={pointsRedemption.maximum}
+                      value={pointsRedemption.amount}
+                      disabled={paymentStatus === 'processing'}
+                      onChange={e => pointsRedemption.setAmount(e.target.value)}
+                      onBlur={() => {
+                        const n = parseInt(pointsRedemption.amount, 10) || 0;
+                        pointsRedemption.setAmount(String(Math.max(0, Math.min(pointsRedemption.maximum, n))));
+                      }}
+                      className="w-28 px-3 py-2 rounded-xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20"
+                    />
+                    <button
+                      type="button"
+                      disabled={paymentStatus === 'processing'}
+                      onClick={() => pointsRedemption.setAmount(String(pointsRedemption.maximum))}
+                      className="px-3 py-2 rounded-xl text-xs font-bold text-brand-orange border border-brand-orange/30 hover:bg-brand-orange/10 transition-colors cursor-pointer"
+                    >
+                      Usar todos ({pointsRedemption.maximum})
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-stone-400 mt-1.5">
+                    Puedes usar hasta {pointsRedemption.maximum} puntos en este pedido = {formatCOP(pointsRedemption.maximum * pointsRedemption.pointValue)} de descuento.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-gray-100 dark:border-stone-800 pt-4 space-y-2">

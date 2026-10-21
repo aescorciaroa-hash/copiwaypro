@@ -168,7 +168,7 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 ## ¿Qué pasa si se borra?
 | Si se borra… | Qué deja de funcionar | Error que sale |
 |---|---|---|
-| el archivo completo | recargar los pedidos después del cierre de caja, hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp, cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario o administrador), salir a entregar ("En camino"), entregar pedidos con el PIN, calificar pedidos, empezar un pago en línea, crear el pago, saber si el pago fue aprobado | `Failed to open stream` |
+| el archivo completo | recargar los pedidos después del cierre de caja, hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp, cambiar la dirección de un pedido, guardar el destino en el mapa del domiciliario, pasar pedidos a "En preparación", pasar pedidos a "Listo", tomar pedidos (domiciliario), soltar pedidos (domiciliario), salir a entregar ("En camino"), entregar pedidos con el PIN, calificar pedidos, empezar un pago en línea, crear el pago, saber si el pago fue aprobado | `Failed to open stream` |
 | el método `firmar()` | empezar un pago en línea, crear el pago | `Call to undefined method PagoService::firmar()` |
 | el método `prepararCheckout()` | empezar un pago en línea | `Call to undefined method PagoService::prepararCheckout()` |
 | el método `crearTransaccion()` | crear el pago | `Call to undefined method PagoService::crearTransaccion()` |

@@ -27,10 +27,10 @@ Permite a un cliente **recuperar su contraseña** (`/forgot-password`) en 2 paso
 await api.post('/auth/forgot-password/request', { email: values.identifier });
 setStep(2);
 ```
-PHP responde lo mismo exista o no el correo (para no revelar qué correos están registrados), así que
-siempre pasa al paso 2.
+Si el correo no está registrado, PHP responde el error *"El correo es incorrecto o no existe."*: el `catch` lo
+muestra en rojo debajo de la casilla y la pantalla se queda en el paso 1. Si el correo sí existe, pasa al paso 2.
 
-El texto del campo dice "correo o teléfono", pero el servidor solo busca por **correo**.
+La casilla solo pide el **correo electrónico** (no el celular), porque el servidor busca al cliente por su correo y el código se envía por correo.
 
 ## Paso 2
 ```tsx

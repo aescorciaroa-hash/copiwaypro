@@ -38,7 +38,7 @@ Con `'debug' => true` (en `config/app.php`), los errores de la API traen el mens
 | Síntoma | Causa | Solución |
 |---|---|---|
 | "Correo o contraseña incorrectos" con datos correctos | La cuenta está **inactiva** (`activo = 0`) | El admin la reactiva en Equipo y Personal, o en MySQL: `UPDATE AYUDANTE_COCINA SET activo = 1 WHERE correo = '...';` |
-| "Demasiados intentos fallidos" | 5 fallos en 15 minutos | Espera 15 minutos, o borra los intentos: `DELETE FROM INTENTO_LOGIN WHERE identificador = 'correo';` |
+| "Demasiados intentos fallidos" | 5 fallos en 1 minuto con ese correo | Espera 1 minuto, o borra los intentos: `DELETE FROM INTENTO_LOGIN WHERE identificador = 'correo';` |
 | La cocina o el domiciliario no puede entrar a su panel con el PIN | La cuenta no tiene PIN | El admin le asigna uno en Equipo y Personal. |
 | "Usuario o PIN incorrectos" escribiendo solo el usuario | Hay dos cuentas con el mismo usuario y distinto dominio | Escribe el correo completo. |
 | Entras y te saca al login | La sesión venció o la cuenta fue desactivada | Vuelve a iniciar sesión. |

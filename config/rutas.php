@@ -59,7 +59,7 @@ return [
     'PATCH /api/orders/{id}/preparing' => ['OrderController', 'markPreparing', ['admin', 'kitchen']],
     'PATCH /api/orders/{id}/ready' => ['OrderController', 'markReady', ['admin', 'kitchen']],
     'PATCH /api/orders/{id}/take' => ['OrderController', 'take', ['delivery']],
-    'PATCH /api/orders/{id}/release' => ['OrderController', 'release', ['delivery', 'admin']],
+    'PATCH /api/orders/{id}/release' => ['OrderController', 'release', ['delivery']],
     'PATCH /api/orders/{id}/accept' => ['OrderController', 'accept', ['delivery']],
     'PATCH /api/orders/{id}/deliver' => ['OrderController', 'deliver', ['delivery']],
     'PATCH /api/orders/{id}/review' => ['OrderController', 'review', ['client']],

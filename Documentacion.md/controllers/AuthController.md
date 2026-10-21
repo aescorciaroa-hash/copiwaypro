@@ -93,18 +93,19 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 67 | `{` | Abre la función `forgotPasswordRequest()`. |
 | 68 | `$email     = trim((string) ($this->datos['email'] ?? ''));` | Guarda en `$email` el correo que escribió. |
 | 69 | `$idCliente = $this->clienteModel->buscarIdPorCorreo($email);` | Busca el cliente con ese correo (`buscarIdPorCorreo()` de `models/Cliente.php`) y guarda su número en `$idCliente` (o nada si no existe). |
-| 71 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Se responde igual exista o no la cuenta, para no revelar que correos estan registrados."* |
-| 72 | `if ($idCliente) {` | Si el cliente existe... |
-| 73 | `$codigo = (string) random_int(100000, 999999);` | ...crea un código al azar de 6 números (`random_int(100000, 999999)`) y lo guarda en `$codigo`. |
-| 74 | `$this->codigoModel->crearParaCliente($idCliente, $codigo);` | ...guarda el código en la base de datos (`crearParaCliente()` de `models/CodigoVerificacion.php`). |
-| 75 | `$enviado = CorreoService::enviarCodigoRecuperacion($email, $codigo);` | ...envía el código por correo (`enviarCodigoRecuperacion()` de `models/CorreoService.php`). `$enviado` queda en `true` si salió. |
-| 77 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Solo en local y si el correo no salio: se devuelve el codigo para poder probar."* |
-| 78 | `global $config;` | Trae `$config` (los ajustes de `config/app.php`). |
-| 79 | `if (!$enviado && $config['entorno'] === 'local') {` | Si el correo **no** salió (`!$enviado`) y estamos en tu computador (`'entorno'` = `'local'`)... |
-| 80 | `responderJson(['ok' => true, 'debugCode' => $codigo]);` | ...responde el código en `debugCode`, para poder probar sin correo. |
-| 81 | `}` | Cierra el `if`. |
+| 70 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Si el correo no esta registrado, se avisa y no se envia nada."* |
+| 71 | `if (!$idCliente) {` | Si **no** se encontró ningún cliente con ese correo (`!` = "no")... |
+| 72 | `responderError('El correo es incorrecto o no existe.', 404);` | ...responde el error 404 (no encontrado) con el mensaje *"El correo es incorrecto o no existe."* (`responderError()` de `config/helpers.php`). `ForgotPassword.tsx` lo muestra en rojo debajo de la casilla. Aquí la función se detiene y no se envía nada. |
+| 73 | `}` | Cierra el `if`. |
+| 75 | `$codigo = (string) random_int(100000, 999999);` | Si llegó hasta aquí, el correo sí existe. Crea un código al azar de 6 números (`random_int(100000, 999999)`) y lo guarda en `$codigo`. |
+| 76 | `$this->codigoModel->crearParaCliente($idCliente, $codigo);` | Guarda el código en la base de datos (`crearParaCliente()` de `models/CodigoVerificacion.php`). |
+| 77 | `$enviado = CorreoService::enviarCodigoRecuperacion($email, $codigo, $this->clienteModel->buscarCrudo($idCliente)['nombre']);` | Envía el código por correo (`enviarCodigoRecuperacion()` de `models/CorreoService.php`). Le pasa 3 datos: el correo, el código y el nombre del cliente (`buscarCrudo()` de `models/Cliente.php` trae sus datos y `['nombre']` toma solo el nombre, para saludarlo en el correo). `$enviado` queda en `true` si salió. |
+| 78 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Solo en local y si el correo no salio: se devuelve el codigo para poder probar."* |
+| 79 | `global $config;` | Trae `$config` (los ajustes de `config/app.php`). |
+| 80 | `if (!$enviado && $config['entorno'] === 'local') {` | Si el correo **no** salió (`!$enviado`) y estamos en tu computador (`'entorno'` = `'local'`)... |
+| 81 | `responderJson(['ok' => true, 'debugCode' => $codigo]);` | ...responde el código en `debugCode`, para poder probar sin correo. |
 | 82 | `}` | Cierra el `if`. |
-| 83 | `responderJson(['ok' => true]);` | Responde `ok` siempre, exista o no la cuenta (así nadie puede averiguar qué correos están registrados). |
+| 83 | `responderJson(['ok' => true]);` | Responde `ok`: el código se envió al correo. |
 | 84 | `}` | Cierra la función `forgotPasswordRequest()`. |
 | 86 | `public function forgotPasswordReset()` | Función `forgotPasswordReset()`: cambia la contraseña usando el código. Ruta: `POST /api/auth/forgot-password/reset`. |
 | 87 | `{` | Abre la función `forgotPasswordReset()`. |
@@ -150,8 +151,8 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 132 | `}` | Cierra el `if`. |
 | 134 | `$email = trim((string) $this->datos['email']);` | Guarda en `$email` el correo (o usuario), sin espacios. |
 | 135 | `$ip    = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';` | Guarda en `$ip` la IP del computador. |
-| 137 | `if ($this->intentoModel->excedeLimite($email, $ip)) {` | Si ya hubo demasiados intentos fallidos con ese correo o esa IP (`excedeLimite()` de `models/IntentoLogin.php`)... |
-| 138 | `responderError('Demasiados intentos fallidos. Intenta de nuevo en unos minutos.', 429);` | ...responde 429 "Demasiados intentos fallidos..." y termina. |
+| 137 | `if ($this->intentoModel->excedeLimite($email)) {` | Si ese correo ya tuvo 5 intentos fallidos en el último minuto (`excedeLimite()` de `models/IntentoLogin.php`)... Solo cuenta los de ese correo, así otro perfil puede entrar desde el mismo computador. |
+| 138 | `responderError('Demasiados intentos fallidos. Espera 1 minuto e intenta de nuevo.', 429);` | ...responde 429 "Demasiados intentos fallidos. Espera 1 minuto..." y termina. |
 | 139 | `}` | Cierra el `if`. |
 | 141 | `if ($usaPin) {` | Si usa PIN... |
 | 142 | `$usuario = Auth::intentarLoginConPin($email, (string) $this->datos['pin']);` | ...intenta entrar con el PIN (`Auth::intentarLoginConPin()` de `models/Auth.php`). Si sale bien, `$usuario` tiene sus datos. |

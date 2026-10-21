@@ -65,7 +65,9 @@ y de la barra inferior del celular.
 | `usePoints` | La casilla "Usar mis puntos" del checkout. Vuelve a `false` después de cada pedido. |
 | `pointValue`, `minPointsToRedeem` | Reglas del programa de puntos (de `storeConfig`, se editan en Ajustes). |
 | `availablePoints`, `canRedeemPoints`, `redeemPoints` | Saldo del cliente, si alcanza el mínimo, y si de verdad se van a usar (casilla marcada **y** alcanza). |
-| `pointsRedeemed`, `pointsDiscount` | Puntos que se descontarían: lo menor entre el saldo y lo que cubre los productos (`(subtotal − cumpleaños) ÷ valor del punto`), y su valor en pesos. |
+| `maxPointsToUse` | Lo máximo que el cliente puede usar en este pedido: lo menor entre su saldo y lo que cubre los productos (`(subtotal − cumpleaños) ÷ valor del punto`). |
+| `pointsToUseInput` | Lo que el cliente escribió en "¿Cuántos puntos quieres usar?". Al marcar la casilla empieza con el máximo; al desmarcarla o terminar el pedido se borra. |
+| `pointsRedeemed`, `pointsDiscount` | Puntos que de verdad se usan: lo que escribió, pero nunca más que `maxPointsToUse` ni menos de 0; y su valor en pesos. |
 
 ## Funciones principales
 | Función | Qué hace |
@@ -79,7 +81,8 @@ y de la barra inferior del celular.
 | `failPayment(mensaje, titulo)` | Muestra el error del pago y vuelve al estado inicial. |
 | `reorder(pedido)` | **Recompra en 1 clic**: vuelve a poner en el carrito los productos de un pedido anterior, revisando stock y precios actuales. |
 | `handleSaveProfile()` / `handleDiscardProfile()` | Guardar o descartar los cambios de "Mi Perfil" (`updateClient`). |
-| `handleChangePassword()` | Cambiar la contraseña (`changeClientPassword` → `PUT /api/clients/{id}/password`). |
+| `handleChangePassword()` | Cambiar la contraseña: con la actual (`changeClientPassword` → `PUT /api/clients/{id}/password`) o con el código del correo (`POST /api/auth/forgot-password/reset`). |
+| `enviarCodigoClave()` | Pide el código de 6 dígitos al correo (`POST /api/auth/forgot-password/request`) y pasa la ventana al modo código. |
 | `handleReviewSubmit()` | Envía la calificación (`updateOrder` con `rating` → `PATCH /api/orders/{id}/review`). |
 | `handleActivarPush()` / `handleDismissPushPrompt()` | Activar o descartar las notificaciones. |
 | `handleLogout()` | Confirma, cierra sesión, borra el carrito local y va a `/login`. |
@@ -95,9 +98,9 @@ y de la barra inferior del celular.
 El servidor **vuelve a verificar** la transacción antes de crear el pedido (`PagoService::verificarTransaccion()`).
 
 `submitOrder` arma un objeto con id, PIN y totales calculados en el navegador, pero `addOrder` del
-almacén **solo envía** ítems, dirección, método de pago, banco, transacción y si usa puntos
-(`usePoints`): el id, el PIN y los totales reales los genera el servidor. `prepareOnlinePayment`
-también envía `usePoints`, para que el monto que se firma en la pasarela sea el mismo que se cobra.
+almacén **solo envía** ítems, dirección, método de pago, banco, transacción y cuántos puntos usa
+(`pointsToUse`): el id, el PIN y los totales reales los genera el servidor. `prepareOnlinePayment`
+también envía `pointsToUse`, para que el monto que se firma en la pasarela sea el mismo que se cobra.
 
 Después de canjear, el saldo de puntos del perfil se actualiza en la siguiente sincronización. Se
 lee con `client.points ?? ...` (y no con `||`) para que un saldo de **0** se muestre como 0.
@@ -112,6 +115,57 @@ lee con `client.points ?? ...` (y no con `||`) para que un saldo de **0** se mue
 ## Ventanas que dibuja este archivo
 Aviso de notificaciones, reseña (estrellas y comentario), detalle de un pedido, personalizar producto
 (SIN / EXTRA), cambio de contraseña, `CalendarModal` (cumpleaños), `ConfirmDialog` y `ToastNotification`.
+
+### Barra de arriba
+- **Izquierda:** el **nombre de la pantalla** en la que está el cliente, con su ícono en un cuadrito naranja
+  y una frase corta debajo (ej. "Explorar Menú · Elige lo que se te antoja"). Sale de `secciones`: una lista
+  que dice, para cada pestaña (`catalog`, `builder`, `cart`, `activeOrders`, `history`, `profile`), su
+  título, su frase y su ícono (los mismos del menú de la izquierda). `seccionActual` es la de la pestaña
+  abierta (`activeTab`); si no la encuentra, usa la del menú.
+- **Derecha**, en este orden: el indicador de la cocina, una pastilla con las **iniciales, el nombre y los
+  puntos** del cliente (al tocarla abre "Mi Perfil" con `setActiveTab('profile')`), la **campana** (con un
+  globito naranja que dice cuántas notificaciones no ha leído) y el botón de **modo claro / oscuro**.
+- La barra es un poco transparente y difumina lo que pasa por detrás (`backdrop-blur-xl`).
+
+### Indicador "Cocina Abierta / Cerrada" (arriba a la derecha)
+Una pastilla blanca con un gorro de chef (`ChefHat`) en un círculo verde (abierta) o rojo (cerrada), con un
+puntico que titila cuando está abierta. Al lado dice "Cocina Abierta" y, debajo, el horario con un reloj
+(`Clock`): "Hoy 10:10 - 22:00" o "Abre a las 10:10". **Solo se muestra**: el cliente no puede abrir ni
+cerrar la tienda (eso lo hace el administrador en Ajustes). Usa `isStoreOpen`, que se calcula con el
+horario y el interruptor manual de `storeConfig`.
+
+### Ventana "Cambiar Contraseña"
+Tiene **dos formas** de cambiar la contraseña (`modoClave`):
+
+**1. Con la contraseña actual** (`modoClave = 'actual'`, la normal)
+- Cajas: **Contraseña Actual** (candado `Lock`), **Nueva** y **Confirmar** (llave `KeyRound`), cada una con su ojito.
+- Al tocar "Actualizar" se llama `changeClientPassword` → `PUT /api/clients/{id}/password` →
+  `ClientController::changePassword()`. PHP compara la contraseña actual con la guardada (`password_verify`).
+  **Si no es igual, no cambia nada** y responde "La contraseña actual no es correcta.".
+- Ese error se guarda en `errorClaveActual`: la caja se pone **roja** y el mensaje sale debajo. Al volver a
+  escribir en la caja, el error se borra.
+
+**2. Con un código al correo** (`modoClave = 'codigo'`, si no se acuerda)
+- Debajo de la contraseña actual está el enlace **"¿No recuerdas tu contraseña actual?"**. Abre la opción
+  (`mostrarAyudaClave`) **Recibir un código en mi correo** → `enviarCodigoClave()` →
+  `POST /api/auth/forgot-password/request` (lo mismo que usa la página "Olvidé mi contraseña"). PHP crea un
+  código de 6 dígitos que vence en 15 minutos y lo manda al correo. La ventana cambia al modo `'codigo'`.
+- En modo código, en vez de "Contraseña Actual" aparece **Código de Verificación** (solo deja escribir
+  números, máximo 6), con dos botones redondos: "← Usar mi contraseña actual" (flecha `ArrowLeft`) y
+  "Reenviar código" (flecha que gira `RotateCcw`; gira mientras se envía).
+- Al tocar "Actualizar" se llama `POST /api/auth/forgot-password/reset` con el correo, el código y la
+  nueva contraseña → `AuthController::forgotPasswordReset()`. Si el código está mal o venció, no cambia nada.
+- `correoCuenta()` = el correo de la cuenta (el guardado en el servidor; si no, el del perfil).
+- En local, si el correo no se pudo enviar, PHP devuelve el código (`debugCode`) y se muestra en el aviso
+  para poder probar.
+
+**En las dos formas**
+- Las cajas nueva y confirmar se dibujan con un `.map()` sobre una lista (título, valor, función que lo
+  cambia, si se ve o no), para no repetir el mismo código.
+- Lista de **requisitos** que se ponen en **verde** mientras se escribe: "Mínimo 8 caracteres" y "Las
+  contraseñas nuevas coinciden". Es solo una ayuda visual: quien revisa de verdad es PHP.
+- "Actualizar" está apagado hasta llenar todo (en modo código, el código debe tener 6 números).
+- Al cerrar o cancelar, `resetPasswordModalFields()` limpia todo y vuelve al modo normal.
 
 ## ¿Qué pasa si se borra?
 

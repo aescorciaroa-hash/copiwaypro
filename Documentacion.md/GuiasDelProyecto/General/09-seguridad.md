@@ -44,12 +44,12 @@ Todas las consultas usan **consultas preparadas**: los datos del usuario nunca s
 texto SQL; van por separado con `bind_param`. Por eso escribir `' OR 1=1 --` en un campo no hace nada.
 
 ## Intentos de login
-5 fallos en 15 minutos (por correo **o** por IP) → **429** "Demasiados intentos". Cada intento queda en
+5 fallos en 1 minuto con el mismo correo (no bloquea a todo el computador) → **429** "Demasiados intentos". Cada intento queda en
 la tabla `INTENTO_LOGIN`.
 
 ## Recuperación de contraseña
 - El código vence en **15 minutos**, sirve **una sola vez** y se invalida después de **5 intentos** fallidos.
-- La respuesta es la misma exista o no el correo (así nadie puede averiguar qué correos están registrados).
+- Si el correo no está registrado, responde "El correo es incorrecto o no existe." y no envía nada.
 
 ## Datos privados en las respuestas
 - El **PIN de entrega** solo lo recibe el cliente dueño del pedido.

@@ -165,11 +165,11 @@ class OrderController
 
     public function release()
     {
-        // Domiciliario suelta su pedido (o el admin lo reasigna)
+        // Domiciliario suelta su pedido
         $id = $_GET['id'];
         $pedido = $this->buscarPedido($id);
         try {
-            $this->pedidoService->liberarPedido($pedido['id_pedido'], Auth::rol(), Auth::id());
+            $this->pedidoService->liberarPedido($pedido['id_pedido'], Auth::id());
         } catch (Exception $e) {
             responderError($e->getMessage(), 409);
         }

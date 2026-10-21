@@ -18,7 +18,7 @@ export default function ForgotPassword() {
     validationRules: {
       identifier: {
         required: true,
-        requiredMessage: 'Ingresa tu correo o teléfono.',
+        requiredMessage: 'Ingresa tu correo electrónico.',
       }
     },
     onSubmit: async (values) => {
@@ -140,7 +140,7 @@ export default function ForgotPassword() {
             
             <h2 className="text-3xl font-bold tracking-normal text-gray-900 dark:text-white mb-2 transition-colors duration-100">Recuperar Contraseña</h2>
             <p className="text-gray-500 dark:text-stone-400 text-sm mb-10 transition-colors duration-100">
-              {step === 1 ? 'Ingresa tus datos para recibir un código.' : 'Crea tu nueva contraseña.'}
+              {step === 1 ? 'Ingresa tu correo para recibir un código.' : 'Crea tu nueva contraseña.'}
             </p>
 
             {resetSuccess && (
@@ -156,12 +156,12 @@ export default function ForgotPassword() {
             {!resetSuccess && step === 1 && (
               <form onSubmit={form1.handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-stone-300 mb-2">Correo electrónico o número de celular</label>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-stone-300 mb-2">Correo electrónico</label>
                   <div className="relative group">
                     <input 
                       type="text"
                       name="identifier"
-                      placeholder="ej. usuario@email.com o 3001234567"
+                      placeholder="ej. usuario@email.com"
                       value={form1.values.identifier}
                       onChange={form1.handleChange}
                       onBlur={form1.handleBlur}
@@ -184,7 +184,7 @@ export default function ForgotPassword() {
                   disabled={form1.isSubmitting}
                   className="w-full mt-4 bg-brand-orange text-white rounded-[20px] py-4 font-bold tracking-wide flex items-center justify-center gap-2 hover:bg-[#e66500] hover:shadow-lg hover:shadow-orange-500/25 hover:-translate-y-0.5 disabled:opacity-55 disabled:hover:translate-y-0 disabled:cursor-not-allowed transition-all duration-100"
                 >
-                  {form1.isSubmitting ? 'Enviando...' : 'Enviar enlace de recuperación'} <ArrowRight className="w-5 h-5" />
+                  {form1.isSubmitting ? 'Enviando...' : 'Enviar código'} <ArrowRight className="w-5 h-5" />
                 </button>
               </form>
             )}

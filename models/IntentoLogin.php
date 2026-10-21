@@ -5,7 +5,7 @@
 class IntentoLogin
 {
     const MAXIMO_INTENTOS = 5;   // intentos fallidos permitidos...
-    const VENTANA_MINUTOS = 15;  // ...dentro de estos minutos
+    const VENTANA_MINUTOS = 1;   // ...dentro de este minuto (pasado ese tiempo se desbloquea solo)
 
     private $conn;
 
@@ -22,30 +22,38 @@ class IntentoLogin
         $stmt->bind_param("ssi", $identificador, $ip, $exito);
         $stmt->execute();
         $stmt->close();
+
+        // Si entro bien, se borran sus fallos: el conteo vuelve a empezar en 0.
+        if ($exitoso) {
+            $stmt = $this->conn->prepare("DELETE FROM INTENTO_LOGIN WHERE identificador = ? AND exitoso = 0");
+            $stmt->bind_param("s", $identificador);
+            $stmt->execute();
+            $stmt->close();
+        }
     }
 
-    /** Fallos recientes por correo o por IP dentro de la ventana de minutos configurada. */
-    public function contarFallosRecientes($identificador, $ip)
+    /** Fallos recientes de ese correo (no de todo el computador) dentro de la ventana de minutos. */
+    public function contarFallosRecientes($identificador)
     {
         $minutos = self::VENTANA_MINUTOS;
         $stmt = $this->conn->prepare(
             "SELECT COUNT(*) AS total FROM INTENTO_LOGIN
-             WHERE (identificador = ? OR ip = ?)
+             WHERE identificador = ?
                AND exitoso = 0
                AND fecha_hora > (NOW() - INTERVAL ? MINUTE)"
         );
-        $stmt->bind_param("ssi", $identificador, $ip, $minutos);
+        $stmt->bind_param("si", $identificador, $minutos);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         return (int) $row['total'];
     }
 
-    /** true si ya se paso el maximo de intentos fallidos. */
-    public function excedeLimite($identificador, $ip)
+    /** true si ese correo ya paso el maximo de intentos fallidos. */
+    public function excedeLimite($identificador)
     {
         $maximo = self::MAXIMO_INTENTOS;
-        return $this->contarFallosRecientes($identificador, $ip) >= $maximo;
+        return $this->contarFallosRecientes($identificador) >= $maximo;
     }
 }
 ?>

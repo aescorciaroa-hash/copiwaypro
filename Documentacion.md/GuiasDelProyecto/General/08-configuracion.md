@@ -15,7 +15,7 @@ Cada dato está en el archivo que lo usa:
 | `'zona_horaria'` | `config/app.php` | `'America/Bogota'` |
 | `'ruta_base'` | `config/app.php` | vacío = la carpeta del proyecto se detecta sola (recomendado). |
 | `NOMBRE`, `DURACION_MINUTOS` (sesión) | `config/Session.php` | `'copiway_session'`, `120` minutos |
-| `MAXIMO_INTENTOS`, `VENTANA_MINUTOS` (login) | `models/IntentoLogin.php` | `5` intentos fallidos en `15` minutos |
+| `MAXIMO_INTENTOS`, `VENTANA_MINUTOS` (login) | `models/IntentoLogin.php` | `5` intentos fallidos en `1` minuto |
 | `CLAVE_FIRMA` (pagos) | `models/PagoService.php` | Cámbiala por un texto largo al azar. |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `models/PushNotificationService.php` | Claves para notificaciones push (ver [Notificaciones](11-notificaciones-y-correo.md)). |
 | `HOST`, `PUERTO`, `CIFRADO`, `USUARIO`, `CLAVE`, `REMITENTE`, `REMITENTE_NOMBRE` | `models/CorreoService.php` | Servidor de correo (ver [Notificaciones](11-notificaciones-y-correo.md)). Vacíos = no se envían correos. |

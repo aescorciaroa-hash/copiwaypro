@@ -1399,10 +1399,10 @@ export default function ClientDashboard() {
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-2 w-[320px] sm:w-[380px] bg-white dark:bg-[#151515] rounded-[24px] shadow-2xl border border-gray-100 dark:border-stone-800 z-50 overflow-hidden"
+                      className="absolute right-0 mt-2 w-[280px] sm:w-[320px] bg-white dark:bg-[#151515] rounded-[20px] shadow-2xl border border-gray-100 dark:border-stone-800 z-50 overflow-hidden"
                     >
-                      <div className="p-4 border-b border-gray-100 dark:border-stone-800 flex justify-between items-center bg-gray-50/50 dark:bg-stone-900/50">
-                        <h3 className="font-bold text-gray-900 dark:text-white">Notificaciones</h3>
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-stone-800 flex justify-between items-center bg-gray-50/50 dark:bg-stone-900/50">
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white">Notificaciones</h3>
                         {userProfile.notifications?.some(n => !n.read) && (
                           <button 
                             onClick={() => {
@@ -1415,10 +1415,10 @@ export default function ClientDashboard() {
                           </button>
                         )}
                       </div>
-                      <div className="max-h-[400px] overflow-y-auto p-2">
+                      <div className="max-h-[320px] overflow-y-auto p-2">
                         {(!userProfile.notifications || userProfile.notifications.length === 0) ? (
-                          <div className="p-8 text-center flex flex-col items-center justify-center">
-                            <Bell className="w-8 h-8 text-gray-300 dark:text-stone-700 mb-3" />
+                          <div className="px-4 py-5 flex items-center justify-center gap-2">
+                            <Bell className="w-4 h-4 text-gray-300 dark:text-stone-600" />
                             <p className="text-sm text-gray-500 dark:text-stone-400 font-medium">No tienes notificaciones</p>
                           </div>
                         ) : (

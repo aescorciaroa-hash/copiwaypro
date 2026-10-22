@@ -13,6 +13,15 @@ del último pedido y, al tocar un producto, abre la ventana para personalizarlo.
 | → llama a | `setCatalogCategory(cat)` (del padre) | Cambiar de categoría. |
 | → usa | `formatCOP` | Precios. |
 
+## Saludo de bienvenida
+Arriba del catálogo hay un recuadro oscuro con brillo naranja:
+- **"¡Hola, (primer nombre)! 👋"** y una frase corta.
+- Botones: **Arma tu hamburguesa** (va al Creador Interactivo), **Pedir lo mismo de la última vez**
+  (si ya tiene pedidos) y **Ver mis pedidos (N)** (si tiene pedidos activos).
+- Dos etiquetas: sus **puntos** y si la **cocina está abierta** (con la hora de cierre) o cerrada.
+- A la derecha (desde tablet), la **foto del producto destacado** (el primero del menú) con su precio y
+  un botón **Pedir** que abre la ventana para personalizarlo. En celular la foto no se muestra.
+
 ## Props
 | Prop | Qué es | Viene de |
 |---|---|---|
@@ -22,11 +31,12 @@ del último pedido y, al tocar un producto, abre la ventana para personalizarlo.
 | `storeConfig` | Ajustes (categorías) | |
 | `catalogCategory` / `setCatalogCategory` | Categoría elegida | Estado del padre |
 | `openCustomizer`, `reorder` | Funciones del padre | |
+| `clientName`, `points`, `activeOrdersCount`, `isStoreOpen`, `goToTab` | Datos del cliente y la función para cambiar de pestaña (`setActiveTab` del padre) | Para el saludo de bienvenida. |
 
 ## Variables
 | Variable | Qué es |
 |---|---|
-| `lastOrder` | El pedido más reciente (ordena por fecha). Si existe, aparece el botón redondo **"Pedir lo mismo de la última vez"** a la derecha del título "Catálogo de Productos" (en celular, debajo del título). Al tocarlo llama `reorder()` y mete al carrito los mismos productos. |
+| `lastOrder` | El pedido más reciente (ordena por fecha). Si existe, en el saludo de bienvenida aparece el botón **"Pedir lo mismo de la última vez"**. Al tocarlo llama `reorder()` y mete al carrito los mismos productos. |
 | `getProductImage(url)` | Imagen del producto o una de ejemplo. |
 | `configuredCategories` | Categorías del admin. Si no hay, usa una lista fija de ejemplo (Hamburguesas de Pan, Perros Calientes...). |
 | `availableCategories` | `'Todas'` + las categorías que tienen productos. |

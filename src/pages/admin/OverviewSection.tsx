@@ -1,11 +1,11 @@
 import React from 'react';
 import {
-  Wallet, LayoutDashboard, TrendingUp, Users, ShoppingBag, ArrowRight, Activity, ChefHat, Flame, Truck, Clock, Package, MapPin
+  Wallet, LayoutDashboard, TrendingUp, Users, ShoppingBag, ArrowRight, Activity, ChefHat, Flame, Truck, Clock, Package, MapPin, Plus, Utensils, Calculator, Bell
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 import { formatCOP, orderCode } from '../../lib/format';
-import { Order, Staff, StoreConfig } from '../../store/almacenAplicacion';
+import { Order, Staff, StoreConfig, useStore } from '../../store/almacenAplicacion';
 import { CustomSelect } from '../../components/CustomSelect';
 import { CustomTooltip } from '../AdminDashboard';
 
@@ -29,6 +29,9 @@ interface OverviewSectionProps {
   setActivePieIndex: (index: number | null) => void;
   handleNavigateToOrders: (orderId?: string) => void;
   setActiveTab: (tab: string) => void;
+  /** Para el saludo de bienvenida. */
+  isStoreOpen: boolean;
+  onNuevoPedido: () => void;
 }
 
 export default function OverviewSection({
@@ -44,16 +47,117 @@ export default function OverviewSection({
   setActivePieIndex,
   handleNavigateToOrders,
   setActiveTab,
+  isStoreOpen,
+  onNuevoPedido,
 }: OverviewSectionProps) {
+  const products = useStore(state => state.products);
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white">Tablero General</h2>
-          <p className="text-gray-500 dark:text-stone-400 mt-1">Resumen en tiempo real.</p>
-        </div>
+      {/* Bienvenida: saludo, accesos rápidos y el estado de la cocina en vivo */}
+      {(() => {
+        // El nombre del administrador viene del servidor en window.__DATOS__ (ver PaginaController).
+        const nombre = String(window.__DATOS__?.usuario?.nombre || 'Administrador').split(' ')[0];
+        const pendientes = orders.filter(o => o.status === 'Pendiente' || o.status === 'Pagado').length;
+        const enCocina = orders.filter(o => o.status === 'En Preparación').length;
+        const listos = orders.filter(o => o.status === 'Listos').length;
+        const enCamino = orders.filter(o => o.status === 'En Camino').length;
+        const hoy = new Date().toDateString();
+        const ventasHoy = orders
+          .filter(o => (o.status === 'Entregado' || o.status === 'entregado') && new Date(o.date).toDateString() === hoy)
+          .reduce((acc, o) => acc + o.total, 0);
+        const activos = pendientes + enCocina + listos + enCamino;
+        // Foto: la del producto más vendido (guardada en el propio servidor); si no hay, la de cualquier producto.
+        const masVendido = products.find(p => p.name === topProductsData[0]?.name && p.image);
+        const foto = masVendido?.image || products.find(p => p.active && p.image)?.image || '';
 
-      </div>
+        return (
+          <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-gray-900 via-stone-900 to-[#2a1608] text-white shadow-xl shadow-gray-900/10">
+            <div className="absolute -left-16 -bottom-24 w-72 h-72 rounded-full bg-brand-orange/25 blur-3xl pointer-events-none" />
+            <div className="absolute right-1/3 -top-20 w-56 h-56 rounded-full bg-orange-500/10 blur-3xl pointer-events-none" />
+
+            <div className="relative grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] gap-6 p-6 sm:p-8">
+              <div className="flex flex-col justify-center">
+                <span className="self-start inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-[11px] font-bold tracking-wide">
+                  <LayoutDashboard className="w-3.5 h-3.5 text-brand-orange" /> CopiwayPRO · Panel del administrador
+                </span>
+                <h2 className="mt-4 text-3xl sm:text-4xl font-black tracking-tight leading-tight">¡Hola, {nombre}! 👋</h2>
+                <p className="mt-2 text-sm sm:text-base text-white/70 max-w-lg">
+                  {activos > 0
+                    ? `Tienes ${activos} ${activos === 1 ? 'pedido activo' : 'pedidos activos'} en este momento. Revisa las comandas, registra pedidos por llamada o WhatsApp y controla tu caja.`
+                    : 'Todo está al día. Desde aquí registras pedidos por llamada o WhatsApp, revisas las comandas y controlas tu caja.'}
+                </p>
+
+                <div className="mt-6 flex flex-wrap gap-2.5">
+                  <button
+                    onClick={onNuevoPedido}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-bold hover:bg-[#e66500] shadow-lg shadow-brand-orange/30 active:scale-[0.97] transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" /> Nuevo pedido
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('orders')}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-white text-sm font-bold hover:bg-white/20 active:scale-[0.97] transition-all cursor-pointer"
+                  >
+                    <Utensils className="w-4 h-4" /> Comandas activas
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('settings')}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-white text-sm font-bold hover:bg-white/20 active:scale-[0.97] transition-all cursor-pointer"
+                  >
+                    <Calculator className="w-4 h-4" /> Cierre de caja
+                  </button>
+                </div>
+
+                <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                    <Wallet className="w-3.5 h-3.5 text-amber-400" /> Ventas de hoy: {formatCOP(ventasHoy)}
+                  </span>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${isStoreOpen ? 'bg-emerald-500/10 border-emerald-400/20 text-emerald-300' : 'bg-rose-500/10 border-rose-400/20 text-rose-300'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${isStoreOpen ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                    {isStoreOpen ? `Tienda abierta hasta las ${storeConfig.closeTime || '22:00'}` : `Tienda cerrada · abre a las ${storeConfig.openTime || '11:00'}`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Cocina en vivo: foto con los pedidos de cada estado encima */}
+              <div className="relative hidden sm:block h-60 lg:h-auto lg:min-h-[270px] rounded-3xl overflow-hidden bg-gradient-to-br from-stone-800 to-[#3a1d08]">
+                {foto && (
+                  <img
+                    src={foto}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover"
+                    // Si la foto no carga, se esconde y queda el fondo oscuro (no la imagen rota).
+                    onError={e => { e.currentTarget.style.display = 'none'; }}
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
+                <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur text-[11px] font-black uppercase tracking-wide">
+                  <span className="relative flex w-2 h-2"><span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75" /><span className="relative w-2 h-2 rounded-full bg-red-500" /></span>
+                  En vivo
+                </span>
+                <div className="absolute inset-x-0 bottom-0 p-3 grid grid-cols-4 gap-2">
+                  {[
+                    { label: 'Pendientes', valor: pendientes, icono: Bell, color: 'text-brand-orange', tab: 'orders' },
+                    { label: 'En cocina', valor: enCocina, icono: ChefHat, color: 'text-blue-400', tab: 'orders' },
+                    { label: 'Listos', valor: listos, icono: Package, color: 'text-emerald-400', tab: 'orders' },
+                    { label: 'En camino', valor: enCamino, icono: Truck, color: 'text-violet-300', tab: 'map' },
+                  ].map(e => (
+                    <button
+                      key={e.label}
+                      onClick={() => setActiveTab(e.tab)}
+                      className="rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 p-2.5 text-left transition-colors cursor-pointer"
+                    >
+                      <e.icono className={`w-4 h-4 ${e.color}`} />
+                      <p className="text-2xl font-black leading-none mt-1.5">{e.valor}</p>
+                      <p className="text-[10px] font-semibold text-white/70 mt-0.5 truncate">{e.label}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
         {(() => {

@@ -1058,8 +1058,8 @@ export default function AdminDashboard() {
                 <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-stone-900" />
               </div>
               <div className="hidden lg:block leading-tight">
-                <p className="text-[13px] font-black text-gray-900 dark:text-white">Administrador</p>
-                <p className="text-[11px] font-semibold text-gray-400 dark:text-stone-500">En línea</p>
+                <p className="text-[13px] font-black text-gray-900 dark:text-white max-w-[160px] truncate">{String(window.__DATOS__?.usuario?.nombre || 'Administrador')}</p>
+                <p className="text-[11px] font-semibold text-gray-400 dark:text-stone-500">Administrador · en línea</p>
               </div>
             </div>
           </div>
@@ -1220,6 +1220,8 @@ export default function AdminDashboard() {
                 setActivePieIndex={setActivePieIndex}
                 handleNavigateToOrders={handleNavigateToOrders}
                 setActiveTab={setActiveTab}
+                isStoreOpen={isStoreAutomaticallyOpen}
+                onNuevoPedido={() => setShowManualForm(true)}
               />
             )}
             {activeTab === 'orders' && (

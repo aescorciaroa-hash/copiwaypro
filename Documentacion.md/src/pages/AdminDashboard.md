@@ -107,7 +107,7 @@ Es la franja blanca que queda fija arriba del panel. Tiene, de izquierda a derec
 3. **Estado de la tienda:** un aviso verde "Tienda abierta · Hasta las 23:00" o gris "Tienda cerrada · Abre a las 11:00" (usa `isStoreAutomaticallyOpen` y el horario de `storeConfig`). Solo en pantallas grandes.
 4. **Nuevo pedido:** atajo que abre la ventana de pedido manual (`setShowManualForm(true)`).
 5. **Botones agrupados:** la campana (se mueve sola cada 5 segundos si hay pedidos nuevos) y el botón de modo claro/oscuro.
-6. **Perfil:** cuadro naranja con un escudo, el texto "Administrador" y un puntito verde de "En línea".
+6. **Perfil:** cuadro naranja con un escudo, el **nombre del administrador** (sale de `window.__DATOS__.usuario.nombre`, que manda `PaginaController`) y "Administrador · en línea" con un puntito verde.
 
 ### Panel de notificaciones
 Al tocar la campana sale un **panel por la derecha** y el resto de la pantalla se oscurece un poco

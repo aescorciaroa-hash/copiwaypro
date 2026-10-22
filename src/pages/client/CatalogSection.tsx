@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, Flame, RotateCcw, Sparkles, Star, Utensils } from 'lucide-react';
+import { Award, Flame, RotateCcw, Sparkles, Star, Utensils, Plus, CheckCircle2, ArrowRight } from 'lucide-react';
 
 import { Product, Order, InventoryItem, StoreConfig } from '../../store/almacenAplicacion';
 
@@ -12,6 +12,12 @@ interface CatalogSectionProps {
   setCatalogCategory: React.Dispatch<React.SetStateAction<string>>;
   openCustomizer: (product: Product) => void;
   reorder: (order: Order) => void;
+  /** Para el saludo de bienvenida. */
+  clientName: string;
+  points: number;
+  activeOrdersCount: number;
+  isStoreOpen: boolean;
+  goToTab: (tab: string) => void;
 }
 
 export default function CatalogSection({
@@ -23,6 +29,11 @@ export default function CatalogSection({
   setCatalogCategory,
   openCustomizer,
   reorder,
+  clientName,
+  points,
+  activeOrdersCount,
+  isStoreOpen,
+  goToTab,
 }: CatalogSectionProps) {
     const lastOrder = orderHistory.length > 0 ? orderHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] : null;
     const getProductImage = (url?: string) => {
@@ -81,21 +92,87 @@ export default function CatalogSection({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-[28px] font-bold tracking-tight text-gray-900 dark:text-white">Catálogo de Productos</h2>
-        {lastOrder && (
-          <button
-            onClick={() => reorder(lastOrder)}
-            title="Agrega al carrito lo mismo de tu último pedido"
-            className="self-start sm:self-auto inline-flex items-center gap-2 pl-2 pr-4 py-2 rounded-full bg-brand-orange text-white text-sm font-bold hover:bg-brand-orange/90 shadow-md shadow-brand-orange/20 transition-all active:scale-[0.97] cursor-pointer whitespace-nowrap"
-          >
-            <span className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-              <RotateCcw className="w-4 h-4" />
+      {/* Bienvenida: saludo, accesos rápidos y foto */}
+      <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-gray-900 via-stone-900 to-[#2a1608] text-white shadow-xl shadow-gray-900/10">
+        <div className="absolute -left-16 -bottom-24 w-72 h-72 rounded-full bg-brand-orange/25 blur-3xl pointer-events-none" />
+        <div className="absolute right-1/3 -top-20 w-56 h-56 rounded-full bg-orange-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] gap-6 p-6 sm:p-8">
+          <div className="flex flex-col justify-center">
+            <span className="self-start inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-[11px] font-bold tracking-wide">
+              <Utensils className="w-3.5 h-3.5 text-brand-orange" /> CopiwayPRO · Hamburguesas a domicilio
             </span>
-            Pedir lo mismo de la última vez
-          </button>
-        )}
+            <h2 className="mt-4 text-3xl sm:text-4xl font-black tracking-tight leading-tight">
+              ¡Hola, {clientName.split(' ')[0] || 'bienvenido'}! 👋
+            </h2>
+            <p className="mt-2 text-sm sm:text-base text-white/70 max-w-lg">
+              ¿Qué se te antoja hoy? Elige del menú, arma tu propia hamburguesa capa por capa o repite tu último pedido.
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-2.5">
+              <button
+                onClick={() => goToTab('builder')}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-bold hover:bg-[#e66500] shadow-lg shadow-brand-orange/30 active:scale-[0.97] transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" /> Arma tu hamburguesa
+              </button>
+              {lastOrder && (
+                <button
+                  onClick={() => reorder(lastOrder)}
+                  title="Agrega al carrito lo mismo de tu último pedido"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-white text-sm font-bold hover:bg-white/20 active:scale-[0.97] transition-all cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" /> Pedir lo mismo de la última vez
+                </button>
+              )}
+              {activeOrdersCount > 0 && (
+                <button
+                  onClick={() => goToTab('activeOrders')}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-white text-sm font-bold hover:bg-white/20 active:scale-[0.97] transition-all cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Ver mis pedidos ({activeOrdersCount})
+                </button>
+              )}
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                <Star className="w-3.5 h-3.5 text-amber-400" /> {points} puntos acumulados
+              </span>
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${isStoreOpen ? 'bg-emerald-500/10 border-emerald-400/20 text-emerald-300' : 'bg-rose-500/10 border-rose-400/20 text-rose-300'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isStoreOpen ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                {isStoreOpen ? `Cocina abierta hasta las ${storeConfig.closeTime || '22:00'}` : `Cocina cerrada · abre a las ${storeConfig.openTime || '11:00'}`}
+              </span>
+            </div>
+          </div>
+
+          {/* Foto del producto destacado */}
+          {catalog.length > 0 && (
+            <button
+              onClick={() => openCustomizer(catalog[0])}
+              className="relative hidden sm:block h-56 lg:h-auto lg:min-h-[260px] rounded-3xl overflow-hidden group cursor-pointer text-left"
+              title={`Pedir ${catalog[0].name}`}
+            >
+              <img src={getProductImage(catalog[0].image)} alt={catalog[0].name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+              <span className="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-orange text-[11px] font-black uppercase tracking-wide">
+                <Flame className="w-3 h-3" /> {catalog[0].badge || 'Más vendido'}
+              </span>
+              <div className="absolute inset-x-0 bottom-0 p-4 flex items-end justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-black text-lg leading-tight truncate">{catalog[0].name}</p>
+                  <p className="text-sm font-bold text-brand-orange">$ {catalog[0].price.toLocaleString('es-CO')}</p>
+                </div>
+                <span className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white text-gray-900 text-xs font-black group-hover:bg-brand-orange group-hover:text-white transition-colors">
+                  Pedir <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            </button>
+          )}
+        </div>
       </div>
+
+      <h2 className="text-[28px] font-bold tracking-tight text-gray-900 dark:text-white">Catálogo de Productos</h2>
 
       {/* Category Filter Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">

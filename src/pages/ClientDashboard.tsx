@@ -1471,6 +1471,11 @@ export default function ClientDashboard() {
                 setCatalogCategory={setCatalogCategory}
                 openCustomizer={openCustomizer}
                 reorder={reorder}
+                clientName={userProfile.name || ''}
+                points={availablePoints}
+                activeOrdersCount={activeOrders.length}
+                isStoreOpen={isStoreOpen}
+                goToTab={setActiveTab}
               />
             )}
             {activeTab === 'builder' && (

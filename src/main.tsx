@@ -8,6 +8,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import ClientDashboard from './pages/ClientDashboard';
 import KitchenDashboard from './pages/KitchenDashboard';
 import DeliveryDashboard from './pages/DeliveryDashboard';
+import PagarPedido from './pages/PagarPedido';
 import {ThemeProvider} from './context/ThemeContext';
 import SyncDatos from './components/SyncDatos';
 import './index.css';
@@ -25,6 +26,7 @@ const PAGINAS: Record<string, ComponentType> = {
   client: ClientDashboard,
   kitchen: KitchenDashboard,
   delivery: DeliveryDashboard,
+  pagar: PagarPedido,
 };
 
 const contenedor = document.getElementById('app');

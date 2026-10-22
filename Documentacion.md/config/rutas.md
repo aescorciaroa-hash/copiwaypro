@@ -76,17 +76,21 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 68 | `'POST /api/payments/prepare' => ['PaymentController', 'prepare', ['client']],` | `POST` (enviar datos) a `/api/payments/prepare` → `PaymentController`, método `prepare()`: empezar un pago en línea. Puede usarla: solo el cliente. |
 | 69 | `'POST /api/payments/transactions' => ['PaymentController', 'createTransaction', ['client']],` | `POST` (enviar datos) a `/api/payments/transactions` → `PaymentController`, método `createTransaction()`: crear el pago. Puede usarla: solo el cliente. |
 | 70 | `'GET /api/payments/transactions/{id}' => ['PaymentController', 'showTransaction', ['client']],` | `GET` (traer datos) a `/api/payments/transactions/{id}` → `PaymentController`, método `showTransaction()`: saber si el pago fue aprobado. Puede usarla: solo el cliente. `{...}` = un dato que cambia (ej. el número del producto). |
-| 72 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---- Cierre de caja / Dashboard ----"* |
-| 73 | *(comentario)* | Comentario: no se ejecuta. Dice: *"El orden importa: /preview debe ir antes de /{id} para que no la capture el patron generico."* |
-| 74 | `'GET /api/cash-closing/preview' => ['CashClosingController', 'preview', ['admin']],` | `GET` (traer datos) a `/api/cash-closing/preview` → `CashClosingController`, método `preview()`: ver el cierre de caja antes de confirmarlo. Puede usarla: solo el administrador. |
-| 75 | `'POST /api/cash-closing' => ['CashClosingController', 'store', ['admin']],` | `POST` (enviar datos) a `/api/cash-closing` → `CashClosingController`, método `store()`: confirmar el cierre de caja. Puede usarla: solo el administrador. |
-| 77 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---- Sync (reemplaza onSnapshot de Firestore) ----"* |
-| 78 | `'GET /api/sync' => ['SyncController', 'index', []],` | `GET` (traer datos) a `/api/sync` → `SyncController`, método `index()`: cargar los datos de todas las pantallas. Puede usarla: cualquiera, sin iniciar sesión. |
-| 80 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---- Push (Web Push / VAPID) ----"* |
-| 81 | `'GET /api/push/public-key' => ['PushController', 'publicKey', []],` | `GET` (traer datos) a `/api/push/public-key` → `PushController`, método `publicKey()`: activar las notificaciones. Puede usarla: cualquiera, sin iniciar sesión. |
-| 82 | `'POST /api/push/subscribe' => ['PushController', 'subscribe', ['client']],` | `POST` (enviar datos) a `/api/push/subscribe` → `PushController`, método `subscribe()`: activar las notificaciones. Puede usarla: solo el cliente. |
-| 84 | `];` | Cierra la lista de rutas. |
-| 85 | `?>` | Cierra el código PHP. |
+| 72 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---- Link de pago (publico: el cliente del pedido manual paga sin iniciar sesion) ----"* |
+| 73 | `'GET /api/pay-link/{codigo}' => ['PaymentLinkController', 'show', []],` | `GET` (traer datos) a `/api/pay-link/{codigo}` → `PaymentLinkController`, método `show()`: ver el pedido del link de pago. Puede usarla: cualquiera, sin iniciar sesión (el código secreto del link es la llave). |
+| 74 | `'POST /api/pay-link/{codigo}/transactions' => ['PaymentLinkController', 'pay', []],` | `POST` (enviar datos) a `/api/pay-link/{codigo}/transactions` → `PaymentLinkController`, método `pay()`: empezar el pago del link. Puede usarla: cualquiera, sin iniciar sesión. |
+| 75 | `'GET /api/pay-link/{codigo}/transactions/{id}' => ['PaymentLinkController', 'status', []],` | `GET` (traer datos) a `/api/pay-link/{codigo}/transactions/{id}` → `PaymentLinkController`, método `status()`: saber si el pago del link fue aprobado (si sí, el pedido pasa a cocina). Puede usarla: cualquiera, sin iniciar sesión. |
+| 77 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---- Cierre de caja / Dashboard ----"* |
+| 78 | *(comentario)* | Comentario: no se ejecuta. Dice: *"El orden importa: /preview debe ir antes de /{id} para que no la capture el patron generico."* |
+| 79 | `'GET /api/cash-closing/preview' => ['CashClosingController', 'preview', ['admin']],` | `GET` (traer datos) a `/api/cash-closing/preview` → `CashClosingController`, método `preview()`: ver el cierre de caja antes de confirmarlo. Puede usarla: solo el administrador. |
+| 80 | `'POST /api/cash-closing' => ['CashClosingController', 'store', ['admin']],` | `POST` (enviar datos) a `/api/cash-closing` → `CashClosingController`, método `store()`: confirmar el cierre de caja. Puede usarla: solo el administrador. |
+| 82 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---- Sync (reemplaza onSnapshot de Firestore) ----"* |
+| 83 | `'GET /api/sync' => ['SyncController', 'index', []],` | `GET` (traer datos) a `/api/sync` → `SyncController`, método `index()`: cargar los datos de todas las pantallas. Puede usarla: cualquiera, sin iniciar sesión. |
+| 85 | *(comentario)* | Comentario: no se ejecuta. Dice: *"---- Push (Web Push / VAPID) ----"* |
+| 86 | `'GET /api/push/public-key' => ['PushController', 'publicKey', []],` | `GET` (traer datos) a `/api/push/public-key` → `PushController`, método `publicKey()`: activar las notificaciones. Puede usarla: cualquiera, sin iniciar sesión. |
+| 87 | `'POST /api/push/subscribe' => ['PushController', 'subscribe', ['client']],` | `POST` (enviar datos) a `/api/push/subscribe` → `PushController`, método `subscribe()`: activar las notificaciones. Puede usarla: solo el cliente. |
+| 89 | `];` | Cierra la lista de rutas. |
+| 90 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
 | Si se borra… | Qué pasa |

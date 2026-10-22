@@ -8,11 +8,11 @@ import {
   PieChart as PieChartIcon, LayoutDashboard, Utensils, Users, Settings, LogOut, 
   Mail, Sun, Moon, Plus, Minus, Maximize2, Minimize2, Edit2, Trash2, Eye, EyeOff, 
   TrendingUp, Bell, Package, Check, CheckCircle2, X, MapPin, Printer, Calculator, Menu, Search, MoreVertical, BookOpen, Layers, TriangleAlert, Wallet, PlusCircle, UserPlus, IdCard, Download, Filter, ChefHat, Wine, ChevronLeft, ChevronRight, User, ShoppingBag, Clock, ChevronDown,
-  Phone, Lock, Shield, KeyRound, Copy, Share2, Sparkles, Activity, Flame, Star, Award, DollarSign, Truck, ArrowRight, AlertCircle, Box
+  Phone, MessageCircle, Link2, Send, Lock, Shield, KeyRound, Copy, Share2, Sparkles, Activity, Flame, Star, Award, DollarSign, Truck, ArrowRight, AlertCircle, Box
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-import { formatCOP, vehicleWithModel, modificacionesDe } from '../lib/format';
+import { formatCOP, vehicleWithModel, modificacionesDe, agruparPorNombre } from '../lib/format';
 
 import { useStore, DEFAULT_MENU_CATEGORIES, Product, ProductComponent, Order, OrderItem, Staff, Client, NamedRef } from '../store/almacenAplicacion';
 import { api, ApiError, irA } from '../servicios/api';
@@ -23,6 +23,7 @@ import { CustomBurgerThumb } from './client/ingredientArt';
 import { ToastNotification, ToastData } from '../components/ToastNotification';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { soundFx } from '../utils/audio';
+import { abrirWhatsApp, mensajeLinkPago, mensajeConfirmacionEfectivo, urlLinkPago } from '../utils/mensajesWhatsApp';
 import OverviewSection from './admin/OverviewSection';
 import MapSection from './admin/MapSection';
 import MenuSection from './admin/MenuSection';
@@ -443,6 +444,13 @@ export default function AdminDashboard() {
   const [manualCustomRemoved, setManualCustomRemoved] = useState<ManualCustomIngredient[]>([]);
   const [manualCustomExtras, setManualCustomExtras] = useState<ManualCustomIngredient[]>([]);
   const [manualQuantity, setManualQuantity] = useState<number | ''>(1);
+  // Pedido manual: 'datos' = formulario, 'catalogo' = elegir productos, 'listo' = pedido creado (enviar por WhatsApp)
+  const [manualView, setManualView] = useState<'datos' | 'catalogo' | 'listo'>('datos');
+  const [manualPaymentMode, setManualPaymentMode] = useState<'efectivo' | 'link'>('efectivo');
+  const [manualCreatedOrder, setManualCreatedOrder] = useState<Order | null>(null);
+  const [manualCopied, setManualCopied] = useState<'link' | 'mensaje' | null>(null);
+  const [manualSearch, setManualSearch] = useState('');
+  const [manualCategory, setManualCategory] = useState('Todas');
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
 
   const [editingAddressOrder, setEditingAddressOrder] = useState<Order | null>(null);
@@ -518,6 +526,7 @@ export default function AdminDashboard() {
         setShowCierre(false);
         setShowPdfPreview(false);
         setShowManualForm(false);
+        setShowNotifications(false);
         setIsInventoryModalOpen(false);
         setIsProductModalOpen(false);
       }
@@ -733,6 +742,30 @@ export default function AdminDashboard() {
   // Extracted manual order logic
   const manualOrderTotal = manualOrderItems.reduce((acc, item) => acc + item.finalPrice, 0);
 
+  // Cada vez que se abre la ventana del pedido manual, empieza en el formulario
+  useEffect(() => {
+    if (showManualForm) {
+      setManualView('datos');
+      setManualCreatedOrder(null);
+      setManualCopied(null);
+      setManualSearch('');
+      setManualCategory('Todas');
+      setManualSelectedProduct(null);
+    }
+  }, [showManualForm]);
+
+  const manualProductosActivos = products.filter(p => p.active);
+  const manualCategorias = ['Todas', ...Array.from(new Set(manualProductosActivos.map(p => p.category || 'Otros')))];
+  const manualProductosFiltrados = manualProductosActivos.filter(p =>
+    (manualCategory === 'Todas' || (p.category || 'Otros') === manualCategory) &&
+    p.name.toLowerCase().includes(manualSearch.trim().toLowerCase())
+  );
+  const manualCantidadEnOrden = (productId: string) =>
+    manualOrderItems.filter(i => i.product.id === productId).reduce((acc, i) => acc + i.quantity, 0);
+  const manualPrecioSeleccion = manualSelectedProduct
+    ? (manualSelectedProduct.price + manualCustomExtras.reduce((acc, e) => acc + (e.price || 2000), 0)) * ((manualQuantity as number) || 1)
+    : 0;
+
   const handleAddProductToManualOrder = () => {
     if (!manualSelectedProduct) return;
     const prodName = manualSelectedProduct.name;
@@ -769,6 +802,7 @@ export default function AdminDashboard() {
         clientPhone: manualOrderClient.phone.trim(),
         address: manualOrderClient.address.trim(),
         channel: manualOrderChannel,
+        paymentMode: manualPaymentMode,
         // Sin id, el servidor busca el ingrediente por su nombre.
         items: manualOrderItems.map(item => ({
           ...item,
@@ -777,10 +811,14 @@ export default function AdminDashboard() {
         })),
       });
       const cuenta = created.isGuest ? 'como cliente invitado' : `en la cuenta de ${created.client}`;
-      showToast('success', `Pedido manual ${created.id} registrado ${cuenta} y enviado a cocina.`, 'Pedido Manual');
-      setShowManualForm(false);
+      const destino = created.status === 'Esperando Pago' ? 'esperando el pago por link' : 'enviado a cocina';
+      showToast('success', `Pedido manual ${created.id} registrado ${cuenta} y ${destino}.`, 'Pedido Manual');
+      // En vez de cerrar, se muestra la vista "listo" para enviarle el mensaje al cliente.
+      setManualCreatedOrder(created);
+      setManualView('listo');
       setManualOrderClient({ name: '', address: '', phone: '' });
       setManualOrderChannel('llamada');
+      setManualPaymentMode('efectivo');
       setManualOrderItems([]);
     } catch (err) {
       showToast('danger', err instanceof ApiError ? err.message : 'No se pudo registrar el pedido manual.', 'Pedido no Registrado');
@@ -788,6 +826,21 @@ export default function AdminDashboard() {
       setManualOrderSaving(false);
     }
   };
+
+  /** Copia el link de pago o el mensaje completo y lo marca como copiado 2 segundos. */
+  const copiarTexto = async (texto: string, cual: 'link' | 'mensaje') => {
+    try {
+      await navigator.clipboard.writeText(texto);
+      setManualCopied(cual);
+      setTimeout(() => setManualCopied(null), 2000);
+    } catch {
+      showToast('danger', 'No se pudo copiar. Selecciona el texto y cópialo a mano.', 'Copiar');
+    }
+  };
+
+  /** Mensaje de WhatsApp según cómo paga el pedido (link o efectivo). */
+  const mensajeDePedido = (order: Order) =>
+    order.status === 'Esperando Pago' && order.paymentLinkCode ? mensajeLinkPago(order) : mensajeConfirmacionEfectivo(order);
 
   const handleViewOrder = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
@@ -804,6 +857,19 @@ export default function AdminDashboard() {
     { id: 'clients', label: 'Directorio Clientes', icon: User },
     { id: 'settings', label: 'Ajustes y Caja', icon: Settings },
   ];
+
+  // Datos de la barra de arriba
+  const seccionActual = navItems.find(n => n.id === activeTab) || navItems[0];
+  const pedidosNuevos = orders.filter(o => o.status === 'Pendiente' || o.status === 'Pagado');
+
+  // Convierte la fecha de un pedido en "hace 5 min", "hace 2 h"...
+  const haceCuanto = (fecha: string) => {
+    const minutos = Math.floor((currentTime.getTime() - new Date(fecha).getTime()) / 60000);
+    if (minutos < 1) return 'Ahora';
+    if (minutos < 60) return `hace ${minutos} min`;
+    if (minutos < 1440) return `hace ${Math.floor(minutos / 60)} h`;
+    return new Date(fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+  };
 
   return (
     <div className="min-h-[100dvh] w-full bg-gray-50/50 dark:bg-stone-950 text-gray-900 dark:text-gray-100 font-sans flex transition-colors duration-300 overflow-hidden relative">
@@ -907,87 +973,195 @@ export default function AdminDashboard() {
 
       {/* Área Principal */}
       <main className="flex-1 flex flex-col h-[100dvh] overflow-hidden relative bg-gray-50/50 dark:bg-stone-950 min-w-0">
-        <header className="h-[70px] md:h-24 border-b border-gray-200 dark:border-white/5 bg-white dark:bg-[#0c0a09] flex items-center justify-between px-4 md:px-8 shrink-0 z-10 sticky top-0 transition-colors duration-300">
-          
-          <div className="flex items-center gap-4 w-full md:w-auto">
-             <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-stone-900 text-gray-600 dark:text-stone-300 transition-colors">
-                <Menu className="w-6 h-6" />
-             </button>
+        <header className="h-[70px] md:h-24 border-b border-gray-100 dark:border-white/5 bg-white/80 dark:bg-[#0c0a09]/80 backdrop-blur-xl flex items-center justify-between gap-3 px-4 md:px-8 shrink-0 z-10 sticky top-0 transition-colors duration-300">
+
+          {/* Izquierda: botón de menú (móvil) + sección actual + fecha */}
+          <div className="flex items-center gap-3 md:gap-4 min-w-0">
+            <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-stone-900 text-gray-600 dark:text-stone-300 transition-colors shrink-0">
+              <Menu className="w-6 h-6" />
+            </button>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="hidden sm:flex w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-orange-500/5 dark:from-brand-orange/20 dark:to-orange-500/5 text-brand-orange items-center justify-center shrink-0 ring-1 ring-inset ring-brand-orange/20">
+                <seccionActual.icon className="w-[22px] h-[22px]" />
+              </div>
+              <div className="min-w-0">
+                <p className="hidden md:block text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400 dark:text-stone-500">Panel · <span className="capitalize tracking-normal normal-case">{currentTime.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}</span></p>
+                <h2 className="font-black text-[17px] md:text-[22px] tracking-tight text-gray-900 dark:text-white leading-tight truncate">{seccionActual.label}</h2>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4 md:gap-8 ml-auto">
-            <div className="flex items-center gap-2 md:gap-4">
-              <div className="relative">
-                <button onClick={() => setShowNotifications(!showNotifications)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-stone-900 text-gray-600 dark:text-stone-300 transition-colors relative">
-                  <Bell className="w-5 h-5" />
-                  {orders.filter(o => o.status === 'Pendiente' || o.status === 'Pagado').length > 0 && (
-                    <span className="absolute top-0 right-0 w-[18px] h-[18px] bg-brand-orange text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-stone-950">
-                      {orders.filter(o => o.status === 'Pendiente' || o.status === 'Pagado').length}
-                    </span>
-                  )}
-                </button>
-                <AnimatePresence>
-                  {showNotifications && (
-                    <>
-                      <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setShowNotifications(false)}
-                        className="fixed inset-0 z-40"
-                      />
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 mt-2 w-[320px] sm:w-[380px] bg-white dark:bg-[#151515] rounded-[24px] shadow-2xl border border-gray-100 dark:border-stone-800 z-50 overflow-hidden"
-                      >
-                        <div className="p-4 border-b border-gray-100 dark:border-stone-800 flex justify-between items-center bg-gray-50/50 dark:bg-stone-900/50">
-                          <h3 className="font-bold text-gray-900 dark:text-white">Notificaciones</h3>
-                        </div>
-                        <div className="max-h-[400px] overflow-y-auto p-2">
-                          {orders.filter(o => o.status === 'Pendiente' || o.status === 'Pagado').length === 0 ? (
-                            <div className="p-8 text-center flex flex-col items-center justify-center">
-                              <Bell className="w-8 h-8 text-gray-300 dark:text-stone-700 mb-3" />
-                              <p className="text-sm text-gray-500 dark:text-stone-400 font-medium">No hay órdenes nuevas</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-1">
-                              {orders.filter(o => o.status === 'Pendiente' || o.status === 'Pagado').map(ord => (
-                                <div 
-                                  key={ord.id} 
-                                  onClick={() => {
-                                    setActiveTab('overview');
-                                    setShowNotifications(false);
-                                  }}
-                                  className="w-full text-left p-3 rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer group flex items-start gap-3"
-                                >
-                                  <div className="w-10 h-10 rounded-full bg-brand-orange/10 flex items-center justify-center shrink-0">
-                                    <Package className="w-5 h-5 text-brand-orange" />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-brand-orange transition-colors">
-                                      Nuevo pedido de {ord.client || 'Cliente Copiway'}
-                                    </p>
-                                    <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{ord.address}</p>
-                                    <p className="text-[10px] text-gray-400 mt-1 font-medium">{new Date(ord.date).toLocaleString()}</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            {/* Estado de la tienda con su horario */}
+            <div className={`hidden xl:flex items-center gap-2.5 pl-3 pr-4 py-2 rounded-2xl border ${
+              isStoreAutomaticallyOpen
+                ? 'bg-emerald-50/80 border-emerald-200/70 dark:bg-emerald-500/10 dark:border-emerald-500/20'
+                : 'bg-gray-50 border-gray-200 dark:bg-stone-900 dark:border-stone-800'
+            }`}>
+              <span className="relative flex w-2.5 h-2.5">
+                {isStoreAutomaticallyOpen && <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />}
+                <span className={`relative w-2.5 h-2.5 rounded-full ${isStoreAutomaticallyOpen ? 'bg-emerald-500' : 'bg-gray-400 dark:bg-stone-600'}`} />
+              </span>
+              <div className="leading-tight">
+                <p className={`text-xs font-black ${isStoreAutomaticallyOpen ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-700 dark:text-stone-300'}`}>
+                  {isStoreAutomaticallyOpen ? 'Tienda abierta' : 'Tienda cerrada'}
+                </p>
+                <p className="text-[10px] font-semibold text-gray-500 dark:text-stone-500">
+                  {isStoreAutomaticallyOpen ? `Hasta las ${storeConfig.closeTime || '23:00'}` : `Abre a las ${storeConfig.openTime || '11:00'}`}
+                </p>
               </div>
-              <button onClick={toggleTheme} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-stone-900 text-gray-600 dark:text-stone-300 transition-colors">
-                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </div>
+
+            {/* Atajo: crear pedido manual */}
+            <button
+              onClick={() => setShowManualForm(true)}
+              title="Nuevo pedido manual"
+              className="hidden md:inline-flex items-center gap-2 h-11 px-4 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold shadow-sm hover:bg-brand-orange dark:hover:bg-brand-orange dark:hover:text-white hover:shadow-md hover:shadow-brand-orange/25 active:scale-95 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden lg:inline">Nuevo pedido</span>
+            </button>
+
+            {/* Acciones agrupadas */}
+            <div className="flex items-center gap-1 p-1 rounded-2xl bg-gray-100/80 dark:bg-stone-900/80 border border-gray-200/60 dark:border-stone-800">
+              <button onClick={() => setShowNotifications(true)} title="Notificaciones" className={`w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-xl transition-all relative ${
+                showNotifications
+                  ? 'bg-white dark:bg-stone-800 text-brand-orange shadow-sm'
+                  : 'text-gray-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800 hover:text-brand-orange hover:shadow-sm'
+              }`}>
+                <motion.span
+                  animate={pedidosNuevos.length > 0 ? { rotate: [0, -16, 14, -10, 6, 0] } : { rotate: 0 }}
+                  transition={pedidosNuevos.length > 0 ? { duration: 0.9, repeat: Infinity, repeatDelay: 5 } : { duration: 0 }}
+                  className="flex"
+                >
+                  <Bell className="w-5 h-5" />
+                </motion.span>
+                {pedidosNuevos.length > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-brand-orange text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-gray-100 dark:border-stone-900 shadow-sm shadow-brand-orange/40">
+                    {pedidosNuevos.length}
+                  </span>
+                )}
               </button>
+              <button onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'} className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-xl text-gray-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800 hover:text-brand-orange hover:shadow-sm transition-all">
+                <motion.span key={theme} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.3 }} className="flex">
+                  {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </motion.span>
+              </button>
+            </div>
+
+            {/* Perfil del administrador */}
+            <div className="hidden md:flex items-center gap-3 pl-1.5 pr-1.5 lg:pr-4 py-1.5 rounded-2xl border border-gray-200/70 dark:border-stone-800 bg-white dark:bg-stone-900/60">
+              <div className="relative">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-orange to-orange-600 text-white flex items-center justify-center shadow-md shadow-brand-orange/25">
+                  <Shield className="w-[18px] h-[18px]" />
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-stone-900" />
+              </div>
+              <div className="hidden lg:block leading-tight">
+                <p className="text-[13px] font-black text-gray-900 dark:text-white">Administrador</p>
+                <p className="text-[11px] font-semibold text-gray-400 dark:text-stone-500">En línea</p>
+              </div>
             </div>
           </div>
         </header>
+
+        {/* Panel lateral de notificaciones: sale por la derecha y oscurece el fondo */}
+        <AnimatePresence>
+          {showNotifications && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowNotifications(false)}
+                className="fixed inset-0 z-[60] bg-gray-900/30 dark:bg-black/60 backdrop-blur-[2px]"
+              />
+              <motion.aside
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                className="fixed top-0 right-0 bottom-0 z-[61] w-full sm:w-[420px] bg-white dark:bg-[#151515] sm:border-l border-gray-100 dark:border-stone-800 shadow-2xl flex flex-col"
+              >
+                <div className="h-[70px] md:h-24 px-5 md:px-6 flex items-center justify-between gap-3 border-b border-gray-100 dark:border-stone-800 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-brand-orange/10 text-brand-orange flex items-center justify-center ring-1 ring-inset ring-brand-orange/20">
+                      <Bell className="w-5 h-5" />
+                    </div>
+                    <div className="leading-tight">
+                      <h3 className="font-black text-lg text-gray-900 dark:text-white">Notificaciones</h3>
+                      <p className="text-xs font-semibold text-gray-400 dark:text-stone-500">
+                        {pedidosNuevos.length === 0 ? 'Todo al día' : `${pedidosNuevos.length} ${pedidosNuevos.length === 1 ? 'pedido espera' : 'pedidos esperan'} atención`}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowNotifications(false)} title="Cerrar" className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-stone-800 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {pedidosNuevos.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center px-8">
+                      <div className="w-16 h-16 rounded-3xl bg-gray-100 dark:bg-stone-900 flex items-center justify-center mb-4">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                      </div>
+                      <p className="font-black text-gray-900 dark:text-white">No hay pedidos nuevos</p>
+                      <p className="text-sm text-gray-500 dark:text-stone-400 mt-1">Cuando llegue uno, aparecerá aquí.</p>
+                    </div>
+                  ) : (
+                    pedidosNuevos.map((ord, i) => (
+                      <motion.button
+                        key={ord.id}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.05 * i }}
+                        onClick={() => { setShowNotifications(false); handleNavigateToOrders(ord.id); }}
+                        className="w-full text-left p-4 rounded-2xl border border-gray-100 dark:border-stone-800 bg-white dark:bg-stone-900/40 hover:border-brand-orange/40 hover:shadow-lg hover:shadow-brand-orange/5 transition-all group"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-brand-orange/10 flex items-center justify-center shrink-0">
+                            <ShoppingBag className="w-5 h-5 text-brand-orange" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-black text-gray-900 dark:text-white truncate group-hover:text-brand-orange transition-colors">
+                                {ord.client || 'Cliente Copiway'}
+                              </p>
+                              <span className="text-[10px] font-semibold text-gray-400 dark:text-stone-500 shrink-0">{haceCuanto(ord.date)}</span>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-stone-400 flex items-center gap-1 mt-1 min-w-0">
+                              <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{ord.address}</span>
+                            </p>
+                            <div className="flex items-center justify-between mt-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                ord.status === 'Pagado'
+                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                  : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'
+                              }`}>
+                                {ord.status}
+                              </span>
+                              <span className="text-sm font-black text-gray-900 dark:text-white">{formatCOP(ord.total)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.button>
+                    ))
+                  )}
+                </div>
+
+                <div className="p-4 border-t border-gray-100 dark:border-stone-800 shrink-0">
+                  <button
+                    onClick={() => { setShowNotifications(false); handleNavigateToOrders(); }}
+                    className="w-full h-12 rounded-2xl bg-brand-orange text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-brand-orange/20 hover:brightness-110 active:scale-[0.98] transition-all"
+                  >
+                    Ver todas las comandas <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
         
         <div ref={mainContentRef} className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-10 w-full min-w-0">
           {/* Alerta de Stock Crítico */}
@@ -1736,7 +1910,7 @@ export default function AdminDashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm"
             onClick={() => setShowManualForm(false)}
           >
             <motion.div
@@ -1744,217 +1918,423 @@ export default function AdminDashboard() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white dark:bg-[#151515] w-full max-w-4xl rounded-[32px] border border-gray-100 dark:border-stone-800 overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+              className="bg-white dark:bg-[#151515] w-full max-w-5xl rounded-[28px] border border-gray-100 dark:border-stone-800 overflow-hidden shadow-2xl flex flex-col max-h-[94vh]"
               onClick={e => e.stopPropagation()}
             >
-              {/* Modal Header */}
-              <div className="p-6 md:p-8 border-b border-gray-100 dark:border-stone-800 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-orange-900/20 text-brand-orange flex items-center justify-center shrink-0">
-                    <ShoppingBag className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Ingreso de Orden Manual</h2>
-                    <p className="text-xs text-gray-500 dark:text-stone-400">Registra un pedido tomado por llamada o WhatsApp.</p>
+              {/* Encabezado: cambia según la vista */}
+              <div className="px-5 py-4 md:px-7 md:py-5 border-b border-gray-100 dark:border-stone-800 flex items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  {manualView === 'catalogo' ? (
+                    <button
+                      onClick={() => { setManualView('datos'); setManualSelectedProduct(null); }}
+                      title="Volver al pedido"
+                      className="w-11 h-11 rounded-2xl bg-gray-100 dark:bg-stone-800 text-gray-700 dark:text-stone-200 hover:bg-brand-orange hover:text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                  ) : (
+                    <div className="w-11 h-11 rounded-2xl bg-orange-50 dark:bg-orange-900/20 text-brand-orange flex items-center justify-center shrink-0">
+                      <ShoppingBag className="w-5 h-5" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white truncate">
+                      {manualView === 'catalogo' ? 'Elegir Productos' : manualView === 'listo' ? 'Pedido Registrado' : 'Ingreso de Orden Manual'}
+                    </h2>
+                    <p className="text-xs text-gray-500 dark:text-stone-400 truncate">
+                      {manualView === 'catalogo' ? 'Toca un producto, ajústalo y agrégalo a la orden.' : manualView === 'listo' ? 'Envíale al cliente la confirmación por WhatsApp.' : 'Registra un pedido tomado por llamada o WhatsApp.'}
+                    </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowManualForm(false)}
-                  className="w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-stone-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-stone-300 transition-colors cursor-pointer"
+                  className="w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-stone-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-stone-300 transition-colors cursor-pointer shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Modal Body */}
-              <div className="p-6 md:p-8 space-y-5 overflow-y-auto">
-                {/* Datos del Cliente */}
-                <div className="bg-gray-50 dark:bg-stone-900/60 p-5 rounded-2xl border border-gray-100 dark:border-stone-800 space-y-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-brand-orange">1. Datos del Cliente</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-2">Cliente</label>
-                      <div className="relative">
-                        <User className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                        <input type="text" value={manualOrderClient.name} onChange={e => setManualOrderClient({...manualOrderClient, name: e.target.value})} className="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm text-gray-900 dark:text-white outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all" placeholder="Nombre del cliente" />
+              {manualView === 'datos' ? (
+                /* ===== Vista 1: datos del cliente + productos de la orden ===== */
+                <div className="p-5 md:p-7 overflow-y-auto grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  {/* Datos del Cliente */}
+                  <div className="bg-gray-50 dark:bg-stone-900/60 p-5 rounded-2xl border border-gray-100 dark:border-stone-800 space-y-3.5">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-brand-orange">1. Datos del Cliente</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-1.5">Cliente</label>
+                        <div className="relative">
+                          <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input type="text" value={manualOrderClient.name} onChange={e => setManualOrderClient({...manualOrderClient, name: e.target.value})} className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm text-gray-900 dark:text-white outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all" placeholder="Nombre del cliente" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-1.5">Teléfono</label>
+                        <div className="relative">
+                          <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input type="tel" value={manualOrderClient.phone} onChange={e => setManualOrderClient({...manualOrderClient, phone: e.target.value})} className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm text-gray-900 dark:text-white outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all" placeholder="Número de celular" />
+                        </div>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-2">Teléfono</label>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-1.5">Dirección de Entrega</label>
                       <div className="relative">
-                        <Phone className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                        <input type="tel" value={manualOrderClient.phone} onChange={e => setManualOrderClient({...manualOrderClient, phone: e.target.value})} className="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm text-gray-900 dark:text-white outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all" placeholder="Número de celular" />
+                        <MapPin className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input type="text" value={manualOrderClient.address} onChange={e => setManualOrderClient({...manualOrderClient, address: e.target.value})} className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm text-gray-900 dark:text-white outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all" placeholder="Dirección completa" />
                       </div>
                     </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-2">Llegó por</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {([['llamada', 'Llamada'], ['whatsapp', 'WhatsApp']] as const).map(([valor, texto]) => (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-1.5">Llegó por</label>
+                      <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-gray-200/60 dark:bg-stone-800">
+                        {([['llamada', 'Llamada', Phone], ['whatsapp', 'WhatsApp', MessageCircle]] as const).map(([valor, texto, Icono]) => (
                           <button
                             key={valor}
                             type="button"
                             onClick={() => setManualOrderChannel(valor)}
-                            className={`py-2.5 rounded-2xl border text-sm font-bold transition-all cursor-pointer ${manualOrderChannel === valor ? 'border-brand-orange bg-brand-orange/10 text-brand-orange' : 'border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-gray-600 dark:text-stone-300'}`}
+                            className={`py-2 rounded-lg text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${manualOrderChannel === valor ? 'bg-white dark:bg-stone-900 text-brand-orange shadow-sm' : 'text-gray-500 dark:text-stone-400 hover:text-gray-800 dark:hover:text-white'}`}
                           >
-                            {texto}
+                            <Icono className="w-4 h-4" /> {texto}
                           </button>
-                        ))}
-                      </div>
-                      <p className="text-[11px] text-gray-500 dark:text-stone-400 mt-2">Se cobra en efectivo al entregar. Si el celular es de un cliente registrado, el pedido queda en su cuenta y suma puntos.</p>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-2">Dirección de Entrega</label>
-                      <div className="relative">
-                        <MapPin className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                        <input type="text" value={manualOrderClient.address} onChange={e => setManualOrderClient({...manualOrderClient, address: e.target.value})} className="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm text-gray-900 dark:text-white outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all" placeholder="Dirección completa" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Productos Añadidos */}
-                {manualOrderItems.length > 0 && (
-                  <div className="bg-gray-50 dark:bg-stone-900/60 p-5 rounded-2xl border border-gray-100 dark:border-stone-800 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-black uppercase tracking-wider text-brand-orange">2. Productos Añadidos</h3>
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-brand-orange/10 text-brand-orange">
-                        {manualOrderItems.length} {manualOrderItems.length === 1 ? 'ítem' : 'ítems'}
-                      </span>
-                    </div>
-                    {manualOrderItems.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-4 bg-white dark:bg-stone-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-stone-700">
-                        {item.product?.image ? (
-                          <img src={item.product.image} alt={item.name} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-stone-700" />
-                        ) : (
-                          <div className="w-16 h-16 rounded-xl bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0 font-black text-sm">
-                            {item.quantity}x
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-brand-orange/10 text-brand-orange font-black text-[11px] flex items-center justify-center shrink-0">{item.quantity}x</span>
-                            <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{item.name}</p>
-                          </div>
-                          {(item.removed.length > 0 || item.extras.length > 0) && (
-                            <div className="flex flex-wrap gap-2 mt-1.5">
-                              {item.removed.map((r) => <span key={r.id} className="text-xs text-red-500 font-medium">- Sin {r.name}</span>)}
-                              {item.extras.map((e) => <span key={e.id} className="text-xs text-emerald-500 font-medium">{item.name === 'Hamburguesa Personalizada' ? `+ ${e.name}` : `+ Extra ${e.name}`}</span>)}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="font-black text-sm text-gray-900 dark:text-white">{formatCOP(item.finalPrice)}</span>
-                          <button onClick={() => setManualOrderItems(manualOrderItems.filter((_, i) => i !== idx))} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-full transition-colors cursor-pointer">
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Añadir Producto */}
-                <div className="bg-gray-50 dark:bg-stone-900/60 p-5 rounded-2xl border border-gray-100 dark:border-stone-800 space-y-4 relative">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-brand-orange">{manualOrderItems.length > 0 ? '3.' : '2.'} Añadir Producto</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="lg:col-span-2 relative" id="product-dropdown-container">
-                      <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-2">Seleccionar del Menú</label>
-                      <div
-                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm text-gray-900 dark:text-white outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 cursor-pointer flex items-center justify-between transition-all"
-                        onClick={() => {
-                          const el = document.getElementById('product-dropdown');
-                          if (el) el.classList.toggle('hidden');
-                        }}
-                      >
-                        {manualSelectedProduct ? (
-                          <div className="flex items-center gap-3 min-w-0">
-                            <img src={manualSelectedProduct.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
-                            <span className="truncate">{manualSelectedProduct.name} - {formatCOP(manualSelectedProduct.price)}</span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">-- Elige un producto --</span>
-                        )}
-                        <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
-                      </div>
-
-                      <div id="product-dropdown" className="hidden absolute top-full left-0 w-full mt-2 bg-white dark:bg-[#1a1a1e] border border-gray-200 dark:border-stone-800 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
-                        {products.filter(p => p.active).map(p => (
-                          <div
-                            key={p.id}
-                            className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-stone-800 cursor-pointer border-b border-gray-100 dark:border-stone-800/50 last:border-0"
-                            onClick={() => {
-                              setManualSelectedProduct(p);
-                              setManualCustomRemoved([]);
-                              setManualCustomExtras([]);
-                              const el = document.getElementById('product-dropdown');
-                              if (el) el.classList.add('hidden');
-                            }}
-                          >
-                            <img src={p.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-10 h-10 rounded-xl object-cover shrink-0" />
-                            <div className="min-w-0">
-                              <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{p.name}</p>
-                              <p className="text-xs text-brand-orange font-bold">{formatCOP(p.price)}</p>
-                            </div>
-                          </div>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-2">Cantidad</label>
-                      <input type="number" min="1" value={manualQuantity} onChange={e => setManualQuantity(e.target.value === '' ? '' : parseInt(e.target.value))} className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm text-gray-900 dark:text-white outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all font-bold" />
+                      <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-1.5">Forma de pago</label>
+                      <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-gray-200/60 dark:bg-stone-800">
+                        {([['efectivo', 'Efectivo', Wallet], ['link', 'Link de pago', Link2]] as const).map(([valor, texto, Icono]) => (
+                          <button
+                            key={valor}
+                            type="button"
+                            onClick={() => setManualPaymentMode(valor)}
+                            className={`py-2 rounded-lg text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${manualPaymentMode === valor ? 'bg-white dark:bg-stone-900 text-brand-orange shadow-sm' : 'text-gray-500 dark:text-stone-400 hover:text-gray-800 dark:hover:text-white'}`}
+                          >
+                            <Icono className="w-4 h-4" /> {texto}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-gray-500 dark:text-stone-400 flex gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-gray-400" />
+                      {manualPaymentMode === 'link'
+                        ? 'Pago por Nequi, Daviplata o Bancolombia. El link vence en 30 minutos.'
+                        : 'Pago en efectivo al recibir el pedido.'}
+                    </p>
+                  </div>
+
+                  {/* Productos de la orden */}
+                  <div className="bg-gray-50 dark:bg-stone-900/60 p-5 rounded-2xl border border-gray-100 dark:border-stone-800 flex flex-col min-h-[260px]">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-brand-orange">2. Productos</h3>
+                      {manualOrderItems.length > 0 && (
+                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-brand-orange/10 text-brand-orange">
+                          {manualOrderItems.reduce((acc, i) => acc + i.quantity, 0)} en la orden
+                        </span>
+                      )}
+                    </div>
+
+                    {manualOrderItems.length === 0 ? (
+                      <button
+                        onClick={() => setManualView('catalogo')}
+                        className="flex-1 w-full rounded-2xl border-2 border-dashed border-gray-300 dark:border-stone-700 hover:border-brand-orange hover:bg-brand-orange/5 flex flex-col items-center justify-center gap-3 p-6 transition-all group cursor-pointer"
+                      >
+                        <div className="w-14 h-14 rounded-2xl bg-brand-orange text-white flex items-center justify-center shadow-lg shadow-brand-orange/25 group-hover:scale-110 transition-transform">
+                          <Plus className="w-7 h-7" />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-black text-gray-900 dark:text-white">Agregar productos</p>
+                          <p className="text-xs text-gray-500 dark:text-stone-400 mt-0.5">Abre el catálogo para elegir del menú</p>
+                        </div>
+                      </button>
+                    ) : (
+                      <>
+                        <div className="flex-1 space-y-2 overflow-y-auto max-h-[250px] pr-1 -mr-1">
+                          {manualOrderItems.map((item, idx) => (
+                            <div key={item.id} className="flex items-center gap-3 bg-white dark:bg-stone-800 p-2.5 rounded-xl border border-gray-100 dark:border-stone-700">
+                              <img src={item.product?.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-11 h-11 rounded-lg object-cover shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                                  <span className="text-brand-orange">{item.quantity}x</span> {item.name}
+                                </p>
+                                {(item.removed.length > 0 || item.extras.length > 0) && (
+                                  <p className="text-[11px] truncate mt-0.5">
+                                    {item.removed.map(r => <span key={r.id} className="text-red-500 mr-2">- Sin {r.name}</span>)}
+                                    {agruparPorNombre(item.extras).map(e => <span key={e.name} className="text-emerald-500 mr-2">+ {e.name}{e.veces > 1 ? ` x${e.veces}` : ''}</span>)}
+                                  </p>
+                                )}
+                              </div>
+                              <span className="font-black text-sm text-gray-900 dark:text-white shrink-0">{formatCOP(item.finalPrice)}</span>
+                              <button onClick={() => setManualOrderItems(manualOrderItems.filter((_, i) => i !== idx))} title="Quitar" className="text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors cursor-pointer shrink-0">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => setManualView('catalogo')}
+                          className="mt-3 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-300 dark:border-stone-700 text-sm font-bold text-gray-600 dark:text-stone-300 hover:border-brand-orange hover:text-brand-orange flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" /> Agregar más productos
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : manualView === 'catalogo' ? (
+                /* ===== Vista 2: catálogo para elegir productos ===== */
+                <div className="min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_330px] lg:grid-rows-[minmax(0,1fr)] overflow-y-auto lg:overflow-hidden lg:h-[min(62vh,560px)] lg:shrink-0">
+                  {/* Lista de productos */}
+                  <div className="flex flex-col min-h-0 p-5 md:p-6 lg:border-r border-gray-100 dark:border-stone-800">
+                    <div className="relative mb-3 shrink-0">
+                      <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        autoFocus
+                        value={manualSearch}
+                        onChange={e => setManualSearch(e.target.value)}
+                        placeholder="Buscar producto..."
+                        className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-stone-700 bg-gray-50 dark:bg-stone-900 text-sm text-gray-900 dark:text-white outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all"
+                      />
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto pb-3 shrink-0">
+                      {manualCategorias.map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => setManualCategory(cat)}
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${manualCategory === cat ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-stone-800 text-gray-600 dark:text-stone-300 hover:bg-gray-200 dark:hover:bg-stone-700'}`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2 content-start pr-1 -mr-1">
+                      {manualProductosFiltrados.length === 0 && (
+                        <p className="sm:col-span-2 text-center text-sm text-gray-500 dark:text-stone-400 py-10">No hay productos con ese nombre.</p>
+                      )}
+                      {manualProductosFiltrados.map(p => {
+                        const enOrden = manualCantidadEnOrden(p.id);
+                        const seleccionado = manualSelectedProduct?.id === p.id;
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => { setManualSelectedProduct(seleccionado ? null : p); setManualCustomRemoved([]); setManualCustomExtras([]); setManualQuantity(1); }}
+                            className={`relative flex items-center gap-3 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${seleccionado ? 'border-brand-orange bg-brand-orange/5 ring-2 ring-brand-orange/20' : 'border-gray-100 dark:border-stone-800 hover:border-gray-300 dark:hover:border-stone-600 bg-white dark:bg-stone-900/40'}`}
+                          >
+                            <img src={p.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{p.name}</p>
+                              <p className="text-[11px] text-gray-400 dark:text-stone-500 truncate">{p.category || 'Otros'}</p>
+                            </div>
+                            <span className="text-sm font-black text-gray-900 dark:text-white shrink-0">{formatCOP(p.price)}</span>
+                            {enOrden > 0 && (
+                              <span className="absolute -top-1.5 -left-1.5 min-w-[20px] h-5 px-1 rounded-full bg-brand-orange text-white text-[10px] font-black flex items-center justify-center shadow-sm">
+                                {enOrden}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  {manualSelectedProduct && (
-                    <div className="pt-2 space-y-4 border-t border-gray-200/70 dark:border-stone-800">
-                      {/* Ingredients selector */}
-                      {manualSelectedProduct.ingredients && manualSelectedProduct.ingredients.length > 0 && (
-                        <div className="space-y-3 pt-2">
-                          <label className="block text-xs font-bold text-gray-700 dark:text-stone-300">Personalizar Ingredientes</label>
-                          <div className="flex flex-wrap gap-2">
-                            {manualSelectedProduct.ingredients.map((ing: ProductComponent) => {
-                              const isRemoved = manualCustomRemoved.some(r => r.id === ing.id);
-                              const isExtra = manualCustomExtras.some(e => e.id === ing.id);
-
-                              return (
-                                <div key={ing.id} className="flex items-center gap-1 bg-white dark:bg-stone-800 rounded-full p-1 border border-gray-200 dark:border-stone-700">
-                                  <button
-                                    onClick={() => {
-                                      if (isRemoved) setManualCustomRemoved(manualCustomRemoved.filter(r => r.id !== ing.id));
-                                      else { setManualCustomRemoved([...manualCustomRemoved, ing]); setManualCustomExtras(manualCustomExtras.filter(e => e.id !== ing.id)); }
-                                    }}
-                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors cursor-pointer ${isRemoved ? 'bg-red-500 text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-stone-700'}`}
-                                  >
-                                    -
-                                  </button>
-                                  <span className={`text-xs font-medium px-2 ${isRemoved ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-stone-300'}`}>
-                                    {ing.name}
-                                  </span>
-                                  <button
-                                    onClick={() => {
-                                      if (isExtra) setManualCustomExtras(manualCustomExtras.filter(e => e.id !== ing.id));
-                                      else { setManualCustomExtras([...manualCustomExtras, ing]); setManualCustomRemoved(manualCustomRemoved.filter(r => r.id !== ing.id)); }
-                                    }}
-                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors cursor-pointer ${isExtra ? 'bg-emerald-500 text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-stone-700'}`}
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              );
-                            })}
+                  {/* Panel derecho: personalizar el producto elegido */}
+                  <div className="flex flex-col min-h-0 bg-gray-50/70 dark:bg-stone-900/40 border-t lg:border-t-0 border-gray-100 dark:border-stone-800">
+                    {manualSelectedProduct ? (
+                      <>
+                        {/* Parte fija: producto, cantidad y título de ingredientes */}
+                        <div className="shrink-0 p-5 pb-3 space-y-4">
+                          <div className="flex items-center gap-3">
+                            <img src={manualSelectedProduct.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-black text-gray-900 dark:text-white leading-tight">{manualSelectedProduct.name}</p>
+                              <p className="text-sm font-bold text-brand-orange mt-0.5">{formatCOP(manualSelectedProduct.price)}</p>
+                            </div>
+                            <button
+                              onClick={() => { setManualSelectedProduct(null); setManualCustomRemoved([]); setManualCustomExtras([]); setManualQuantity(1); }}
+                              title="Quitar selección"
+                              className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer shrink-0 self-start"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
                           </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-1.5">Cantidad</label>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => setManualQuantity(Math.max(1, ((manualQuantity as number) || 1) - 1))} className="w-10 h-10 rounded-xl bg-white dark:bg-stone-800 border border-gray-200 dark:border-stone-700 flex items-center justify-center text-gray-700 dark:text-stone-200 hover:border-brand-orange hover:text-brand-orange transition-colors cursor-pointer">
+                                <Minus className="w-4 h-4" />
+                              </button>
+                              <input type="number" min="1" value={manualQuantity} onChange={e => setManualQuantity(e.target.value === '' ? '' : parseInt(e.target.value))} className="w-16 h-10 text-center rounded-xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm font-black text-gray-900 dark:text-white outline-none focus:border-brand-orange" />
+                              <button onClick={() => setManualQuantity(((manualQuantity as number) || 0) + 1)} className="w-10 h-10 rounded-xl bg-white dark:bg-stone-800 border border-gray-200 dark:border-stone-700 flex items-center justify-center text-gray-700 dark:text-stone-200 hover:border-brand-orange hover:text-brand-orange transition-colors cursor-pointer">
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {manualSelectedProduct.ingredients && manualSelectedProduct.ingredients.length > 0 && (
+                            <label className="block text-xs font-bold text-gray-700 dark:text-stone-300">Personalizar Ingredientes</label>
+                          )}
+                        </div>
+
+                        {/* Solo esta parte sube y baja: la lista de ingredientes */}
+                        <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-4 space-y-1.5">
+                                {(manualSelectedProduct.ingredients || []).map((ing: ProductComponent) => {
+                                  const isRemoved = manualCustomRemoved.some(r => r.id === ing.id);
+                                  // Cuántas veces se agregó como extra (puede ser más de una).
+                                  const extras = manualCustomExtras.filter(e => e.id === ing.id).length;
+                                  return (
+                                    <div key={ing.id} className="flex items-center justify-between gap-2 bg-white dark:bg-stone-800 rounded-xl px-3 py-1.5 border border-gray-100 dark:border-stone-700">
+                                      <span className={`text-xs font-semibold truncate ${isRemoved ? 'text-gray-400 line-through' : extras > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-stone-300'}`}>
+                                        {extras > 0 ? `Extra ${ing.name}` : ing.name}
+                                      </span>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          title={extras > 0 ? 'Un extra menos' : 'Quitar'}
+                                          onClick={() => {
+                                            if (extras > 0) {
+                                              // Quita uno solo de los extras de este ingrediente.
+                                              const i = manualCustomExtras.findIndex(e => e.id === ing.id);
+                                              setManualCustomExtras(manualCustomExtras.filter((_, k) => k !== i));
+                                            } else if (isRemoved) setManualCustomRemoved(manualCustomRemoved.filter(r => r.id !== ing.id));
+                                            else setManualCustomRemoved([...manualCustomRemoved, ing]);
+                                          }}
+                                          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${isRemoved ? 'bg-red-500 text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-stone-700'}`}
+                                        >
+                                          <Minus className="w-3.5 h-3.5" />
+                                        </button>
+                                        {extras > 0 && (
+                                          <span className="min-w-[22px] text-center text-xs font-black text-emerald-600 dark:text-emerald-400">x{extras}</span>
+                                        )}
+                                        <button
+                                          title="Agregar extra"
+                                          onClick={() => {
+                                            setManualCustomExtras([...manualCustomExtras, ing]);
+                                            setManualCustomRemoved(manualCustomRemoved.filter(r => r.id !== ing.id));
+                                          }}
+                                          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${extras > 0 ? 'bg-emerald-500 text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-stone-700'}`}
+                                        >
+                                          <Plus className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                        </div>
+                        <div className="p-4 border-t border-gray-100 dark:border-stone-800 shrink-0">
+                          <button onClick={handleAddProductToManualOrder} className="w-full bg-brand-orange text-white py-3 rounded-xl text-sm font-bold hover:bg-[#e66500] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-brand-orange/20">
+                            <Plus className="w-4 h-4" /> Agregar · {formatCOP(manualPrecioSeleccion)}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center p-8 min-h-[180px]">
+                        <div className="w-14 h-14 rounded-2xl bg-white dark:bg-stone-800 border border-gray-100 dark:border-stone-700 flex items-center justify-center mb-3">
+                          <Utensils className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <p className="font-bold text-sm text-gray-900 dark:text-white">Elige un producto</p>
+                        <p className="text-xs text-gray-500 dark:text-stone-400 mt-1">Aquí podrás cambiar la cantidad y quitar o añadir ingredientes.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : manualCreatedOrder && (
+                /* ===== Vista 3: pedido registrado, enviar por WhatsApp ===== */
+                (() => {
+                  // Se busca la versión más reciente del pedido para ver si ya lo pagaron.
+                  const pedido = orders.find(o => o.id === manualCreatedOrder.id) || manualCreatedOrder;
+                  const porLink = pedido.status === 'Esperando Pago' && !!pedido.paymentLinkCode;
+                  const pagado = manualCreatedOrder.status === 'Esperando Pago' && pedido.status !== 'Esperando Pago' && pedido.status !== 'Cancelado';
+                  const mensaje = mensajeDePedido(pedido);
+                  return (
+                    <div className="p-5 md:p-7 overflow-y-auto">
+                      <div className="flex flex-col items-center text-center mb-6">
+                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-3 ${porLink ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300'}`}>
+                          {porLink ? <Clock className="w-8 h-8" /> : <CheckCircle2 className="w-8 h-8" />}
+                        </div>
+                        <h3 className="text-xl font-black text-gray-900 dark:text-white">Pedido {pedido.id} registrado</h3>
+                        <p className="text-sm text-gray-500 dark:text-stone-400 mt-1 max-w-md">
+                          {porLink
+                            ? 'Está esperando el pago. Envíale el link al cliente: cuando pague, el pedido pasa a cocina solo.'
+                            : pagado
+                              ? '¡El cliente ya pagó! El pedido pasó a cocina.'
+                              : 'Ya está en cocina. Se cobra en efectivo al entregar.'}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                        <div className="rounded-2xl border border-gray-100 dark:border-stone-800 bg-gray-50 dark:bg-stone-900/60 p-4 min-w-0">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-stone-500">Cliente</p>
+                          <p className="font-black text-gray-900 dark:text-white truncate mt-1">{pedido.client}</p>
+                          <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-black ${pedido.isGuest ? 'bg-gray-200 text-gray-600 dark:bg-stone-800 dark:text-stone-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'}`}>
+                            {pedido.isGuest ? 'Invitado · se le invita a registrarse' : `Registrado · suma ${pedido.pointsEarned || 0} puntos`}
+                          </span>
+                        </div>
+                        <div className="rounded-2xl border border-gray-100 dark:border-stone-800 bg-gray-50 dark:bg-stone-900/60 p-4">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-stone-500">Total</p>
+                          <p className="font-black text-2xl text-brand-orange mt-1">{formatCOP(pedido.total)}</p>
+                          <p className="text-[11px] text-gray-500 dark:text-stone-400">{pedido.paymentMethod === 'cash' ? 'Efectivo al entregar' : porLink ? 'Pago por link' : 'Pagado por link'}</p>
+                        </div>
+                        <div className="rounded-2xl border border-brand-orange/30 bg-brand-orange/5 p-4">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-brand-orange">Código de entrega</p>
+                          <p className="font-black text-3xl tracking-[0.3em] text-gray-900 dark:text-white mt-1">{pedido.deliveryPin || '----'}</p>
+                          <p className="text-[11px] text-gray-500 dark:text-stone-400">{porLink ? 'Se le muestra al pagar' : 'Va en el mensaje'}</p>
+                        </div>
+                      </div>
+
+                      {porLink && (
+                        <div className="flex items-center gap-2 p-2 pl-4 rounded-2xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 mb-5">
+                          <Link2 className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="flex-1 min-w-0 truncate text-sm text-gray-700 dark:text-stone-300">{urlLinkPago(pedido.paymentLinkCode || '')}</span>
+                          <button
+                            onClick={() => copiarTexto(urlLinkPago(pedido.paymentLinkCode || ''), 'link')}
+                            className="shrink-0 px-3 py-2 rounded-xl bg-gray-100 dark:bg-stone-800 text-xs font-bold text-gray-700 dark:text-stone-200 hover:bg-gray-200 dark:hover:bg-stone-700 flex items-center gap-1.5 cursor-pointer transition-colors"
+                          >
+                            {manualCopied === 'link' ? <><Check className="w-3.5 h-3.5 text-emerald-500" /> Copiado</> : <><Copy className="w-3.5 h-3.5" /> Copiar link</>}
+                          </button>
                         </div>
                       )}
-                      <button onClick={handleAddProductToManualOrder} className="w-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 py-3 rounded-2xl text-sm font-bold hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors cursor-pointer flex items-center justify-center gap-2">
-                        <Plus className="w-4 h-4" /> Agregar a la Orden
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
 
-              {/* Modal Footer */}
-              <div className="p-6 md:p-8 border-t border-gray-100 dark:border-stone-800 bg-gray-50 dark:bg-stone-900/50 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+                      {pedido.status !== 'Cancelado' && !pagado && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <button
+                            onClick={() => abrirWhatsApp(pedido.clientPhone || '', mensaje)}
+                            className="py-3.5 rounded-2xl bg-[#25D366] hover:bg-[#1ebe5b] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#25D366]/25 active:scale-[0.98] transition-all cursor-pointer"
+                          >
+                            <Send className="w-4 h-4" /> Enviar por WhatsApp
+                          </button>
+                          <button
+                            onClick={() => copiarTexto(mensaje, 'mensaje')}
+                            className="py-3.5 rounded-2xl border border-gray-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-gray-700 dark:text-stone-200 font-bold text-sm flex items-center justify-center gap-2 hover:border-gray-300 dark:hover:border-stone-600 transition-colors cursor-pointer"
+                          >
+                            {manualCopied === 'mensaje' ? <><Check className="w-4 h-4 text-emerald-500" /> Mensaje copiado</> : <><Copy className="w-4 h-4" /> Copiar mensaje</>}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
+              )}
+
+              {/* Pie: totales + botón según la vista */}
+              {manualView === 'listo' ? (
+                <div className="px-5 py-4 md:px-7 md:py-5 border-t border-gray-100 dark:border-stone-800 bg-gray-50 dark:bg-stone-900/50 flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0">
+                  <p className="text-xs text-gray-500 dark:text-stone-400">El pedido también aparece en Comandas Activas.</p>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <button
+                      onClick={() => { setManualCreatedOrder(null); setManualView('datos'); }}
+                      className="flex-1 sm:flex-none px-6 py-3 rounded-full border border-gray-200 dark:border-stone-700 text-sm font-bold text-gray-700 dark:text-stone-200 hover:bg-white dark:hover:bg-stone-800 transition-colors cursor-pointer"
+                    >
+                      Registrar otro
+                    </button>
+                    <button
+                      onClick={() => setShowManualForm(false)}
+                      className="flex-1 sm:flex-none px-8 py-3 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors cursor-pointer"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+              <div className="px-5 py-4 md:px-7 md:py-5 border-t border-gray-100 dark:border-stone-800 bg-gray-50 dark:bg-stone-900/50 flex flex-col md:flex-row justify-between items-center gap-3 shrink-0">
                 <div className="flex gap-5 sm:gap-6 items-center flex-wrap">
                   <div className="text-sm">
                     <span className="text-gray-500 dark:text-stone-400">Subtotal: </span>
@@ -1969,14 +2349,24 @@ export default function AdminDashboard() {
                     <span className="font-black text-brand-orange">{formatCOP(manualOrderTotal + (manualOrderItems.length > 0 ? storeConfig.shippingRate : 0))}</span>
                   </div>
                 </div>
-                <button
-                  onClick={handleCreateManualOrder}
-                  disabled={manualOrderSaving || manualOrderItems.length === 0 || !manualOrderClient.name.trim() || !manualOrderClient.phone.trim() || !manualOrderClient.address.trim()}
-                  className="bg-brand-orange text-white w-full md:w-auto px-8 py-3.5 rounded-full font-bold hover:bg-[#e66500] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-brand-orange/20 cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <ShoppingBag className="w-4 h-4" /> {manualOrderSaving ? 'Enviando...' : 'Enviar a Cocina'}
-                </button>
+                {manualView === 'catalogo' ? (
+                  <button
+                    onClick={() => { setManualView('datos'); setManualSelectedProduct(null); }}
+                    className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-full md:w-auto px-8 py-3.5 rounded-full font-bold hover:bg-gray-800 dark:hover:bg-gray-200 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Check className="w-4 h-4" /> Listo, volver al pedido
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCreateManualOrder}
+                    disabled={manualOrderSaving || manualOrderItems.length === 0 || !manualOrderClient.name.trim() || !manualOrderClient.phone.trim() || !manualOrderClient.address.trim()}
+                    className="bg-brand-orange text-white w-full md:w-auto px-8 py-3.5 rounded-full font-bold hover:bg-[#e66500] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-brand-orange/20 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <ShoppingBag className="w-4 h-4" /> {manualOrderSaving ? 'Enviando...' : 'Enviar a Cocina'}
+                  </button>
+                )}
               </div>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -2039,6 +2429,8 @@ export default function AdminDashboard() {
                    <div>
                       <p className="text-sm font-medium text-gray-500 dark:text-stone-400 mb-1">Estado</p>
                       <span className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex ${
+                        viewingOrder.status === 'Esperando Pago' ? 'bg-amber-100 text-amber-800' :
+                        viewingOrder.status === 'Cancelado' ? 'bg-red-100 text-red-700' :
                         viewingOrder.status === 'Pendiente' ? 'bg-yellow-100 text-yellow-800' :
                         viewingOrder.status === 'En Preparación' ? 'bg-blue-100 text-blue-800' :
                         (viewingOrder.status as string) === 'Listo para Entregar' ? 'bg-green-100 text-green-800' :
@@ -2065,6 +2457,42 @@ export default function AdminDashboard() {
                       <p className="text-lg font-black text-brand-orange">{formatCOP(viewingOrder.total)}</p>
                    </div>
                 </div>
+
+                {/* Pedido manual: código de entrega y reenviar mensaje / link de pago */}
+                {(() => {
+                  const live = orders.find(o => o.id === viewingOrder.id) || viewingOrder;
+                  if (!live.channel || live.channel === 'web' || live.status === 'Cancelado' || live.status === 'Entregado') return null;
+                  const esperaPago = live.status === 'Esperando Pago' && !!live.paymentLinkCode;
+                  return (
+                    <div className="rounded-2xl border border-brand-orange/30 bg-brand-orange/5 p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-brand-orange">Código de entrega</p>
+                          <p className="font-black text-2xl tracking-[0.3em] text-gray-900 dark:text-white">{live.deliveryPin || '----'}</p>
+                        </div>
+                        <p className="text-[11px] text-gray-500 dark:text-stone-400 text-right max-w-[180px]">
+                          {esperaPago ? 'Esperando el pago por link. El cliente ve el código cuando paga.' : 'Díctaselo al cliente si no le llegó el mensaje.'}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => abrirWhatsApp(live.clientPhone || '', mensajeDePedido(live))}
+                          className="flex-1 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#1ebe5b] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Send className="w-3.5 h-3.5" /> {esperaPago ? 'Reenviar link de pago' : 'Reenviar confirmación'}
+                        </button>
+                        {esperaPago && (
+                          <button
+                            onClick={() => copiarTexto(urlLinkPago(live.paymentLinkCode || ''), 'link')}
+                            className="py-2.5 px-3 rounded-xl bg-white dark:bg-stone-800 border border-gray-200 dark:border-stone-700 text-gray-700 dark:text-stone-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                          >
+                            {manualCopied === 'link' ? <><Check className="w-3.5 h-3.5 text-emerald-500" /> Copiado</> : <><Copy className="w-3.5 h-3.5" /> Copiar link</>}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div>
                    <h4 className="font-bold text-gray-900 dark:text-white mb-4">Información del Cliente</h4>

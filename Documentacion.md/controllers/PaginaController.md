@@ -63,57 +63,63 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 33 | `{` | Abre la función `forgotPassword()`. |
 | 34 | `$this->mostrar('recuperar');` | Muestra la vista `'recuperar'`. |
 | 35 | `}` | Cierra la función `forgotPassword()`. |
-| 37 | `public function admin()` | Función `admin()`: muestra el panel del administrador (`/admin`). |
-| 38 | `{` | Abre la función `admin()`. |
-| 39 | `$this->mostrar('admin');` | Muestra la vista `'admin'`. |
-| 40 | `}` | Cierra la función `admin()`. |
-| 42 | `public function client()` | Función `client()`: muestra el panel del cliente (`/client`). |
-| 43 | `{` | Abre la función `client()`. |
-| 44 | `$this->mostrar('cliente');` | Muestra la vista `'cliente'`. |
-| 45 | `}` | Cierra la función `client()`. |
-| 47 | `public function kitchen()` | Función `kitchen()`: muestra el panel de cocina (`/kitchen`). |
-| 48 | `{` | Abre la función `kitchen()`. |
-| 49 | `$this->mostrar('cocina');` | Muestra la vista `'cocina'`. |
-| 50 | `}` | Cierra la función `kitchen()`. |
-| 52 | `public function delivery()` | Función `delivery()`: muestra el panel del domiciliario (`/delivery`). |
-| 53 | `{` | Abre la función `delivery()`. |
-| 54 | `$this->mostrar('domiciliario');` | Muestra la vista `'domiciliario'`. |
-| 55 | `}` | Cierra la función `delivery()`. |
-| 57 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Muestra la vista de views/paginas con los datos iniciales de la app."* |
-| 58 | `private function mostrar($vista)` | Función `mostrar($vista)` (privada): arma los datos que necesita React y muestra la vista. La usan todas las funciones de arriba. |
-| 59 | `{` | Abre la función `mostrar()`. |
-| 60 | `$datos = [` | Crea la lista `$datos`: |
-| 61 | `'usuario'   => Auth::check() ? Auth::usuarioActual() : null,` | `'usuario'`: si hay sesión (`Auth::check()`), los datos del usuario (`Auth::usuarioActual()`); si no, `null`. `? :` = si / si no. |
-| 62 | `'rol'       => Auth::check() ? Auth::rol() : null,` | `'rol'`: si hay sesión, el rol; si no, `null`. |
-| 63 | `'csrfToken' => Session::csrf(),` | `'csrfToken'`: el token de seguridad (`Session::csrf()`). |
-| 64 | `'settings'  => $this->configModel->obtener(),` | `'settings'`: los ajustes de la tienda (`obtener()` de `models/Configuracion.php`). |
-| 65 | `];` | Cierra la lista. |
-| 66 | `mostrarVista($vista, $datos);` | Muestra la vista (`mostrarVista()` de `helpers.php`) y le pasa `$datos`. `cabecera.php` los convierte en `window.__DATOS__` para React. |
-| 67 | `}` | Cierra la función `mostrar()`. |
-| 68 | `}` | Cierra la clase `PaginaController`. |
-| 70 | `$controller = new PaginaController();` | Crea el controlador. Al hacer `new PaginaController()` se ejecuta su `__construct()`. |
-| 72 | `$accion = $_GET['accion'] ?? '';` | Guarda en `$accion` qué acción pidió la ruta (la puso `cargarControlador()` de `helpers.php`). `?? ''` = si no hay, vacío. |
-| 74 | `if ($accion === 'landing') {` | Si la acción es `'landing'`... |
-| 75 | `$controller->landing();` | ...llama al método `landing()` de arriba. |
-| 76 | `} elseif ($accion === 'login') {` | Si no, si la acción es `'login'`... |
-| 77 | `$controller->login();` | ...llama al método `login()` de arriba. |
-| 78 | `} elseif ($accion === 'register') {` | Si no, si la acción es `'register'`... |
-| 79 | `$controller->register();` | ...llama al método `register()` de arriba. |
-| 80 | `} elseif ($accion === 'forgotPassword') {` | Si no, si la acción es `'forgotPassword'`... |
-| 81 | `$controller->forgotPassword();` | ...llama al método `forgotPassword()` de arriba. |
-| 82 | `} elseif ($accion === 'admin') {` | Si no, si la acción es `'admin'`... |
-| 83 | `$controller->admin();` | ...llama al método `admin()` de arriba. |
-| 84 | `} elseif ($accion === 'client') {` | Si no, si la acción es `'client'`... |
-| 85 | `$controller->client();` | ...llama al método `client()` de arriba. |
-| 86 | `} elseif ($accion === 'kitchen') {` | Si no, si la acción es `'kitchen'`... |
-| 87 | `$controller->kitchen();` | ...llama al método `kitchen()` de arriba. |
-| 88 | `} elseif ($accion === 'delivery') {` | Si no, si la acción es `'delivery'`... |
-| 89 | `$controller->delivery();` | ...llama al método `delivery()` de arriba. |
-| 90 | `} else {` | Si la acción no es ninguna de las anteriores... |
-| 91 | `http_response_code(404);` | ...pone el código 404 (no existe)... |
-| 92 | `echo 'Pagina no encontrada.';` | ...y escribe "Pagina no encontrada.". |
-| 93 | `}` | Cierra el `else`. |
-| 94 | `?>` | Cierra el código PHP. |
+| 37 | `public function pagar()` | Función `pagar()`: muestra la página del link de pago (`/pagar?c=...`), donde el cliente de un pedido manual paga sin iniciar sesión. |
+| 38 | `{` | Abre la función `pagar()`. |
+| 39 | `$this->mostrar('pagar');` | Muestra la vista `'pagar'` (`views/paginas/pagar.php`). |
+| 40 | `}` | Cierra la función `pagar()`. |
+| 42 | `public function admin()` | Función `admin()`: muestra el panel del administrador (`/admin`). |
+| 43 | `{` | Abre la función `admin()`. |
+| 44 | `$this->mostrar('admin');` | Muestra la vista `'admin'`. |
+| 45 | `}` | Cierra la función `admin()`. |
+| 47 | `public function client()` | Función `client()`: muestra el panel del cliente (`/client`). |
+| 48 | `{` | Abre la función `client()`. |
+| 49 | `$this->mostrar('cliente');` | Muestra la vista `'cliente'`. |
+| 50 | `}` | Cierra la función `client()`. |
+| 52 | `public function kitchen()` | Función `kitchen()`: muestra el panel de cocina (`/kitchen`). |
+| 53 | `{` | Abre la función `kitchen()`. |
+| 54 | `$this->mostrar('cocina');` | Muestra la vista `'cocina'`. |
+| 55 | `}` | Cierra la función `kitchen()`. |
+| 57 | `public function delivery()` | Función `delivery()`: muestra el panel del domiciliario (`/delivery`). |
+| 58 | `{` | Abre la función `delivery()`. |
+| 59 | `$this->mostrar('domiciliario');` | Muestra la vista `'domiciliario'`. |
+| 60 | `}` | Cierra la función `delivery()`. |
+| 62 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Muestra la vista de views/paginas con los datos iniciales de la app."* |
+| 63 | `private function mostrar($vista)` | Función `mostrar($vista)` (privada): arma los datos que necesita React y muestra la vista. La usan todas las funciones de arriba. |
+| 64 | `{` | Abre la función `mostrar()`. |
+| 65 | `$datos = [` | Crea la lista `$datos`: |
+| 66 | `'usuario'   => Auth::check() ? Auth::usuarioActual() : null,` | `'usuario'`: si hay sesión (`Auth::check()`), los datos del usuario (`Auth::usuarioActual()`); si no, `null`. `? :` = si / si no. |
+| 67 | `'rol'       => Auth::check() ? Auth::rol() : null,` | `'rol'`: si hay sesión, el rol; si no, `null`. |
+| 68 | `'csrfToken' => Session::csrf(),` | `'csrfToken'`: el token de seguridad (`Session::csrf()`). |
+| 69 | `'settings'  => $this->configModel->obtener(),` | `'settings'`: los ajustes de la tienda (`obtener()` de `models/Configuracion.php`). |
+| 70 | `];` | Cierra la lista. |
+| 71 | `mostrarVista($vista, $datos);` | Muestra la vista (`mostrarVista()` de `helpers.php`) y le pasa `$datos`. `cabecera.php` los convierte en `window.__DATOS__` para React. |
+| 72 | `}` | Cierra la función `mostrar()`. |
+| 73 | `}` | Cierra la clase `PaginaController`. |
+| 75 | `$controller = new PaginaController();` | Crea el controlador. Al hacer `new PaginaController()` se ejecuta su `__construct()`. |
+| 77 | `$accion = $_GET['accion'] ?? '';` | Guarda en `$accion` qué acción pidió la ruta (la puso `cargarControlador()` de `helpers.php`). `?? ''` = si no hay, vacío. |
+| 79 | `if ($accion === 'landing') {` | Si la acción es `'landing'`... |
+| 80 | `$controller->landing();` | ...llama al método `landing()` de arriba. |
+| 81 | `} elseif ($accion === 'login') {` | Si no, si la acción es `'login'`... |
+| 82 | `$controller->login();` | ...llama al método `login()` de arriba. |
+| 83 | `} elseif ($accion === 'register') {` | Si no, si la acción es `'register'`... |
+| 84 | `$controller->register();` | ...llama al método `register()` de arriba. |
+| 85 | `} elseif ($accion === 'forgotPassword') {` | Si no, si la acción es `'forgotPassword'`... |
+| 86 | `$controller->forgotPassword();` | ...llama al método `forgotPassword()` de arriba. |
+| 87 | `} elseif ($accion === 'pagar') {` | Si no, si la acción es `'pagar'`... |
+| 88 | `$controller->pagar();` | ...llama al método `pagar()` de arriba. |
+| 89 | `} elseif ($accion === 'admin') {` | Si no, si la acción es `'admin'`... |
+| 90 | `$controller->admin();` | ...llama al método `admin()` de arriba. |
+| 91 | `} elseif ($accion === 'client') {` | Si no, si la acción es `'client'`... |
+| 92 | `$controller->client();` | ...llama al método `client()` de arriba. |
+| 93 | `} elseif ($accion === 'kitchen') {` | Si no, si la acción es `'kitchen'`... |
+| 94 | `$controller->kitchen();` | ...llama al método `kitchen()` de arriba. |
+| 95 | `} elseif ($accion === 'delivery') {` | Si no, si la acción es `'delivery'`... |
+| 96 | `$controller->delivery();` | ...llama al método `delivery()` de arriba. |
+| 97 | `} else {` | Si la acción no es ninguna de las anteriores... |
+| 98 | `http_response_code(404);` | ...pone el código 404 (no existe)... |
+| 99 | `echo 'Pagina no encontrada.';` | ...y escribe "Pagina no encontrada.". |
+| 100 | `}` | Cierra el `else`. |
+| 101 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
 | Si se borra… | Qué deja de funcionar | Error que sale |

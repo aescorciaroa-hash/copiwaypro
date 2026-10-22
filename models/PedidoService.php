@@ -11,6 +11,9 @@ require_once __DIR__ . '/PushNotificationService.php';
 
 class PedidoService
 {
+    // Minutos que dura el link de pago de un pedido manual antes de cancelarse solo.
+    const MINUTOS_LINK_PAGO = 30;
+
     private $conn;
     private $pedidoModel;
 
@@ -86,15 +89,22 @@ class PedidoService
             'lat'        => $payload['lat'] ?? null,
             'lng'        => $payload['lng'] ?? null,
             'canal'      => 'web',
+            'estado'     => 'pendiente',
+            'codigo_pago' => null,
+            'vence_pago'  => null,
         ], $pago, $calculo, $configModel);
 
         return $this->pedidoModel->buscar($idPedido, 'client', $idCliente);
     }
 
     /**
-     * Pedido manual que el administrador registra por llamada o WhatsApp (pago en
-     * efectivo al entregar). Si el celular pertenece a un cliente registrado, el
-     * pedido queda en su cuenta; si no, queda como cliente invitado.
+     * Pedido manual que el administrador registra por llamada o WhatsApp.
+     * Si el celular pertenece a un cliente registrado, el pedido queda en su
+     * cuenta; si no, queda como cliente invitado.
+     * Forma de pago (paymentMode):
+     *  - 'efectivo': se cobra al entregar y el pedido va directo a cocina.
+     *  - 'link': queda 'esperando_pago' con un link que vence en MINUTOS_LINK_PAGO;
+     *    cuando el cliente paga pasa a 'pendiente' (cocina). Si no paga, se cancela.
      */
     public function crearManual($idAdmin, $payload)
     {
@@ -108,6 +118,8 @@ class PedidoService
         $direccion = trim((string) ($payload['address'] ?? ''));
         $canal     = in_array($payload['channel'] ?? '', ['llamada', 'whatsapp'], true) ? $payload['channel'] : 'llamada';
 
+        $porLink   = ($payload['paymentMode'] ?? 'efectivo') === 'link';
+
         $cliente = $this->buscarClientePorTelefono($telefono);
         $calculo = $this->calcular($cliente, $payload, $configModel, false);
 
@@ -120,11 +132,176 @@ class PedidoService
             'lat'        => null,
             'lng'        => null,
             'canal'      => $canal,
+            'estado'     => $porLink ? 'esperando_pago' : 'pendiente',
+            'codigo_pago' => $porLink ? bin2hex(random_bytes(16)) : null,
+            'vence_pago'  => $porLink ? date('Y-m-d H:i:s', time() + self::MINUTOS_LINK_PAGO * 60) : null,
         ], [
-            'metodo' => 'efectivo', 'banco' => null, 'estado' => 'pendiente', 'fecha' => null, 'comprobante' => null,
+            'metodo' => $porLink ? 'digital' : 'efectivo', 'banco' => null, 'estado' => 'pendiente', 'fecha' => null, 'comprobante' => null,
         ], $calculo, $configModel);
 
         return $this->pedidoModel->buscar($idPedido, 'admin', $idAdmin);
+    }
+
+    // ---------------------------------------------------------------
+    // Pago por link (pedido manual)
+    // ---------------------------------------------------------------
+
+    /**
+     * Datos que ve el cliente al abrir el link de pago. Null si el codigo no existe.
+     * El PIN de entrega solo se muestra cuando el pedido ya esta pagado.
+     */
+    public function pedidoPorLink($codigo)
+    {
+        $this->cancelarLinksVencidos();
+
+        $fila = $this->filaPorCodigo($codigo);
+        if (!$fila) {
+            return null;
+        }
+
+        $pagado = !in_array($fila['estado'], ['esperando_pago', 'cancelado'], true);
+        $items = [];
+        foreach ($this->pedidoModel->itemsDe($fila['id_pedido']) as $item) {
+            // Foto del producto para mostrarla en la pagina de pago.
+            $stmtF = $this->conn->prepare("SELECT imagen FROM PRODUCTO WHERE id_producto = ?");
+            $stmtF->bind_param("i", $item['productId']);
+            $stmtF->execute();
+            $producto = $stmtF->get_result()->fetch_assoc();
+            $stmtF->close();
+
+            $items[] = [
+                'image'    => $producto ? $producto['imagen'] : null,
+                'name'     => $item['name'],
+                'quantity' => $item['quantity'],
+                'price'    => $item['price'],
+                'extras'   => $item['extras'],
+                'removed'  => $item['removed'],
+            ];
+        }
+
+        return [
+            'id'           => '#ORD-' . $fila['id_pedido'],
+            'status'       => $pagado ? 'pagado' : ($fila['estado'] === 'cancelado' ? 'vencido' : 'esperando_pago'),
+            'client'       => $fila['cliente_nombre'],
+            'address'      => $fila['direccion_entrega'],
+            'items'        => $items,
+            'subtotal'     => (float) $fila['subtotal'],
+            'shipping'     => (float) $fila['costo_domicilio'],
+            'total'        => (float) $fila['total'],
+            'expiresAt'    => $fila['vence_pago'],
+            'deliveryPin'  => $pagado ? $fila['pin_entrega'] : null,
+            'isGuest'      => $fila['id_cliente'] === null,
+            'pointsEarned' => (int) $fila['puntos_ganados'],
+            'bank'         => $fila['banco_digital'],
+        ];
+    }
+
+    /** Crea la transaccion de prueba para pagar el pedido del link. */
+    public function iniciarPagoLink($codigo, $metodo, $telefono)
+    {
+        $this->cancelarLinksVencidos();
+
+        $fila = $this->filaPorCodigo($codigo);
+        if (!$fila) {
+            throw new InvalidArgumentException('Este link de pago no existe.');
+        }
+        if ($fila['estado'] !== 'esperando_pago') {
+            throw new InvalidArgumentException($fila['estado'] === 'cancelado'
+                ? 'Este link de pago ya venció. Comunícate con el restaurante.'
+                : 'Este pedido ya fue pagado.');
+        }
+        if (strtotime($fila['vence_pago']) <= time()) {
+            throw new InvalidArgumentException('Este link de pago ya venció. Comunícate con el restaurante.');
+        }
+
+        $pagoService = new PagoService();
+        return $pagoService->crearTransaccionDePedido((int) $fila['id_pedido'], (float) $fila['total'], $metodo, $telefono);
+    }
+
+    /**
+     * Consulta la transaccion del link. Si ya quedo aprobada, marca el pedido como
+     * pagado y lo manda a cocina (pasa de 'esperando_pago' a 'pendiente').
+     */
+    public function consultarPagoLink($codigo, $idTransaccion)
+    {
+        $fila = $this->filaPorCodigo($codigo);
+        if (!$fila) {
+            throw new InvalidArgumentException('Este link de pago no existe.');
+        }
+
+        $pagoService = new PagoService();
+        $tx = $pagoService->obtenerTransaccionDePedido($idTransaccion, (int) $fila['id_pedido']);
+        if (!$tx) {
+            throw new InvalidArgumentException('Transacción no encontrada.');
+        }
+
+        if ($tx['status'] === 'APPROVED' && $fila['estado'] === 'esperando_pago') {
+            // fecha_hora = ahora: para cocina el pedido "llega" cuando se paga.
+            $stmt = $this->conn->prepare(
+                "UPDATE PEDIDO SET estado = 'pendiente', banco_digital = ?, estado_pago = 'aprobado',
+                        fecha_pago = NOW(), comprobante_pago = ?, fecha_hora = NOW()
+                 WHERE id_pedido = ? AND estado = 'esperando_pago'"
+            );
+            $stmt->bind_param("ssi", $tx['payment_method'], $tx['id'], $fila['id_pedido']);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        return $tx;
+    }
+
+    /**
+     * Cancela los pedidos con link de pago vencido y devuelve su inventario.
+     * Se llama al sincronizar y al abrir un link (no hace falta una tarea programada).
+     * Se deja 1 minuto de gracia para que termine un pago que empezo justo antes de vencer.
+     */
+    public function cancelarLinksVencidos()
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT id_pedido FROM PEDIDO
+             WHERE estado = 'esperando_pago' AND vence_pago < NOW() - INTERVAL 1 MINUTE"
+        );
+        $stmt->execute();
+        $vencidos = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        $ingredienteModel = new Ingrediente();
+        foreach ($vencidos as $v) {
+            $idPedido = (int) $v['id_pedido'];
+            $this->conn->begin_transaction();
+            try {
+                $stmtU = $this->conn->prepare("UPDATE PEDIDO SET estado = 'cancelado', estado_pago = 'rechazado' WHERE id_pedido = ? AND estado = 'esperando_pago'");
+                $stmtU->bind_param("i", $idPedido);
+                $stmtU->execute();
+                $cambio = $stmtU->affected_rows;
+                $stmtU->close();
+
+                if ($cambio > 0) {
+                    $ingredienteModel->devolverDePedido($idPedido);
+                }
+                $this->conn->commit();
+            } catch (Exception $e) {
+                $this->conn->rollback();
+                error_log('No se pudo cancelar el pedido vencido #' . $idPedido . ': ' . $e->getMessage());
+            }
+        }
+    }
+
+    private function filaPorCodigo($codigo)
+    {
+        if (!preg_match('/^[a-f0-9]{32}$/', (string) $codigo)) {
+            return null;
+        }
+        $stmt = $this->conn->prepare(
+            "SELECT p.*, COALESCE(c.nombre, p.nombre_contacto) AS cliente_nombre
+             FROM PEDIDO p LEFT JOIN CLIENTE c ON c.id_cliente = p.id_cliente
+             WHERE p.codigo_pago = ? LIMIT 1"
+        );
+        $stmt->bind_param("s", $codigo);
+        $stmt->execute();
+        $fila = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $fila ?: null;
     }
 
     /**
@@ -159,17 +336,21 @@ class PedidoService
                 $destino['id_cliente'], $destino['id_admin'], $destino['nombre'], $destino['telefono'],
                 $destino['direccion'], $destino['lat'], $destino['lng'], $destino['canal'],
                 $pago['metodo'], $pago['banco'], $pago['estado'], $pago['fecha'], $pago['comprobante'],
+                $destino['codigo_pago'], $destino['vence_pago'],
                 $calculo['subtotal'], $calculo['envio'], $calculo['descuento'],
                 $calculo['puntosCanjeados'], $calculo['descuentoPuntos'], $puntos, $calculo['total'],
             ];
+            // Estado inicial: solo puede ser uno de estos dos valores fijos.
+            $estadoInicial = $destino['estado'] === 'esperando_pago' ? 'esperando_pago' : 'pendiente';
             $stmtP = $this->conn->prepare(
                 "INSERT INTO PEDIDO
                     (id_cliente, id_admin_registro, nombre_contacto, telefono_contacto,
                      direccion_entrega, destino_lat, destino_lng, estado, canal_origen,
                      metodo_pago, banco_digital, estado_pago, fecha_pago, comprobante_pago,
+                     codigo_pago, vence_pago,
                      subtotal, costo_domicilio, descuento_cumpleanos,
                      puntos_canjeados, descuento_puntos, puntos_ganados, total)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, '$estadoInicial', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
             $stmtP->bind_param(tiposDe($values), ...$values);
             $stmtP->execute();

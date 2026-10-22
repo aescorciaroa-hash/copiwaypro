@@ -106,6 +106,11 @@ controllers/
 │      · crear el pago
 │      · consultar si el pago fue aprobado
 │
+├── PaymentLinkController.php
+│      · mostrar el pedido del link de pago (sin iniciar sesión)
+│      · pagar el link
+│      · consultar si el pago del link fue aprobado
+│
 ├── CashClosingController.php
 │      · ver el cierre de caja antes de confirmarlo
 │      · confirmar el cierre de caja
@@ -226,6 +231,7 @@ views/
 │   ├── login.php          → iniciar sesión
 │   ├── registro.php       → crear cuenta
 │   ├── recuperar.php      → recuperar contraseña
+│   ├── pagar.php          → link de pago del pedido manual
 │   ├── admin.php          → panel del administrador
 │   ├── cliente.php        → panel del cliente
 │   ├── cocina.php         → panel de cocina
@@ -277,13 +283,15 @@ src/
 │   └── pushNotifications.ts   → activar notificaciones
 ├── utils/
 │   ├── audio.ts               → sonidos de alerta
-│   └── generarCierrePdf.ts    → PDF del cierre de caja
+│   ├── generarCierrePdf.ts    → PDF del cierre de caja
+│   └── mensajesWhatsApp.ts    → mensajes de WhatsApp del pedido manual
 │
 └── pages/                     → las pantallas
     ├── Landing.tsx            → inicio (menú, historia, contacto)
     ├── Login.tsx              → iniciar sesión
     ├── Register.tsx           → crear cuenta
     ├── ForgotPassword.tsx     → recuperar contraseña
+    ├── PagarPedido.tsx        → link de pago del pedido manual
     │
     ├── AdminDashboard.tsx     → panel del administrador
     ├── admin/

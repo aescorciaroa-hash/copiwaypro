@@ -8,6 +8,8 @@ Crea la base de datos con todas sus tablas.
 - crea las 23 tablas: clientes, personal, productos, inventario, pedidos, pagos, cierre de caja...
 - crea la configuración inicial de la tienda
 - genera solo el PIN de entrega de cada pedido
+- en `PEDIDO`: el estado `esperando_pago` y las columnas `codigo_pago` y `vence_pago` (link de pago del pedido manual)
+- en `PAGO_TRANSACCION`: la columna `id_pedido` (pago por link; ahí `id_cliente` puede ir vacío)
 
 ## ¿Con qué se conecta?
 - **Se usa:** una sola vez, al instalar (desde HeidiSQL, phpMyAdmin o la consola).

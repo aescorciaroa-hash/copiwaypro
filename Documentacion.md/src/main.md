@@ -9,7 +9,7 @@ Es el **punto de entrada de React**. Es lo primero que se ejecuta cuando el nave
 |---|---|---|
 | ← lo carga | `pie.php` (`main.js` compilado) o `index.html` (en `npm run dev`) | |
 | ← lee | `data-pagina` del `<div id="app">` (lo pone `cabecera.php`) | Qué pantalla mostrar. |
-| → muestra | una de las 8 pantallas de `src/pages/` | |
+| → muestra | una de las 9 pantallas de `src/pages/` (incluye `PagarPedido.tsx`, el link de pago) | |
 | → envuelve todo con | `ThemeProvider` (`context/ThemeContext.tsx`) | Tema claro/oscuro para toda la app. |
 | → incluye | `SyncDatos` (`components/SyncDatos.tsx`) | Mantiene los datos actualizados. |
 | → importa | `index.css` | Los estilos. |

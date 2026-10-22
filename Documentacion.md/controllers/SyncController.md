@@ -10,6 +10,7 @@ Envía a las pantallas todos los datos que necesitan.
 - al administrador: también los clientes
 - al domiciliario: sus pedidos
 - al cliente: sus pedidos, ingredientes y su perfil
+- antes de responder, cancela los pedidos con link de pago vencido
 - si nada cambió, responde "sin cambios" (304)
 
 ## Sus métodos
@@ -35,65 +36,71 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 9 | `require_once __DIR__ . '/../models/Personal.php';` | Trae el archivo `Personal.php` para poder usar la clase `Personal`. |
 | 10 | `require_once __DIR__ . '/../models/Pedido.php';` | Trae el archivo `Pedido.php` para poder usar la clase `Pedido`. |
 | 11 | `require_once __DIR__ . '/../models/Cliente.php';` | Trae el archivo `Cliente.php` para poder usar la clase `Cliente`. |
-| 13 | `class SyncController` | Crea la clase `SyncController`: un grupo de funciones que trabajan juntas. |
-| 14 | `{` | Abre la clase `SyncController`. |
-| 15 | `public function index()` | Función `index()`: envía a la pantalla todos los datos que necesita. Ruta: `GET /api/sync`. La llama `SyncDatos.tsx` cada pocos segundos. |
-| 16 | `{` | Abre la función `index()`. |
-| 17 | `$rol       = Auth::check() ? Auth::rol() : 'guest';` | Guarda en `$rol` el rol del usuario; si no hay sesión, `'guest'` (visitante). |
-| 18 | `$idUsuario = Auth::check() ? Auth::id() : null;` | Guarda en `$idUsuario` el número del usuario; si no hay sesión, `null`. |
-| 20 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Solo se lee la sesion: se libera ya para no bloquear las demas peticiones del usuario."* |
-| 21 | `if (session_status() === PHP_SESSION_ACTIVE) {` | Si la sesión está abierta... |
-| 22 | `session_write_close();` | ...la cierra para escritura (`session_write_close`): solo se necesitaba leer, y así no frena las otras peticiones del mismo usuario. |
-| 23 | `}` | Cierra el `if`. |
-| 25 | `$productoModel    = new Producto();` | Crea el modelo `Producto` y lo guarda en `$productoModel`. |
-| 26 | `$configModel      = new Configuracion();` | Crea el modelo `Configuracion`. |
-| 27 | `$ingredienteModel = new Ingrediente();` | Crea el modelo `Ingrediente`. |
-| 28 | `$personalModel    = new Personal();` | Crea el modelo `Personal`. |
-| 29 | `$pedidoModel      = new Pedido();` | Crea el modelo `Pedido`. |
-| 30 | `$clienteModel     = new Cliente();` | Crea el modelo `Cliente`. |
-| 32 | `$payload = [` | Crea `$payload` (el paquete de datos que se va a enviar) con lo que ven todos: |
-| 33 | `'products' => $productoModel->listar($rol !== 'admin', $rol === 'admin'),` | `'products'`: los productos (`listar()`). Si no es administrador solo van los activos; el administrador los ve completos (con costos). |
-| 34 | `'settings' => $configModel->obtener(),` | `'settings'`: los ajustes de la tienda. |
-| 35 | `];` | Cierra la lista. |
-| 37 | `if (in_array($rol, ['admin', 'kitchen'])) {` | Si es administrador o cocina... |
-| 38 | `$payload['inventory']     = $ingredienteModel->listarInventario();` | ...agrega el inventario. |
-| 39 | `$payload['ingredients']   = $ingredienteModel->listarIngredientes();` | ...los ingredientes. |
-| 40 | `$payload['inventoryLogs'] = $ingredienteModel->registrosDeMovimientos();` | ...los movimientos del inventario. |
-| 41 | `$payload['staff']         = $personalModel->listar();` | ...el personal. |
-| 42 | `$payload['orders']        = $pedidoModel->porRol($rol, $idUsuario);` | ...los pedidos. |
-| 43 | `}` | Cierra el `if`. |
-| 45 | `if ($rol === 'admin') {` | Si es administrador... |
-| 46 | `$payload['clients'] = $clienteModel->listar();` | ...agrega los clientes. |
-| 47 | `}` | Cierra el `if`. |
-| 49 | `if ($rol === 'delivery') {` | Si es domiciliario... |
-| 50 | `$payload['orders'] = $pedidoModel->porRol($rol, $idUsuario);` | ...agrega sus pedidos. |
-| 51 | `}` | Cierra el `if`. |
-| 53 | `if ($rol === 'client') {` | Si es cliente... |
-| 54 | `$payload['orders']      = $pedidoModel->porRol($rol, $idUsuario);` | ...agrega sus pedidos. |
-| 55 | `$payload['ingredients'] = $ingredienteModel->listarIngredientes();` | ...los ingredientes (para armar hamburguesas). |
-| 56 | *(comentario)* | Comentario: no se ejecuta. Dice: *"El cliente necesita sus propios datos para "Mi Perfil"."* |
-| 57 | `$cliente = $clienteModel->buscar($idUsuario);` | ...y busca sus propios datos (para "Mi Perfil"). |
-| 58 | `if ($cliente) {` | Si los encontró... |
-| 59 | `$payload['clients'] = [$cliente];` | ...los agrega en `'clients'`. |
-| 60 | `}` | Cierra el `if`. |
-| 61 | `}` | Cierra el `if`. |
-| 63 | `$etag = '"' . md5(json_encode($payload)) . '"';` | Crea una "huella" de los datos (`md5` de todo el paquete) y la guarda en `$etag`. Si los datos no cambian, la huella es la misma. |
-| 64 | `header("ETag: $etag");` | Le manda la huella al navegador (cabecera `ETag`). |
-| 66 | `if (($_SERVER['HTTP_IF_NONE_MATCH'] ?? null) === $etag) {` | Si el navegador ya tenía esa misma huella (`HTTP_IF_NONE_MATCH`), nada cambió... |
-| 67 | `http_response_code(304);` | ...responde 304 (sin cambios), sin enviar los datos otra vez... |
-| 68 | `exit;` | ...y termina. |
-| 69 | `}` | Cierra el `if`. |
-| 70 | `responderJson($payload, 200);` | Si algo cambió, responde con todos los datos. |
-| 71 | `}` | Cierra la función `index()`. |
-| 72 | `}` | Cierra la clase `SyncController`. |
-| 74 | `$controller = new SyncController();` | Crea el controlador. Al hacer `new SyncController()` se ejecuta su `__construct()`. |
-| 76 | `$accion = $_GET['accion'] ?? '';` | Guarda en `$accion` qué acción pidió la ruta (la puso `cargarControlador()` de `helpers.php`). `?? ''` = si no hay, vacío. |
-| 78 | `if ($accion === 'index') {` | Si la acción es `'index'`... |
-| 79 | `$controller->index();` | ...llama al método `index()` de arriba. |
-| 80 | `} else {` | Si no es ninguna de las anteriores... |
-| 81 | `responderError('Ruta no encontrada.', 404);` | ...responde 404 "Ruta no encontrada." (la acción no existe). |
-| 82 | `}` | Cierra el `else`. |
-| 83 | `?>` | Cierra el código PHP. |
+| 12 | `require_once __DIR__ . '/../models/PedidoService.php';` | Trae el archivo `PedidoService.php` para poder usar la clase `PedidoService` (para cancelar los links de pago vencidos). |
+| 14 | `class SyncController` | Crea la clase `SyncController`: un grupo de funciones que trabajan juntas. |
+| 15 | `{` | Abre la clase `SyncController`. |
+| 16 | `public function index()` | Función `index()`: envía a la pantalla todos los datos que necesita. Ruta: `GET /api/sync`. La llama `SyncDatos.tsx` cada pocos segundos. |
+| 17 | `{` | Abre la función `index()`. |
+| 18 | `$rol       = Auth::check() ? Auth::rol() : 'guest';` | Guarda en `$rol` el rol del usuario; si no hay sesión, `'guest'` (visitante). |
+| 19 | `$idUsuario = Auth::check() ? Auth::id() : null;` | Guarda en `$idUsuario` el número del usuario; si no hay sesión, `null`. |
+| 21 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Solo se lee la sesion: se libera ya para no bloquear las demas peticiones del usuario."* |
+| 22 | `if (session_status() === PHP_SESSION_ACTIVE) {` | Si la sesión está abierta... |
+| 23 | `session_write_close();` | ...la cierra para escritura (`session_write_close`): solo se necesitaba leer, y así no frena las otras peticiones del mismo usuario. |
+| 24 | `}` | Cierra el `if`. |
+| 26 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Cancela los pedidos con link de pago vencido (devuelve su inventario)."* |
+| 27 | `if ($rol !== 'guest') {` | Si hay alguien con sesión (no es un visitante)... |
+| 28 | `$pedidoService = new PedidoService();` | ...crea el servicio `PedidoService`... |
+| 29 | `$pedidoService->cancelarLinksVencidos();` | ...y cancela los pedidos cuyo link de pago ya venció (`cancelarLinksVencidos()` de `models/PedidoService.php`). Así no hace falta una tarea programada: se revisa cada vez que alguien sincroniza. |
+| 30 | `}` | Cierra el `if`. |
+| 32 | `$productoModel    = new Producto();` | Crea el modelo `Producto` y lo guarda en `$productoModel`. |
+| 33 | `$configModel      = new Configuracion();` | Crea el modelo `Configuracion`. |
+| 34 | `$ingredienteModel = new Ingrediente();` | Crea el modelo `Ingrediente`. |
+| 35 | `$personalModel    = new Personal();` | Crea el modelo `Personal`. |
+| 36 | `$pedidoModel      = new Pedido();` | Crea el modelo `Pedido`. |
+| 37 | `$clienteModel     = new Cliente();` | Crea el modelo `Cliente`. |
+| 39 | `$payload = [` | Crea `$payload` (el paquete de datos que se va a enviar) con lo que ven todos: |
+| 40 | `'products' => $productoModel->listar($rol !== 'admin', $rol === 'admin'),` | `'products'`: los productos (`listar()`). Si no es administrador solo van los activos; el administrador los ve completos (con costos). |
+| 41 | `'settings' => $configModel->obtener(),` | `'settings'`: los ajustes de la tienda. |
+| 42 | `];` | Cierra la lista. |
+| 44 | `if (in_array($rol, ['admin', 'kitchen'])) {` | Si es administrador o cocina... |
+| 45 | `$payload['inventory']     = $ingredienteModel->listarInventario();` | ...agrega el inventario. |
+| 46 | `$payload['ingredients']   = $ingredienteModel->listarIngredientes();` | ...los ingredientes. |
+| 47 | `$payload['inventoryLogs'] = $ingredienteModel->registrosDeMovimientos();` | ...los movimientos del inventario. |
+| 48 | `$payload['staff']         = $personalModel->listar();` | ...el personal. |
+| 49 | `$payload['orders']        = $pedidoModel->porRol($rol, $idUsuario);` | ...los pedidos. |
+| 50 | `}` | Cierra el `if`. |
+| 52 | `if ($rol === 'admin') {` | Si es administrador... |
+| 53 | `$payload['clients'] = $clienteModel->listar();` | ...agrega los clientes. |
+| 54 | `}` | Cierra el `if`. |
+| 56 | `if ($rol === 'delivery') {` | Si es domiciliario... |
+| 57 | `$payload['orders'] = $pedidoModel->porRol($rol, $idUsuario);` | ...agrega sus pedidos. |
+| 58 | `}` | Cierra el `if`. |
+| 60 | `if ($rol === 'client') {` | Si es cliente... |
+| 61 | `$payload['orders']      = $pedidoModel->porRol($rol, $idUsuario);` | ...agrega sus pedidos. |
+| 62 | `$payload['ingredients'] = $ingredienteModel->listarIngredientes();` | ...los ingredientes (para armar hamburguesas). |
+| 63 | *(comentario)* | Comentario: no se ejecuta. Dice: *"El cliente necesita sus propios datos para "Mi Perfil"."* |
+| 64 | `$cliente = $clienteModel->buscar($idUsuario);` | ...y busca sus propios datos (para "Mi Perfil"). |
+| 65 | `if ($cliente) {` | Si los encontró... |
+| 66 | `$payload['clients'] = [$cliente];` | ...los agrega en `'clients'`. |
+| 67 | `}` | Cierra el `if`. |
+| 68 | `}` | Cierra el `if`. |
+| 70 | `$etag = '"' . md5(json_encode($payload)) . '"';` | Crea una "huella" de los datos (`md5` de todo el paquete) y la guarda en `$etag`. Si los datos no cambian, la huella es la misma. |
+| 71 | `header("ETag: $etag");` | Le manda la huella al navegador (cabecera `ETag`). |
+| 73 | `if (($_SERVER['HTTP_IF_NONE_MATCH'] ?? null) === $etag) {` | Si el navegador ya tenía esa misma huella (`HTTP_IF_NONE_MATCH`), nada cambió... |
+| 74 | `http_response_code(304);` | ...responde 304 (sin cambios), sin enviar los datos otra vez... |
+| 75 | `exit;` | ...y termina. |
+| 76 | `}` | Cierra el `if`. |
+| 77 | `responderJson($payload, 200);` | Si algo cambió, responde con todos los datos. |
+| 78 | `}` | Cierra la función `index()`. |
+| 79 | `}` | Cierra la clase `SyncController`. |
+| 81 | `$controller = new SyncController();` | Crea el controlador. Al hacer `new SyncController()` se ejecuta su `__construct()`. |
+| 83 | `$accion = $_GET['accion'] ?? '';` | Guarda en `$accion` qué acción pidió la ruta (la puso `cargarControlador()` de `helpers.php`). `?? ''` = si no hay, vacío. |
+| 85 | `if ($accion === 'index') {` | Si la acción es `'index'`... |
+| 86 | `$controller->index();` | ...llama al método `index()` de arriba. |
+| 87 | `} else {` | Si no es ninguna de las anteriores... |
+| 88 | `responderError('Ruta no encontrada.', 404);` | ...responde 404 "Ruta no encontrada." (la acción no existe). |
+| 89 | `}` | Cierra el `else`. |
+| 90 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
 | Si se borra… | Qué deja de funcionar | Error que sale |

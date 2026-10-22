@@ -14,6 +14,7 @@ Maneja el inventario (tablas INGREDIENTE y MOVIMIENTO_INVENTARIO).
 - elimina un insumo (lo desactiva)
 - suma o resta stock
 - descuenta el inventario cuando se hace un pedido
+- devuelve al inventario lo que gastó un pedido cancelado
 - busca un insumo por nombre (o lo crea)
 - trae los movimientos del inventario
 
@@ -29,6 +30,7 @@ Maneja el inventario (tablas INGREDIENTE y MOVIMIENTO_INVENTARIO).
 | `eliminar()` | elimina un insumo (lo desactiva) | `InventoryController::destroy()` |
 | `ajustarStock()` | suma o resta stock | `InventoryController::adjustStock()` |
 | `descontarPorReceta()` | descuenta el inventario cuando se hace un pedido | `PedidoService::guardar()` |
+| `devolverDePedido()` | devuelve al inventario lo que gastó un pedido cancelado | `PedidoService::cancelarLinksVencidos()` |
 | `resolverOCrear()` | busca un insumo por nombre (o lo crea) | `Producto::sincronizarReceta()` |
 | `resolverCategoria()` (privado) | busca la categoría del insumo (o la crea) | `Ingrediente::actualizar()`, `Ingrediente::crearConStockInicial()` |
 | `registrosDeMovimientos()` | trae los movimientos del inventario | `SyncController::index()` |
@@ -258,100 +260,129 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 244 | `$stmtM->close();` | Cierra la consulta. |
 | 245 | `}` | Cierra el `foreach`. |
 | 246 | `}` | Cierra la función `descontarPorReceta()`. |
-| 248-251 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Busca un insumo activo por nombre; si no existe lo crea con stock 0 en la categoria "General" del ambito dado. Lo usa la receta del producto."* |
-| 252 | `public function resolverOCrear($nombre, $ambito)` | Método `resolverOCrear($nombre, $ambito)`: busca un insumo por nombre; si no existe, lo crea con stock 0. Lo usa `Producto` al guardar la receta. |
-| 253 | `{` | Abre la función `resolverOCrear()`. |
-| 254 | `$nombre = trim((string) $nombre);` | Le quita los espacios al nombre. |
-| 255 | `if ($nombre === '') {` | Si está vacío... |
-| 256 | `return null;` | ...devuelve `null`. |
-| 257 | `}` | Cierra el `if`. |
-| 259 | `$stmt = $this->conn->prepare("SELECT id_ingrediente FROM INGREDIENTE WHERE activo = 1 AND LOWER(nombre) = LOWER(?) LIMIT 1");` | Prepara la consulta: "busca un insumo activo con ese nombre, sin importar mayúsculas". |
-| 260 | `$stmt->bind_param("s", $nombre);` | Llena los `?` de la consulta, en orden: `$nombre` (texto). |
-| 261 | `$stmt->execute();` | Ejecuta la consulta. |
-| 262 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
-| 263 | `$stmt->close();` | Cierra la consulta. |
-| 264 | `if ($row) {` | Si lo encontró... |
-| 265 | `return (int) $row['id_ingrediente'];` | ...devuelve su número. |
-| 266 | `}` | Cierra el `if`. |
-| 268 | `$stmtC = $this->conn->prepare("SELECT id_categoria FROM CATEGORIA WHERE ambito = ? AND nombre = 'General' LIMIT 1");` | Prepara la consulta: "busca la categoría 'General' de ese tipo". |
-| 269 | `$stmtC->bind_param("s", $ambito);` | Llena los `?` de la consulta, en orden: `$ambito` (texto). |
-| 270 | `$stmtC->execute();` | Ejecuta la consulta. |
-| 271 | `$categoria = $stmtC->get_result()->fetch_assoc();` | La guarda en `$categoria`. |
-| 272 | `$stmtC->close();` | Cierra la consulta. |
-| 274 | `if ($categoria) {` | Si existe... |
-| 275 | `$idCategoria = $categoria['id_categoria'];` | ...guarda su número. |
-| 276 | `} else {` | Si no... |
-| 277 | `$stmtN = $this->conn->prepare("INSERT INTO CATEGORIA (nombre, ambito) VALUES ('General', ?)");` | ...prepara la consulta: "crea la categoría 'General' de ese tipo". |
-| 278 | `$stmtN->bind_param("s", $ambito);` | Llena los `?` de la consulta, en orden: `$ambito` (texto). |
-| 279 | `$stmtN->execute();` | Ejecuta la consulta. |
-| 280 | `$stmtN->close();` | Cierra la consulta. |
-| 281 | `$idCategoria = $this->conn->insert_id;` | ...y guarda su número. |
-| 282 | `}` | Cierra el `else`. |
-| 284 | `$stmtI = $this->conn->prepare(` | Prepara la consulta: "crea el insumo con ese nombre, en esa categoría, en unidades y con todo en 0". |
-| 285 | `"INSERT INTO INGREDIENTE (id_categoria, nombre, unidad_medida, cantidad_stock, costo_unitario, precio_extra)` | ↑ (sigue la misma instrucción) |
-| 286 | `VALUES (?, ?, 'unidad', 0, 0, 0)"` | ↑ (sigue la misma instrucción) |
-| 287 | `);` | ↑ (sigue la misma instrucción) |
-| 288 | `$stmtI->bind_param("is", $idCategoria, $nombre);` | Llena los `?` de la consulta, en orden: `$idCategoria` (número entero), `$nombre` (texto). |
-| 289 | `$stmtI->execute();` | Ejecuta la consulta. |
-| 290 | `$stmtI->close();` | Cierra la consulta. |
-| 291 | `return $this->conn->insert_id;` | Devuelve el número del insumo nuevo. |
-| 292 | `}` | Cierra la función `resolverOCrear()`. |
-| 294-297 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Devuelve el id de una categoria de inventario por nombre; si no existe la crea. "Empaques & Desechables" se crea con ambito 'empaque_desechable', las demas como 'insumo_alimenticio'."* |
-| 298 | `private function resolverCategoria($nombreCategoria)` | Método `resolverCategoria($nombreCategoria)` (privado): busca una categoría de inventario por nombre; si no existe, la crea. |
-| 299 | `{` | Abre la función `resolverCategoria()`. |
-| 300 | `$nombreCategoria = trim((string) $nombreCategoria);` | Le quita los espacios. |
-| 301 | `if ($nombreCategoria === '') {` | Si está vacío... |
-| 302 | `$nombreCategoria = 'Sin categoría';` | ...usa "Sin categoría". |
-| 303 | `}` | Cierra el `if`. |
-| 305 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "busca una categoría de inventario (comida o empaque) con ese nombre". |
-| 306 | `"SELECT id_categoria FROM CATEGORIA` | ↑ (sigue la misma instrucción) |
-| 307 | `WHERE nombre = ? AND ambito IN ('insumo_alimenticio', 'empaque_desechable') LIMIT 1"` | ↑ (sigue la misma instrucción) |
-| 308 | `);` | ↑ (sigue la misma instrucción) |
-| 309 | `$stmt->bind_param("s", $nombreCategoria);` | Llena los `?` de la consulta, en orden: `$nombreCategoria` (texto). |
-| 310 | `$stmt->execute();` | Ejecuta la consulta. |
-| 311 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
-| 312 | `$stmt->close();` | Cierra la consulta. |
-| 313 | `if ($row) {` | Si la encontró... |
-| 314 | `return $row['id_categoria'];` | ...devuelve su número. |
-| 315 | `}` | Cierra el `if`. |
-| 317 | `$ambito = $nombreCategoria === 'Empaques & Desechables' ? 'empaque_desechable' : 'insumo_alimenticio';` | Si se llama "Empaques & Desechables", su tipo es empaque; si no, comida. |
-| 318 | `$stmtI = $this->conn->prepare("INSERT INTO CATEGORIA (nombre, ambito) VALUES (?, ?)");` | Prepara la consulta: "crea la categoría con ese nombre y tipo". |
-| 319 | `$stmtI->bind_param("ss", $nombreCategoria, $ambito);` | Llena los `?` de la consulta, en orden: `$nombreCategoria` (texto), `$ambito` (texto). |
-| 320 | `$stmtI->execute();` | Ejecuta la consulta. |
-| 321 | `$stmtI->close();` | Cierra la consulta. |
-| 322 | `return $this->conn->insert_id;` | Devuelve su número. |
-| 323 | `}` | Cierra la función `resolverCategoria()`. |
-| 325 | `public function registrosDeMovimientos()` | Método `registrosDeMovimientos()`: trae todos los movimientos del inventario (entradas y salidas). Lo usa `SyncController`. |
-| 326 | `{` | Abre la función `registrosDeMovimientos()`. |
-| 327 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "trae los movimientos (`m`) con el nombre del insumo (`i`), los más nuevos primero". |
-| 328 | `"SELECT m.*, i.nombre AS item_nombre` | ↑ (sigue la misma instrucción) |
-| 329 | `FROM MOVIMIENTO_INVENTARIO m` | ↑ (sigue la misma instrucción) |
-| 330 | `JOIN INGREDIENTE i ON i.id_ingrediente = m.id_ingrediente` | ↑ (sigue la misma instrucción) |
-| 331 | `ORDER BY m.fecha_hora DESC"` | ↑ (sigue la misma instrucción) |
-| 332 | `);` | ↑ (sigue la misma instrucción) |
-| 333 | `$stmt->execute();` | Ejecuta la consulta. |
-| 334 | `$rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);` | Trae **todas** las filas que encontró y las guarda en `$rows` (una lista). |
-| 335 | `$stmt->close();` | Cierra la consulta. |
-| 337 | `$registros = [];` | `$registros` vacía. |
-| 338 | `foreach ($rows as $row) {` | Recorre cada movimiento. |
-| 339 | `$cantidad = abs((float) $row['cantidad']);` | Guarda la cantidad sin signo. |
-| 340 | `if ($row['tipo_movimiento'] === 'salida') {` | Si es una salida... |
-| 341 | `$cantidad = -$cantidad;` | ...la pone en negativo (`-`). |
-| 342 | `}` | Cierra el `if`. |
-| 343 | `$registros[] = [` | Agrega el movimiento con los nombres que usa React: |
-| 344 | `'id'       => (string) $row['id_movimiento'],` | el número del movimiento, |
-| 345 | `'date'     => $row['fecha_hora'],` | la fecha, |
-| 346 | `'itemId'   => (string) $row['id_ingrediente'],` | el número del insumo, |
-| 347 | `'itemName' => $row['item_nombre'],` | el nombre del insumo, |
-| 348 | `'amount'   => $cantidad,` | la cantidad, |
-| 349 | `'type'     => $row['tipo_movimiento'] === 'salida' ? 'Salida' : 'Entrada',` | el tipo: `'Salida'` o `'Entrada'`, |
-| 350 | `'reason'   => $row['motivo'],` | y el motivo. |
-| 351 | `];` | Cierra los datos del movimiento. |
-| 352 | `}` | Cierra el `foreach`. |
-| 353 | `return $registros;` | Devuelve la lista. |
-| 354 | `}` | Cierra la función `registrosDeMovimientos()`. |
-| 355 | `}` | Cierra la clase `Ingrediente`. |
-| 356 | `?>` | Cierra el código PHP. |
+| 248-251 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Devuelve al inventario todo lo que se descontó por un pedido (cuando se cancela). Usa las salidas guardadas en MOVIMIENTO_INVENTARIO y registra una entrada por cada insumo."* |
+| 252 | `public function devolverDePedido($idPedido)` | Método `devolverDePedido($idPedido)`: devuelve al inventario lo que gastó un pedido. Lo usa `PedidoService::cancelarLinksVencidos()` cuando un link de pago vence sin pagarse. |
+| 253 | `{` | Abre la función `devolverDePedido()`. |
+| 254 | `$stmt = $this->conn->prepare(` | Prepara la consulta: |
+| 255 | `"SELECT id_ingrediente, SUM(cantidad) AS cantidad FROM MOVIMIENTO_INVENTARIO` | Trae cada insumo y la suma (`SUM`) de lo que se sacó... |
+| 256 | `WHERE id_pedido = ? AND tipo_movimiento = 'salida'` | ...solo de las salidas de este pedido... |
+| 257 | `GROUP BY id_ingrediente"` | ...juntando (`GROUP BY`) las salidas del mismo insumo en una sola fila. |
+| 258 | `);` | ↑ (sigue la misma instrucción) |
+| 259 | `$stmt->bind_param("i", $idPedido);` | Llena el `?` con `$idPedido` (número entero). |
+| 260 | `$stmt->execute();` | Ejecuta la consulta. |
+| 261 | `$salidas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);` | Guarda todas las filas en `$salidas`. |
+| 262 | `$stmt->close();` | Cierra la consulta. |
+| 264 | `$motivo = 'Devolución pedido #ORD-' . $idPedido . ' cancelado';` | Guarda en `$motivo` el texto que se verá en el historial, por ejemplo "Devolución pedido #ORD-15 cancelado". |
+| 265 | `foreach ($salidas as $salida) {` | Recorre cada insumo que se sacó (`$salida`): |
+| 266 | `$id = (int) $salida['id_ingrediente'];` | Guarda en `$id` el número del insumo. |
+| 267 | `$cantidad = (float) $salida['cantidad'];` | Guarda en `$cantidad` cuánto se sacó. |
+| 269 | `$stmtU = $this->conn->prepare("UPDATE INGREDIENTE SET cantidad_stock = cantidad_stock + ? WHERE id_ingrediente = ?");` | Prepara la consulta que le **suma** esa cantidad al stock del insumo. |
+| 270 | `$stmtU->bind_param("di", $cantidad, $id);` | Llena los `?`: `$cantidad` (número con decimales) y `$id` (número entero). |
+| 271 | `$stmtU->execute();` | Ejecuta la consulta. |
+| 272 | `$stmtU->close();` | Cierra la consulta. |
+| 274 | `$stmtM = $this->conn->prepare(` | Prepara la consulta que guarda el movimiento en el historial: |
+| 275 | `"INSERT INTO MOVIMIENTO_INVENTARIO (id_ingrediente, id_admin, id_pedido, tipo_movimiento, cantidad, motivo)` | Agrega una fila nueva a `MOVIMIENTO_INVENTARIO`... |
+| 276 | `VALUES (?, NULL, ?, 'entrada', ?, ?)"` | ...de tipo `'entrada'` (volvió al inventario), sin administrador (`NULL`: lo hizo el sistema). |
+| 277 | `);` | ↑ (sigue la misma instrucción) |
+| 278 | `$stmtM->bind_param("iids", $id, $idPedido, $cantidad, $motivo);` | Llena los `?`: `$id` y `$idPedido` (números enteros), `$cantidad` (número con decimales) y `$motivo` (texto). |
+| 279 | `$stmtM->execute();` | Ejecuta la consulta. |
+| 280 | `$stmtM->close();` | Cierra la consulta. |
+| 281 | `}` | Cierra el `foreach`. |
+| 282 | `}` | Cierra la función `devolverDePedido()`. |
+| 284-287 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Busca un insumo activo por nombre; si no existe lo crea con stock 0 en la categoria "General" del ambito dado. Lo usa la receta del producto."* |
+| 288 | `public function resolverOCrear($nombre, $ambito)` | Método `resolverOCrear($nombre, $ambito)`: busca un insumo por nombre; si no existe, lo crea con stock 0. Lo usa `Producto` al guardar la receta. |
+| 289 | `{` | Abre la función `resolverOCrear()`. |
+| 290 | `$nombre = trim((string) $nombre);` | Le quita los espacios al nombre. |
+| 291 | `if ($nombre === '') {` | Si está vacío... |
+| 292 | `return null;` | ...devuelve `null`. |
+| 293 | `}` | Cierra el `if`. |
+| 295 | `$stmt = $this->conn->prepare("SELECT id_ingrediente FROM INGREDIENTE WHERE activo = 1 AND LOWER(nombre) = LOWER(?) LIMIT 1");` | Prepara la consulta: "busca un insumo activo con ese nombre, sin importar mayúsculas". |
+| 296 | `$stmt->bind_param("s", $nombre);` | Llena los `?` de la consulta, en orden: `$nombre` (texto). |
+| 297 | `$stmt->execute();` | Ejecuta la consulta. |
+| 298 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
+| 299 | `$stmt->close();` | Cierra la consulta. |
+| 300 | `if ($row) {` | Si lo encontró... |
+| 301 | `return (int) $row['id_ingrediente'];` | ...devuelve su número. |
+| 302 | `}` | Cierra el `if`. |
+| 304 | `$stmtC = $this->conn->prepare("SELECT id_categoria FROM CATEGORIA WHERE ambito = ? AND nombre = 'General' LIMIT 1");` | Prepara la consulta: "busca la categoría 'General' de ese tipo". |
+| 305 | `$stmtC->bind_param("s", $ambito);` | Llena los `?` de la consulta, en orden: `$ambito` (texto). |
+| 306 | `$stmtC->execute();` | Ejecuta la consulta. |
+| 307 | `$categoria = $stmtC->get_result()->fetch_assoc();` | La guarda en `$categoria`. |
+| 308 | `$stmtC->close();` | Cierra la consulta. |
+| 310 | `if ($categoria) {` | Si existe... |
+| 311 | `$idCategoria = $categoria['id_categoria'];` | ...guarda su número. |
+| 312 | `} else {` | Si no... |
+| 313 | `$stmtN = $this->conn->prepare("INSERT INTO CATEGORIA (nombre, ambito) VALUES ('General', ?)");` | ...prepara la consulta: "crea la categoría 'General' de ese tipo". |
+| 314 | `$stmtN->bind_param("s", $ambito);` | Llena los `?` de la consulta, en orden: `$ambito` (texto). |
+| 315 | `$stmtN->execute();` | Ejecuta la consulta. |
+| 316 | `$stmtN->close();` | Cierra la consulta. |
+| 317 | `$idCategoria = $this->conn->insert_id;` | ...y guarda su número. |
+| 318 | `}` | Cierra el `else`. |
+| 320 | `$stmtI = $this->conn->prepare(` | Prepara la consulta: "crea el insumo con ese nombre, en esa categoría, en unidades y con todo en 0". |
+| 321 | `"INSERT INTO INGREDIENTE (id_categoria, nombre, unidad_medida, cantidad_stock, costo_unitario, precio_extra)` | ↑ (sigue la misma instrucción) |
+| 322 | `VALUES (?, ?, 'unidad', 0, 0, 0)"` | ↑ (sigue la misma instrucción) |
+| 323 | `);` | ↑ (sigue la misma instrucción) |
+| 324 | `$stmtI->bind_param("is", $idCategoria, $nombre);` | Llena los `?` de la consulta, en orden: `$idCategoria` (número entero), `$nombre` (texto). |
+| 325 | `$stmtI->execute();` | Ejecuta la consulta. |
+| 326 | `$stmtI->close();` | Cierra la consulta. |
+| 327 | `return $this->conn->insert_id;` | Devuelve el número del insumo nuevo. |
+| 328 | `}` | Cierra la función `resolverOCrear()`. |
+| 330-333 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Devuelve el id de una categoria de inventario por nombre; si no existe la crea. "Empaques & Desechables" se crea con ambito 'empaque_desechable', las demas como 'insumo_alimenticio'."* |
+| 334 | `private function resolverCategoria($nombreCategoria)` | Método `resolverCategoria($nombreCategoria)` (privado): busca una categoría de inventario por nombre; si no existe, la crea. |
+| 335 | `{` | Abre la función `resolverCategoria()`. |
+| 336 | `$nombreCategoria = trim((string) $nombreCategoria);` | Le quita los espacios. |
+| 337 | `if ($nombreCategoria === '') {` | Si está vacío... |
+| 338 | `$nombreCategoria = 'Sin categoría';` | ...usa "Sin categoría". |
+| 339 | `}` | Cierra el `if`. |
+| 341 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "busca una categoría de inventario (comida o empaque) con ese nombre". |
+| 342 | `"SELECT id_categoria FROM CATEGORIA` | ↑ (sigue la misma instrucción) |
+| 343 | `WHERE nombre = ? AND ambito IN ('insumo_alimenticio', 'empaque_desechable') LIMIT 1"` | ↑ (sigue la misma instrucción) |
+| 344 | `);` | ↑ (sigue la misma instrucción) |
+| 345 | `$stmt->bind_param("s", $nombreCategoria);` | Llena los `?` de la consulta, en orden: `$nombreCategoria` (texto). |
+| 346 | `$stmt->execute();` | Ejecuta la consulta. |
+| 347 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
+| 348 | `$stmt->close();` | Cierra la consulta. |
+| 349 | `if ($row) {` | Si la encontró... |
+| 350 | `return $row['id_categoria'];` | ...devuelve su número. |
+| 351 | `}` | Cierra el `if`. |
+| 353 | `$ambito = $nombreCategoria === 'Empaques & Desechables' ? 'empaque_desechable' : 'insumo_alimenticio';` | Si se llama "Empaques & Desechables", su tipo es empaque; si no, comida. |
+| 354 | `$stmtI = $this->conn->prepare("INSERT INTO CATEGORIA (nombre, ambito) VALUES (?, ?)");` | Prepara la consulta: "crea la categoría con ese nombre y tipo". |
+| 355 | `$stmtI->bind_param("ss", $nombreCategoria, $ambito);` | Llena los `?` de la consulta, en orden: `$nombreCategoria` (texto), `$ambito` (texto). |
+| 356 | `$stmtI->execute();` | Ejecuta la consulta. |
+| 357 | `$stmtI->close();` | Cierra la consulta. |
+| 358 | `return $this->conn->insert_id;` | Devuelve su número. |
+| 359 | `}` | Cierra la función `resolverCategoria()`. |
+| 361 | `public function registrosDeMovimientos()` | Método `registrosDeMovimientos()`: trae todos los movimientos del inventario (entradas y salidas). Lo usa `SyncController`. |
+| 362 | `{` | Abre la función `registrosDeMovimientos()`. |
+| 363 | `$stmt = $this->conn->prepare(` | Prepara la consulta: "trae los movimientos (`m`) con el nombre del insumo (`i`), los más nuevos primero". |
+| 364 | `"SELECT m.*, i.nombre AS item_nombre` | ↑ (sigue la misma instrucción) |
+| 365 | `FROM MOVIMIENTO_INVENTARIO m` | ↑ (sigue la misma instrucción) |
+| 366 | `JOIN INGREDIENTE i ON i.id_ingrediente = m.id_ingrediente` | ↑ (sigue la misma instrucción) |
+| 367 | `ORDER BY m.fecha_hora DESC"` | ↑ (sigue la misma instrucción) |
+| 368 | `);` | ↑ (sigue la misma instrucción) |
+| 369 | `$stmt->execute();` | Ejecuta la consulta. |
+| 370 | `$rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);` | Trae **todas** las filas que encontró y las guarda en `$rows` (una lista). |
+| 371 | `$stmt->close();` | Cierra la consulta. |
+| 373 | `$registros = [];` | `$registros` vacía. |
+| 374 | `foreach ($rows as $row) {` | Recorre cada movimiento. |
+| 375 | `$cantidad = abs((float) $row['cantidad']);` | Guarda la cantidad sin signo. |
+| 376 | `if ($row['tipo_movimiento'] === 'salida') {` | Si es una salida... |
+| 377 | `$cantidad = -$cantidad;` | ...la pone en negativo (`-`). |
+| 378 | `}` | Cierra el `if`. |
+| 379 | `$registros[] = [` | Agrega el movimiento con los nombres que usa React: |
+| 380 | `'id'       => (string) $row['id_movimiento'],` | el número del movimiento, |
+| 381 | `'date'     => $row['fecha_hora'],` | la fecha, |
+| 382 | `'itemId'   => (string) $row['id_ingrediente'],` | el número del insumo, |
+| 383 | `'itemName' => $row['item_nombre'],` | el nombre del insumo, |
+| 384 | `'amount'   => $cantidad,` | la cantidad, |
+| 385 | `'type'     => $row['tipo_movimiento'] === 'salida' ? 'Salida' : 'Entrada',` | el tipo: `'Salida'` o `'Entrada'`, |
+| 386 | `'reason'   => $row['motivo'],` | y el motivo. |
+| 387 | `];` | Cierra los datos del movimiento. |
+| 388 | `}` | Cierra el `foreach`. |
+| 389 | `return $registros;` | Devuelve la lista. |
+| 390 | `}` | Cierra la función `registrosDeMovimientos()`. |
+| 391 | `}` | Cierra la clase `Ingrediente`. |
+| 392 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
 | Si se borra… | Qué deja de funcionar | Error que sale |
@@ -366,6 +397,7 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | el método `eliminar()` | eliminar insumos | `Call to undefined method Ingrediente::eliminar()` |
 | el método `ajustarStock()` | sumar o restar stock | `Call to undefined method Ingrediente::ajustarStock()` |
 | el método `descontarPorReceta()` | hacer pedidos (cliente), registrar pedidos por llamada o WhatsApp | `Call to undefined method Ingrediente::descontarPorReceta()` |
+| el método `devolverDePedido()` | cancelar los pedidos con link de pago vencido (falla al sincronizar las pantallas) | `Call to undefined method Ingrediente::devolverDePedido()` |
 | el método `resolverOCrear()` | crear productos, editar productos | `Call to undefined method Ingrediente::resolverOCrear()` |
 | el método `resolverCategoria()` | crear insumos, editar insumos | `Call to undefined method Ingrediente::resolverCategoria()` |
 | el método `registrosDeMovimientos()` | cargar los datos de todas las pantallas | `Call to undefined method Ingrediente::registrosDeMovimientos()` |

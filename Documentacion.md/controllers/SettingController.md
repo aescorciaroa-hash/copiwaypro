@@ -63,32 +63,36 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 41 | `if ($categoria === '') {` | Si está vacío... |
 | 42 | `responderError('Datos inválidos.', 422, ['category' => ['El campo category es obligatorio.']]);` | ...responde 422 "El campo category es obligatorio.". |
 | 43 | `}` | Cierra el `if`. |
-| 44 | `$this->configModel->agregarCategoria($categoria);` | La agrega (`agregarCategoria()` de `models/Configuracion.php`). |
-| 45 | `responderJson($this->configModel->obtener());` | Responde con los ajustes actualizados (incluyen las categorías). |
-| 46 | `}` | Cierra la función `addCategory()`. |
-| 48 | `public function removeCategory()` | Función `removeCategory()`: elimina una categoría. Ruta: `DELETE /api/settings/categories/{category}`. |
-| 49 | `{` | Abre la función `removeCategory()`. |
-| 50 | `$categoria = $_GET['category'];` | Guarda en `$categoria` el nombre que viene en la dirección. |
-| 51 | `try {` | Intenta... |
-| 52 | `$this->configModel->eliminarCategoria(urldecode($categoria));` | ...eliminarla (`eliminarCategoria()`). `urldecode` arregla los caracteres especiales del nombre (ej. espacios). |
-| 53 | `} catch (Exception $e) {` | Si falló (algún producto todavía la usa)... |
-| 54 | `responderError($e->getMessage(), 409);` | ...responde 409 con el mensaje. |
-| 55 | `}` | Cierra el `catch`. |
-| 56 | `responderJson($this->configModel->obtener());` | Responde con los ajustes actualizados. |
-| 57 | `}` | Cierra la función `removeCategory()`. |
-| 58 | `}` | Cierra la clase `SettingController`. |
-| 60 | `$controller = new SettingController();` | Crea el controlador. Al hacer `new SettingController()` se ejecuta su `__construct()`. |
-| 62 | `$accion = $_GET['accion'] ?? '';` | Guarda en `$accion` qué acción pidió la ruta (la puso `cargarControlador()` de `helpers.php`). `?? ''` = si no hay, vacío. |
-| 64 | `if ($accion === 'update') {` | Si la acción es `'update'`... |
-| 65 | `$controller->update();` | ...llama al método `update()` de arriba. |
-| 66 | `} elseif ($accion === 'addCategory') {` | Si no, si la acción es `'addCategory'`... |
-| 67 | `$controller->addCategory();` | ...llama al método `addCategory()` de arriba. |
-| 68 | `} elseif ($accion === 'removeCategory') {` | Si no, si la acción es `'removeCategory'`... |
-| 69 | `$controller->removeCategory();` | ...llama al método `removeCategory()` de arriba. |
-| 70 | `} else {` | Si no es ninguna de las anteriores... |
-| 71 | `responderError('Ruta no encontrada.', 404);` | ...responde 404 "Ruta no encontrada." (la acción no existe). |
-| 72 | `}` | Cierra el `else`. |
-| 73 | `?>` | Cierra el código PHP. |
+| 44 | `try {` | Intenta... |
+| 45 | `$this->configModel->agregarCategoria($categoria);` | ...agregarla (`agregarCategoria()` de `models/Configuracion.php`). |
+| 46 | `} catch (InvalidArgumentException $e) {` | Si el nombre no se puede usar (es "Personalizado", la categoría interna)... |
+| 47 | `responderError($e->getMessage(), 422);` | ...responde 422 con el mensaje. |
+| 48 | `}` | Cierra el `catch`. |
+| 49 | `responderJson($this->configModel->obtener());` | Responde con los ajustes actualizados (incluyen las categorías). |
+| 50 | `}` | Cierra la función `addCategory()`. |
+| 52 | `public function removeCategory()` | Función `removeCategory()`: elimina una categoría. Ruta: `DELETE /api/settings/categories/{category}`. |
+| 53 | `{` | Abre la función `removeCategory()`. |
+| 54 | `$categoria = $_GET['category'];` | Guarda en `$categoria` el nombre que viene en la dirección. |
+| 55 | `try {` | Intenta... |
+| 56 | `$this->configModel->eliminarCategoria(urldecode($categoria));` | ...eliminarla (`eliminarCategoria()`). `urldecode` arregla los caracteres especiales del nombre (ej. espacios). |
+| 57 | `} catch (Exception $e) {` | Si falló (algún producto todavía la usa)... |
+| 58 | `responderError($e->getMessage(), 409);` | ...responde 409 con el mensaje. |
+| 59 | `}` | Cierra el `catch`. |
+| 60 | `responderJson($this->configModel->obtener());` | Responde con los ajustes actualizados. |
+| 61 | `}` | Cierra la función `removeCategory()`. |
+| 62 | `}` | Cierra la clase `SettingController`. |
+| 64 | `$controller = new SettingController();` | Crea el controlador. Al hacer `new SettingController()` se ejecuta su `__construct()`. |
+| 66 | `$accion = $_GET['accion'] ?? '';` | Guarda en `$accion` qué acción pidió la ruta (la puso `cargarControlador()` de `helpers.php`). `?? ''` = si no hay, vacío. |
+| 68 | `if ($accion === 'update') {` | Si la acción es `'update'`... |
+| 69 | `$controller->update();` | ...llama al método `update()` de arriba. |
+| 70 | `} elseif ($accion === 'addCategory') {` | Si no, si la acción es `'addCategory'`... |
+| 71 | `$controller->addCategory();` | ...llama al método `addCategory()` de arriba. |
+| 72 | `} elseif ($accion === 'removeCategory') {` | Si no, si la acción es `'removeCategory'`... |
+| 73 | `$controller->removeCategory();` | ...llama al método `removeCategory()` de arriba. |
+| 74 | `} else {` | Si no es ninguna de las anteriores... |
+| 75 | `responderError('Ruta no encontrada.', 404);` | ...responde 404 "Ruta no encontrada." (la acción no existe). |
+| 76 | `}` | Cierra el `else`. |
+| 77 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
 | Si se borra… | Qué deja de funcionar | Error que sale |

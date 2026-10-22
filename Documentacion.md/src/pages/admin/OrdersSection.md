@@ -26,6 +26,11 @@ de pedido manual.
 | `isMapExpanded` / `setIsMapExpanded` | Mapa en pantalla completa. |
 | `setSelectedDriverInfo`, `showManualForm` / `setShowManualForm`, `setEditingAddressOrder`, `setNewAddress`, `handleViewOrder` | Funciones del padre. |
 
+## Colores de estado
+Cada tarjeta tiene una franja de color según el estado: naranja **PENDIENTE**, azul **PREPARANDO**,
+verde **LISTOS**, gris **EN CAMINO**, amarillo **ESPERANDO PAGO** (pedido manual con link sin pagar)
+y rojo **CANCELADO** (link de pago vencido).
+
 ## El mapa
 - **Origen:** la cocina.
 - **Domiciliarios:** los que tienen `location` (la ubicación GPS real que envía su celular).

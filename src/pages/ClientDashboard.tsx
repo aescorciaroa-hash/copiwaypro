@@ -224,7 +224,7 @@ export default function ClientDashboard() {
   const catalog = products.filter(p => p.active);
   
   const orderHistory = orders.filter(o => o.status === 'Entregado' || o.status === 'entregado');
-  const activeOrders = orders.filter(o => o.status !== 'Entregado' && o.status !== 'entregado' && o.status !== 'Pagado');
+  const activeOrders = orders.filter(o => o.status !== 'Entregado' && o.status !== 'entregado' && o.status !== 'Pagado' && o.status !== 'Cancelado');
   const [toastMessage, setToastMessage] = useState<ToastData | null>(null);
 
   // Reloj en vivo para actualizar automáticamente el estado del local cada 15 segundos

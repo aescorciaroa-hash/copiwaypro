@@ -69,6 +69,44 @@ class PagoService
             throw new InvalidArgumentException('Esta referencia de pago ya fue usada. Vuelve a iniciar el pago.');
         }
 
+        $id = $this->insertarTransaccion($idCliente, null, $referencia, $centavos, $metodo, $telefono);
+        return $this->obtenerTransaccion($id, $idCliente);
+    }
+
+    /**
+     * Transaccion para pagar un pedido manual por link (el cliente puede no tener cuenta).
+     * El monto sale del pedido guardado, nunca del navegador.
+     */
+    public function crearTransaccionDePedido($idPedido, $total, $metodo, $telefono)
+    {
+        if (!in_array($metodo, ['nequi', 'daviplata', 'bancolombia'], true)) {
+            throw new InvalidArgumentException('Método de pago no soportado.');
+        }
+        $centavos = (int) round($total * 100);
+        $referencia = 'CW-LINK-' . $idPedido . '-' . time() . '-' . strtoupper(bin2hex(random_bytes(3)));
+
+        $id = $this->insertarTransaccion(null, $idPedido, $referencia, $centavos, $metodo, $telefono);
+        return $this->obtenerTransaccion($id);
+    }
+
+    /** Lee una transaccion solo si es del pedido indicado. */
+    public function obtenerTransaccionDePedido($id, $idPedido)
+    {
+        $id = (string) $id;
+        $stmt = $this->conn->prepare("SELECT id FROM PAGO_TRANSACCION WHERE id = ? AND id_pedido = ?");
+        $stmt->bind_param("si", $id, $idPedido);
+        $stmt->execute();
+        $existe = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$existe) {
+            return null;
+        }
+        return $this->obtenerTransaccion($id);
+    }
+
+    /** Guarda la transaccion de prueba (nace PENDING) y devuelve su id. */
+    private function insertarTransaccion($idCliente, $idPedido, $referencia, $centavos, $metodo, $telefono)
+    {
         $telefonoLimpio = preg_replace('/\D/', '', (string) $telefono);
         if ($metodo !== 'bancolombia' && !preg_match('/^3\d{9}$/', $telefonoLimpio)) {
             throw new InvalidArgumentException('Ingresa un celular válido de 10 dígitos.');
@@ -83,14 +121,14 @@ class PagoService
         $telefonoGuardado = $telefonoLimpio ?: null;
 
         $stmtI = $this->conn->prepare(
-            "INSERT INTO PAGO_TRANSACCION (id, referencia, id_cliente, monto_centavos, moneda, metodo, telefono, estado, estado_final)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)"
+            "INSERT INTO PAGO_TRANSACCION (id, referencia, id_cliente, id_pedido, monto_centavos, moneda, metodo, telefono, estado, estado_final)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)"
         );
-        $stmtI->bind_param("ssiissss", $id, $referencia, $idCliente, $centavos, $moneda, $metodo, $telefonoGuardado, $final);
+        $stmtI->bind_param("ssiiissss", $id, $referencia, $idCliente, $idPedido, $centavos, $moneda, $metodo, $telefonoGuardado, $final);
         $stmtI->execute();
         $stmtI->close();
 
-        return $this->obtenerTransaccion($id, $idCliente);
+        return $id;
     }
 
     /**

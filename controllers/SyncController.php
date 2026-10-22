@@ -9,6 +9,7 @@ require_once __DIR__ . '/../models/Configuracion.php';
 require_once __DIR__ . '/../models/Personal.php';
 require_once __DIR__ . '/../models/Pedido.php';
 require_once __DIR__ . '/../models/Cliente.php';
+require_once __DIR__ . '/../models/PedidoService.php';
 
 class SyncController
 {
@@ -20,6 +21,12 @@ class SyncController
         // Solo se lee la sesion: se libera ya para no bloquear las demas peticiones del usuario.
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
+        }
+
+        // Cancela los pedidos con link de pago vencido (devuelve su inventario).
+        if ($rol !== 'guest') {
+            $pedidoService = new PedidoService();
+            $pedidoService->cancelarLinksVencidos();
         }
 
         $productoModel    = new Producto();

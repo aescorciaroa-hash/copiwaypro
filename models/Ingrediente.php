@@ -246,6 +246,42 @@ class Ingrediente
     }
 
     /**
+     * Devuelve al inventario todo lo que se descontó por un pedido (cuando se cancela).
+     * Usa las salidas guardadas en MOVIMIENTO_INVENTARIO y registra una entrada por cada insumo.
+     */
+    public function devolverDePedido($idPedido)
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT id_ingrediente, SUM(cantidad) AS cantidad FROM MOVIMIENTO_INVENTARIO
+             WHERE id_pedido = ? AND tipo_movimiento = 'salida'
+             GROUP BY id_ingrediente"
+        );
+        $stmt->bind_param("i", $idPedido);
+        $stmt->execute();
+        $salidas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        $motivo = 'Devolución pedido #ORD-' . $idPedido . ' cancelado';
+        foreach ($salidas as $salida) {
+            $id = (int) $salida['id_ingrediente'];
+            $cantidad = (float) $salida['cantidad'];
+
+            $stmtU = $this->conn->prepare("UPDATE INGREDIENTE SET cantidad_stock = cantidad_stock + ? WHERE id_ingrediente = ?");
+            $stmtU->bind_param("di", $cantidad, $id);
+            $stmtU->execute();
+            $stmtU->close();
+
+            $stmtM = $this->conn->prepare(
+                "INSERT INTO MOVIMIENTO_INVENTARIO (id_ingrediente, id_admin, id_pedido, tipo_movimiento, cantidad, motivo)
+                 VALUES (?, NULL, ?, 'entrada', ?, ?)"
+            );
+            $stmtM->bind_param("iids", $id, $idPedido, $cantidad, $motivo);
+            $stmtM->execute();
+            $stmtM->close();
+        }
+    }
+
+    /**
      * Busca un insumo activo por nombre; si no existe lo crea con stock 0
      * en la categoria "General" del ambito dado. Lo usa la receta del producto.
      */

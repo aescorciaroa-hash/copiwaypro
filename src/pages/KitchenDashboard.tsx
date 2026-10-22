@@ -7,7 +7,7 @@ import { ArrowLeft,
  } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useStore, Order, Product } from '../store/almacenAplicacion';
-import { orderCode, modificacionesDe } from '../lib/format';
+import { orderCode, modificacionesDe, agruparPorNombre } from '../lib/format';
 import { CustomBurgerThumb } from './client/ingredientArt';
 import { soundFx } from '../utils/audio';
 import { api, ApiError, irA } from '../servicios/api';
@@ -728,7 +728,9 @@ export default function KitchenDashboard() {
                               Interactivo (PedidoService::productoPersonalizadoOculto): ahi `extras`
                               es la receta completa armada por el cliente, no un adicional sobre un
                               producto base -- por eso no debe decir "Extra". */}
-                          {item.name === 'Hamburguesa Personalizada' ? 'Ingredientes: ' : 'Extra: '}{item.extras.map(e => e.name).join(', ')}
+                          {item.name === 'Hamburguesa Personalizada'
+                            ? 'Ingredientes: ' + item.extras.map(e => e.name).join(', ')
+                            : 'Extra: ' + agruparPorNombre(item.extras).map(e => e.veces > 1 ? `${e.name} x${e.veces}` : e.name).join(', ')}
                         </div>
                       )}
                     </div>

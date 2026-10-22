@@ -69,6 +69,11 @@ return [
     'POST /api/payments/transactions' => ['PaymentController', 'createTransaction', ['client']],
     'GET /api/payments/transactions/{id}' => ['PaymentController', 'showTransaction', ['client']],
 
+    // ---- Link de pago (publico: el cliente del pedido manual paga sin iniciar sesion) ----
+    'GET /api/pay-link/{codigo}' => ['PaymentLinkController', 'show', []],
+    'POST /api/pay-link/{codigo}/transactions' => ['PaymentLinkController', 'pay', []],
+    'GET /api/pay-link/{codigo}/transactions/{id}' => ['PaymentLinkController', 'status', []],
+
     // ---- Cierre de caja / Dashboard ----
     // El orden importa: /preview debe ir antes de /{id} para que no la capture el patron generico.
     'GET /api/cash-closing/preview' => ['CashClosingController', 'preview', ['admin']],

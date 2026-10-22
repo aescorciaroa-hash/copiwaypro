@@ -25,11 +25,11 @@ Describen qué campos tiene cada cosa. Coinciden con lo que arman las funciones 
 | `InventoryItem` | Insumo del inventario | `ingrediente_a_inventario()` |
 | `InventoryLog` | Movimiento de inventario | `Ingrediente::registrosDeMovimientos()` |
 | `Staff` | Miembro del personal | `personal_cocina_a_json()` / `personal_domicilio_a_json()` |
-| `Order`, `OrderItem` | Pedido y sus productos | `pedido_a_json()`, `Pedido::itemsDe()` |
+| `Order`, `OrderItem` | Pedido y sus productos. El `status` puede ser también `'Esperando Pago'` (pedido manual con link sin pagar) o `'Cancelado'` (link vencido). `paymentLinkCode` y `paymentLinkExpiresAt`: el link de pago (solo el admin). | `pedido_a_json()`, `Pedido::itemsDe()` |
 | `Ingredient` | Extra para personalizar | `ingrediente_a_catalogo()` |
 | `Client`, `Notification` | Cliente y sus avisos | `cliente_a_json()`, `notificacion_a_json()` |
 | `StoreConfig`, `BusinessInfo` | Ajustes de la tienda (incluye `pointValue`, `minPointsToRedeem` y los datos del negocio en `business`) | `Configuracion::obtener()` |
-| `ManualOrderInput` | Lo que se envía en un pedido manual: `clientName`, `clientPhone`, `address`, `channel`, `items` | — (lo recibe `OrderController` `storeManual`) |
+| `ManualOrderInput` | Lo que se envía en un pedido manual: `clientName`, `clientPhone`, `address`, `channel`, `paymentMode` (`'efectivo'` o `'link'`), `items` | — (lo recibe `OrderController` `storeManual`) |
 | `ProductComponent`, `NamedRef` | Piezas pequeñas (ingrediente de receta, referencia `{id, name}`) | — |
 
 ## El estado (los datos guardados)

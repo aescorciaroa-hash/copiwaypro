@@ -135,6 +135,8 @@ export default function OrdersSection({
             {orders.map(order => {
               let color = 'bg-gray-400 dark:bg-stone-600';
               let statusText = order.status.toUpperCase();
+              if (order.status === 'Esperando Pago') { color = 'bg-amber-400'; statusText = 'ESPERANDO PAGO'; }
+              if (order.status === 'Cancelado') { color = 'bg-red-400'; statusText = 'CANCELADO'; }
               if (order.status === 'Pendiente' || order.status === 'Pagado') { color = 'bg-brand-orange'; statusText = 'PENDIENTE'; }
               if (order.status === 'En Preparación') { color = 'bg-blue-500'; statusText = 'PREPARANDO'; }
               if (order.status === 'Listos') { color = 'bg-emerald-500'; statusText = 'LISTOS'; }

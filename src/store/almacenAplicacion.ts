@@ -96,7 +96,7 @@ export interface Order {
   digitalBank?: 'nequi' | 'daviplata' | 'bancolombia' | null;
   paymentStatus?: string;
   id: string;
-  status: 'Pendiente' | 'En Preparación' | 'Listos' | 'En Camino' | 'Entregado' | 'Pagado' | 'entregado';
+  status: 'Esperando Pago' | 'Pendiente' | 'En Preparación' | 'Listos' | 'En Camino' | 'Entregado' | 'Pagado' | 'entregado' | 'Cancelado';
   driverName?: string;
   driverPhone?: string;
   driverPlate?: string;
@@ -122,6 +122,9 @@ export interface Order {
   channel?: 'web' | 'llamada' | 'whatsapp';
   /** Pedido manual de alguien sin cuenta de cliente. */
   isGuest?: boolean;
+  /** Pedido manual con link de pago: código del link (solo admin, mientras espera el pago) y cuándo vence. */
+  paymentLinkCode?: string | null;
+  paymentLinkExpiresAt?: string | null;
   time?: string;
   readyAt?: string | null;
   paymentTransactionId?: string;
@@ -198,6 +201,8 @@ export interface ManualOrderInput {
   clientPhone: string;
   address: string;
   channel: 'llamada' | 'whatsapp';
+  /** 'efectivo' = se cobra al entregar; 'link' = el cliente paga por un link antes de ir a cocina. */
+  paymentMode: 'efectivo' | 'link';
   items: OrderItem[];
 }
 

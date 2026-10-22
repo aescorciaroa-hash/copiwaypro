@@ -26,12 +26,14 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 9 | `'/login' => ['PaginaController', 'login', []],` | `/login` → `PaginaController::login()`. Cualquiera puede entrar. |
 | 10 | `'/register' => ['PaginaController', 'register', []],` | `/register` (crear cuenta) → `PaginaController::register()`. Cualquiera puede entrar. |
 | 11 | `'/forgot-password' => ['PaginaController', 'forgotPassword', []],` | `/forgot-password` (recuperar contraseña) → `PaginaController::forgotPassword()`. Cualquiera. |
-| 12 | `'/admin' => ['PaginaController', 'admin', ['admin']],` | `/admin` → `PaginaController::admin()`. `['admin']` = solo el administrador. |
-| 13 | `'/client' => ['PaginaController', 'client', ['client']],` | `/client` → `PaginaController::client()`. Solo el cliente. |
-| 14 | `'/kitchen' => ['PaginaController', 'kitchen', ['kitchen']],` | `/kitchen` → `PaginaController::kitchen()`. Solo cocina. |
-| 15 | `'/delivery' => ['PaginaController', 'delivery', ['delivery']],` | `/delivery` → `PaginaController::delivery()`. Solo el domiciliario. |
-| 16 | `];` | Cierra la lista. |
-| 17 | `?>` | Cierra el código PHP. |
+| 12 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Link de pago del pedido manual: /pagar?c=codigo (publica)."* |
+| 13 | `'/pagar' => ['PaginaController', 'pagar', []],` | `/pagar` (pagar un pedido manual por link) → `PaginaController::pagar()`. Cualquiera puede entrar: el código del link va después del `?c=`. |
+| 14 | `'/admin' => ['PaginaController', 'admin', ['admin']],` | `/admin` → `PaginaController::admin()`. `['admin']` = solo el administrador. |
+| 15 | `'/client' => ['PaginaController', 'client', ['client']],` | `/client` → `PaginaController::client()`. Solo el cliente. |
+| 16 | `'/kitchen' => ['PaginaController', 'kitchen', ['kitchen']],` | `/kitchen` → `PaginaController::kitchen()`. Solo cocina. |
+| 17 | `'/delivery' => ['PaginaController', 'delivery', ['delivery']],` | `/delivery` → `PaginaController::delivery()`. Solo el domiciliario. |
+| 18 | `];` | Cierra la lista. |
+| 19 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
 | Si se borra… | Qué pasa |

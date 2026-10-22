@@ -4,6 +4,10 @@
  */
 class Configuracion
 {
+    // Categoria interna del producto oculto "Hamburguesa Personalizada" (la crea
+    // PedidoService::productoPersonalizadoOculto). No se muestra ni se puede crear a mano.
+    const CATEGORIA_INTERNA = 'Personalizado';
+
     private $conn;
 
     public function __construct()
@@ -24,7 +28,9 @@ class Configuracion
     {
         $cfg = $this->get();
 
-        $stmt = $this->conn->prepare("SELECT nombre FROM CATEGORIA WHERE ambito = 'menu' ORDER BY nombre ASC");
+        $interna = self::CATEGORIA_INTERNA;
+        $stmt = $this->conn->prepare("SELECT nombre FROM CATEGORIA WHERE ambito = 'menu' AND nombre <> ? ORDER BY nombre ASC");
+        $stmt->bind_param("s", $interna);
         $stmt->execute();
         $categorias = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'nombre');
         $stmt->close();
@@ -107,6 +113,9 @@ class Configuracion
     public function agregarCategoria($nombre)
     {
         $nombre = trim($nombre);
+        if (strtolower($nombre) === strtolower(self::CATEGORIA_INTERNA)) {
+            throw new InvalidArgumentException('Ese nombre lo usa el sistema para las hamburguesas que arma el cliente. Elige otro.');
+        }
 
         $stmt = $this->conn->prepare("SELECT id_categoria FROM CATEGORIA WHERE ambito = 'menu' AND LOWER(nombre) = LOWER(?)");
         $stmt->bind_param("s", $nombre);

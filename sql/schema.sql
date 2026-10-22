@@ -276,7 +276,8 @@ CREATE TABLE PEDIDO (
     destino_lat          DECIMAL(10,7),
     destino_lng          DECIMAL(10,7),
     fecha_hora           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    estado               ENUM('pendiente','en_preparacion','listo','en_camino','entregado','cancelado') NOT NULL DEFAULT 'pendiente',
+    -- esperando_pago = pedido manual con link de pago que el cliente aun no paga (no va a cocina).
+    estado               ENUM('esperando_pago','pendiente','en_preparacion','listo','en_camino','entregado','cancelado') NOT NULL DEFAULT 'pendiente',
     canal_origen         ENUM('web','whatsapp','llamada') NOT NULL DEFAULT 'web',
     metodo_pago          ENUM('digital','efectivo') NOT NULL,
     -- Solo aplica si metodo_pago='digital': que billetera eligio (Nequi/Daviplata/
@@ -286,6 +287,9 @@ CREATE TABLE PEDIDO (
     estado_pago          ENUM('pendiente','aprobado','rechazado') NOT NULL DEFAULT 'pendiente',
     fecha_pago           DATETIME     NULL,
     comprobante_pago     VARCHAR(255) NULL,
+    -- Link de pago del pedido manual: codigo unico del link y hasta cuando sirve.
+    codigo_pago          CHAR(32)     NULL,
+    vence_pago           DATETIME     NULL,
     pin_entrega          CHAR(4)      NOT NULL DEFAULT '',
     subtotal             DECIMAL(10,2) NOT NULL DEFAULT 0,
     costo_domicilio      DECIMAL(10,2) NOT NULL DEFAULT 0,
@@ -301,6 +305,7 @@ CREATE TABLE PEDIDO (
     FOREIGN KEY (id_ayudante) REFERENCES AYUDANTE_COCINA(id_ayudante),
     FOREIGN KEY (id_reporte) REFERENCES REPORTE_CAJA(id_reporte),
     FOREIGN KEY (id_admin_registro) REFERENCES ADMINISTRADOR(id_admin),
+    UNIQUE KEY uq_pedido_codigo_pago (codigo_pago),
     INDEX idx_pedido_estado (estado),
     INDEX idx_pedido_fecha (fecha_hora)
 );
@@ -310,7 +315,8 @@ CREATE TABLE PEDIDO (
 CREATE TABLE IF NOT EXISTS PAGO_TRANSACCION (
     id              VARCHAR(40)  NOT NULL PRIMARY KEY,      -- 'sbx-...' (como el id de transaccion de Wompi)
     referencia      VARCHAR(80)  NOT NULL,                  -- emitida por el servidor en /payments/prepare
-    id_cliente      INT UNSIGNED NOT NULL,
+    id_cliente      INT UNSIGNED NULL,                      -- NULL = pago por link de un pedido manual
+    id_pedido       INT UNSIGNED NULL,                      -- pedido que se paga por link
     monto_centavos  BIGINT       NOT NULL,
     moneda          CHAR(3)      NOT NULL DEFAULT 'COP',
     metodo          ENUM('nequi','daviplata','bancolombia') NOT NULL,
@@ -320,7 +326,8 @@ CREATE TABLE IF NOT EXISTS PAGO_TRANSACCION (
     creado_en       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     resuelto_en     DATETIME     NULL,
     UNIQUE KEY uq_pago_referencia (referencia),
-    FOREIGN KEY (id_cliente) REFERENCES CLIENTE(id_cliente)
+    FOREIGN KEY (id_cliente) REFERENCES CLIENTE(id_cliente),
+    FOREIGN KEY (id_pedido) REFERENCES PEDIDO(id_pedido)
 );
 
 CREATE TABLE DETALLE_PEDIDO (

@@ -52,6 +52,52 @@ Con Bancolombia el celular no es obligatorio.
 | `models/PedidoService.php` | Verifica el pago antes de crear el pedido. |
 | Tabla `PAGO_TRANSACCION` | Guarda cada transacción. |
 
+## Pago por link (pedido manual)
+Cuando el administrador registra un pedido por llamada o WhatsApp y elige **Link de pago**:
+```
+1. CREAR PEDIDO   Admin ── POST /api/orders/manual (paymentMode: 'link')
+                  el pedido nace "esperando_pago" con un código secreto y vence en 30 minutos
+                  (el inventario ya se descuenta, para apartar los productos)
+2. ENVIAR LINK    Admin toca "Enviar por WhatsApp": se abre el chat del cliente con el link
+                  /pagar?c=código
+3. VER PEDIDO     Cliente abre el link ── GET /api/pay-link/{código}   (sin iniciar sesión)
+4. PAGAR          Cliente elige banco ── POST /api/pay-link/{código}/transactions
+                  PHP crea la transacción con el total GUARDADO en el pedido
+5. ESPERAR        La página pregunta cada 1,5 s ── GET /api/pay-link/{código}/transactions/{id}
+                  si quedó APPROVED, PHP pasa el pedido a "pendiente" (cocina) y guarda el banco
+6. CÓDIGO         La página muestra el código de entrega (y la invitación si no tiene cuenta)
+```
+Si pasan los 30 minutos sin pagar, el pedido se **cancela solo** y se devuelve el inventario. No hay
+una tarea programada: se revisa cada vez que una pantalla sincroniza (`SyncController`) o alguien abre
+el link (`PedidoService::cancelarLinksVencidos()`).
+
+| Protección | Qué evita |
+|---|---|
+| Código de 32 letras y números al azar | Que alguien adivine el link de otro pedido. |
+| El total sale del pedido guardado | Pagar menos cambiando el precio en el navegador. |
+| La transacción guarda el número del pedido | Usar el pago de un pedido para otro. |
+| Solo se marca pagado si sigue "esperando_pago" | Cobrar dos veces el mismo pedido. |
+| El código de entrega solo se muestra ya pagado | Recibir el pedido sin haberlo pagado. |
+
+Archivos: `controllers/PaymentLinkController.php`, `models/PedidoService.php` (sección "Pago por link"),
+`models/PagoService.php` (`crearTransaccionDePedido`), `src/pages/PagarPedido.tsx`,
+`src/utils/mensajesWhatsApp.ts`.
+
+### Si ya tenías la base de datos instalada
+`sql/schema.sql` ya trae los cambios para una instalación nueva. En una base que ya existía hay que
+ejecutar esto **una vez** (en HeidiSQL o phpMyAdmin):
+```sql
+ALTER TABLE PEDIDO
+  MODIFY estado ENUM('esperando_pago','pendiente','en_preparacion','listo','en_camino','entregado','cancelado') NOT NULL DEFAULT 'pendiente',
+  ADD COLUMN codigo_pago CHAR(32) NULL AFTER comprobante_pago,
+  ADD COLUMN vence_pago DATETIME NULL AFTER codigo_pago,
+  ADD UNIQUE KEY uq_pedido_codigo_pago (codigo_pago);
+ALTER TABLE PAGO_TRANSACCION
+  MODIFY id_cliente INT UNSIGNED NULL,
+  ADD COLUMN id_pedido INT UNSIGNED NULL AFTER id_cliente,
+  ADD FOREIGN KEY (id_pedido) REFERENCES PEDIDO(id_pedido);
+```
+
 ## Cambiar a una pasarela real
 La idea es reemplazar `PagoService.php` por uno que hable con la pasarela real (por ejemplo, la API
 de Wompi), manteniendo los mismos métodos (`prepararCheckout`, `crearTransaccion`,

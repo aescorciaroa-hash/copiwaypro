@@ -7,6 +7,7 @@ Maneja los pagos en línea de prueba.
 ## ¿Qué hace?
 - prepara el pago (monto y referencia)
 - crea el pago
+- crea el pago de un pedido manual por link (sin cuenta)
 - consulta el pago
 - revisa que el pago sirva para el pedido
 
@@ -16,6 +17,9 @@ Maneja los pagos en línea de prueba.
 | `firmar()` (privado) | crea la firma de seguridad del pago | `PagoService::crearTransaccion()`, `PagoService::prepararCheckout()` |
 | `prepararCheckout()` | prepara el pago (monto y referencia) | `PaymentController::prepare()` |
 | `crearTransaccion()` | crea el pago | `PaymentController::createTransaction()` |
+| `crearTransaccionDePedido()` | crea el pago de un pedido manual por link | `PedidoService::iniciarPagoLink()` |
+| `obtenerTransaccionDePedido()` | consulta el pago, solo si es de ese pedido | `PedidoService::consultarPagoLink()` |
+| `insertarTransaccion()` (privado) | guarda el pago de prueba en la base de datos | `PagoService::crearTransaccion()`, `PagoService::crearTransaccionDePedido()` |
 | `obtenerTransaccion()` | consulta el pago | `PagoService::crearTransaccion()`, `PagoService::verificarTransaccion()`, `PaymentController::showTransaction()` |
 | `mensaje()` (privado) | el mensaje de cada estado del pago | `PagoService::obtenerTransaccion()` |
 | `verificarTransaccion()` | revisa que el pago sirva para el pedido | `PedidoService::crear()` |
@@ -83,87 +87,118 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 68 | `if ($existe) {` | Si ya existe... |
 | 69 | `throw new InvalidArgumentException('Esta referencia de pago ya fue usada. Vuelve a iniciar el pago.');` | ...lanza el error "Esta referencia de pago ya fue usada." (un pago no se puede usar dos veces). |
 | 70 | `}` | Cierra el `if`. |
-| 72 | `$telefonoLimpio = preg_replace('/\D/', '', (string) $telefono);` | Deja solo los números del celular. |
-| 73 | `if ($metodo !== 'bancolombia' && !preg_match('/^3\d{9}$/', $telefonoLimpio)) {` | Si no es Bancolombia y el celular no es `3` + 9 números... |
-| 74 | `throw new InvalidArgumentException('Ingresa un celular válido de 10 dígitos.');` | ...lanza el error "Ingresa un celular válido de 10 dígitos.". |
-| 75 | `}` | Cierra el `if`. |
-| 77 | `$final = 'APPROVED';` | El resultado final empieza como aprobado (`'APPROVED'`). |
-| 78 | `if ($telefonoLimpio === '3992222222') $final = 'DECLINED';` | Si el celular es el de prueba `3992222222`, será rechazado. |
-| 79 | `if ($telefonoLimpio === '3993333333') $final = 'ERROR';` | Si es `3993333333`, dará error. |
-| 81 | `$id = 'sbx-' . strtolower(bin2hex(random_bytes(8)));` | Crea el número del pago: `sbx-` + 16 letras al azar. |
-| 82 | `$moneda = self::MONEDA;` | Guarda la moneda. |
-| 83 | `$telefonoGuardado = $telefonoLimpio ?: null;` | Guarda el celular (si quedó vacío, `null`). |
-| 85 | `$stmtI = $this->conn->prepare(` | Prepara la consulta: "guarda el pago en `PAGO_TRANSACCION` como pendiente (`'PENDING'`), con su resultado final". |
-| 86 | `"INSERT INTO PAGO_TRANSACCION (id, referencia, id_cliente, monto_centavos, moneda, metodo, telefono, estado, estado_final)` | ↑ (sigue la misma instrucción) |
-| 87 | `VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)"` | ↑ (sigue la misma instrucción) |
-| 88 | `);` | ↑ (sigue la misma instrucción) |
-| 89 | `$stmtI->bind_param("ssiissss", $id, $referencia, $idCliente, $centavos, $moneda, $metodo, $telefonoGuardado, $final);` | Llena los `?` de la consulta, en orden: `$id` (texto), `$referencia` (texto), `$idCliente` (número entero), `$centavos` (número entero), `$moneda` (texto), `$metodo` (texto), `$telefonoGuardado` (texto), `$final` (texto). |
-| 90 | `$stmtI->execute();` | Ejecuta la consulta. |
-| 91 | `$stmtI->close();` | Cierra la consulta. |
-| 93 | `return $this->obtenerTransaccion($id, $idCliente);` | Devuelve el pago (`obtenerTransaccion()` de abajo). |
-| 94 | `}` | Cierra la función `crearTransaccion()`. |
-| 96-99 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Lee la transaccion. Si ya paso el tiempo de espera, pasa de PENDING a su estado final. Con $idCliente solo devuelve transacciones de ese cliente."* |
-| 100 | `public function obtenerTransaccion($id, $idCliente = null)` | Método `obtenerTransaccion($id, $idCliente)`: consulta un pago. Si ya pasaron los 4 segundos, lo pasa a su resultado final. Lo usan `PaymentController::showTransaction()` y `verificarTransaccion()`. |
-| 101 | `{` | Abre la función `obtenerTransaccion()`. |
-| 102 | `$id = (string) $id;` | Convierte el número del pago a texto. |
-| 103 | `$stmt = $this->conn->prepare("SELECT *, TIMESTAMPDIFF(SECOND, creado_en, NOW()) AS segundos FROM PAGO_TRANSACCION WHERE id = ?");` | Prepara la consulta: "trae el pago y cuántos segundos han pasado desde que se creó (`TIMESTAMPDIFF`)". |
-| 104 | `$stmt->bind_param("s", $id);` | Llena los `?` de la consulta, en orden: `$id` (texto). |
-| 105 | `$stmt->execute();` | Ejecuta la consulta. |
-| 106 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
-| 107 | `$stmt->close();` | Cierra la consulta. |
-| 109 | `if (!$row \|\| ($idCliente !== null && (int) $row['id_cliente'] !== (int) $idCliente)) {` | Si no existe, o no es de este cliente... |
-| 110 | `return null;` | ...devuelve `null`. |
-| 111 | `}` | Cierra el `if`. |
-| 113 | `if ($row['estado'] === 'PENDING' && (int) $row['segundos'] >= self::SEGUNDOS_PENDIENTE) {` | Si sigue pendiente y ya pasaron 4 segundos o más... |
-| 114 | `$stmtU = $this->conn->prepare("UPDATE PAGO_TRANSACCION SET estado = ?, resuelto_en = NOW() WHERE id = ? AND estado = 'PENDING'");` | ...prepara la consulta: "cambia el estado al resultado final y anota cuándo". |
-| 115 | `$stmtU->bind_param("ss", $row['estado_final'], $row['id']);` | Llena los `?` de la consulta, en orden: `$row['estado_final']` (texto), `$row['id']` (texto). |
-| 116 | `$stmtU->execute();` | Ejecuta la consulta. |
-| 117 | `$stmtU->close();` | Cierra la consulta. |
-| 118 | `$row['estado'] = $row['estado_final'];` | Cambia también el estado en `$row`. |
-| 119 | `}` | Cierra el `if`. |
-| 121 | `return [` | Devuelve el pago con los nombres que usa React: |
-| 122 | `'id'              => $row['id'],` | el número, |
-| 123 | `'status'          => $row['estado'],` | el estado, |
-| 124 | `'reference'       => $row['referencia'],` | la referencia, |
-| 125 | `'amount_in_cents' => (int) $row['monto_centavos'],` | el monto en centavos, |
-| 126 | `'currency'        => $row['moneda'],` | la moneda, |
-| 127 | `'payment_method'  => $row['metodo'],` | el banco, |
-| 128 | `'status_message'  => $this->mensaje($row['estado']),` | y el mensaje del estado (`mensaje()` de abajo). |
-| 129 | `];` | Cierra la lista. |
-| 130 | `}` | Cierra la función `obtenerTransaccion()`. |
-| 132 | `private function mensaje($estado)` | Método `mensaje($estado)` (privado): el mensaje de cada estado. |
-| 133 | `{` | Abre la función `mensaje()`. |
-| 134 | `$mensajes = [` | Lista de mensajes: |
-| 135 | `'PENDING'  => 'Esperando la aprobación en tu celular.',` | pendiente: "Esperando la aprobación en tu celular.", |
-| 136 | `'APPROVED' => 'Transacción aprobada.',` | aprobado: "Transacción aprobada.", |
-| 137 | `'DECLINED' => 'La transacción fue rechazada.',` | rechazado: "La transacción fue rechazada.", |
-| 138 | `'ERROR'    => 'Ocurrió un error al procesar la transacción.',` | error: "Ocurrió un error al procesar la transacción.". |
-| 139 | `];` | Cierra la lista. |
-| 140 | `return $mensajes[$estado] ?? '';` | Devuelve el mensaje de ese estado (si no hay, vacío). |
-| 141 | `}` | Cierra la función `mensaje()`. |
-| 143 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Revisa que la transaccion sirva para pagar este pedido (la llama PedidoService::crear)."* |
-| 144 | `public function verificarTransaccion($idTransaccion, $totalEsperado, $idCliente)` | Método `verificarTransaccion(...)`: revisa que el pago sirva para el pedido antes de crearlo. Lo usa `PedidoService::crear()`. |
-| 145 | `{` | Abre la función `verificarTransaccion()`. |
-| 146 | `if (!preg_match('/^sbx-[a-f0-9]{16}$/', $idTransaccion)) {` | Si el número del pago no tiene la forma `sbx-` + 16 letras... |
-| 147 | `throw new Exception('Falta la confirmación del pago. Intenta pagar de nuevo.');` | ...lanza el error "Falta la confirmación del pago.". |
-| 148 | `}` | Cierra el `if`. |
-| 150 | `$tx = $this->obtenerTransaccion($idTransaccion, $idCliente);` | Busca el pago. |
-| 151 | `if ($tx === null) {` | Si no existe... |
-| 152 | `throw new Exception('No encontramos ese pago. Intenta pagar de nuevo.');` | ...lanza el error "No encontramos ese pago.". |
-| 153 | `}` | Cierra el `if`. |
-| 154 | `if ($tx['status'] === 'PENDING') {` | Si sigue pendiente... |
-| 155 | `throw new Exception('Tu pago aún está en proceso. Espera unos segundos e inténtalo de nuevo.');` | ...lanza el error "Tu pago aún está en proceso.". |
-| 156 | `}` | Cierra el `if`. |
-| 157 | `if ($tx['status'] !== 'APPROVED') {` | Si no fue aprobado... |
-| 158 | `throw new Exception('El pago fue rechazado por la pasarela. Intenta con otro método.');` | ...lanza el error "El pago fue rechazado por la pasarela.". |
-| 159 | `}` | Cierra el `if`. |
-| 160 | `if ($tx['amount_in_cents'] !== (int) round($totalEsperado * 100) \|\| $tx['currency'] !== self::MONEDA) {` | Si el monto pagado no es igual al total del pedido, o la moneda no es la misma... |
-| 161 | `throw new Exception('El monto pagado no coincide con el del pedido.');` | ...lanza el error "El monto pagado no coincide con el del pedido.". |
-| 162 | `}` | Cierra el `if`. |
-| 164 | `return ['id' => $tx['id'], 'referencia' => $tx['reference']];` | Si todo está bien, devuelve el número y la referencia del pago. |
-| 165 | `}` | Cierra la función `verificarTransaccion()`. |
-| 166 | `}` | Cierra la clase `PagoService`. |
-| 167 | `?>` | Cierra el código PHP. |
+| 72 | `$id = $this->insertarTransaccion($idCliente, null, $referencia, $centavos, $metodo, $telefono);` | Guarda el pago con `insertarTransaccion()` (de abajo). `null` = no es de un link de pedido. Guarda el número del pago en `$id`. |
+| 73 | `return $this->obtenerTransaccion($id, $idCliente);` | Devuelve el pago (`obtenerTransaccion()` de abajo). |
+| 74 | `}` | Cierra la función `crearTransaccion()`. |
+| 76-79 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Transaccion para pagar un pedido manual por link (el cliente puede no tener cuenta). El monto sale del pedido guardado, nunca del navegador."* |
+| 80 | `public function crearTransaccionDePedido($idPedido, $total, $metodo, $telefono)` | Método `crearTransaccionDePedido(...)`: crea el pago de un pedido manual que se paga por link. Lo usa `PedidoService::iniciarPagoLink()`. |
+| 81 | `{` | Abre la función `crearTransaccionDePedido()`. |
+| 82 | `if (!in_array($metodo, ['nequi', 'daviplata', 'bancolombia'], true)) {` | Si el método no es Nequi, Daviplata ni Bancolombia... |
+| 83 | `throw new InvalidArgumentException('Método de pago no soportado.');` | ...lanza el error "Método de pago no soportado.". |
+| 84 | `}` | Cierra el `if`. |
+| 85 | `$centavos = (int) round($total * 100);` | Pasa el total del pedido a centavos (por 100, redondeado). |
+| 86 | `$referencia = 'CW-LINK-' . $idPedido . '-' . time() . '-' . strtoupper(bin2hex(random_bytes(3)));` | Crea la referencia del pago: `CW-LINK-` + número del pedido + la hora + 6 letras al azar. |
+| 88 | `$id = $this->insertarTransaccion(null, $idPedido, $referencia, $centavos, $metodo, $telefono);` | Guarda el pago con `insertarTransaccion()`: sin cliente (`null`) y con el número del pedido. |
+| 89 | `return $this->obtenerTransaccion($id);` | Devuelve el pago. |
+| 90 | `}` | Cierra la función `crearTransaccionDePedido()`. |
+| 92 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Lee una transaccion solo si es del pedido indicado."* |
+| 93 | `public function obtenerTransaccionDePedido($id, $idPedido)` | Método `obtenerTransaccionDePedido($id, $idPedido)`: consulta un pago, pero solo si es de ese pedido. Lo usa `PedidoService::consultarPagoLink()`. |
+| 94 | `{` | Abre la función `obtenerTransaccionDePedido()`. |
+| 95 | `$id = (string) $id;` | Convierte `$id` en texto. |
+| 96 | `$stmt = $this->conn->prepare("SELECT id FROM PAGO_TRANSACCION WHERE id = ? AND id_pedido = ?");` | Prepara la consulta: "busca el pago con ese número **y** de ese pedido". |
+| 97 | `$stmt->bind_param("si", $id, $idPedido);` | Llena los `?`: `$id` (texto) y `$idPedido` (número entero). |
+| 98 | `$stmt->execute();` | Ejecuta la consulta. |
+| 99 | `$existe = $stmt->get_result()->fetch_assoc();` | Lo guarda en `$existe`. |
+| 100 | `$stmt->close();` | Cierra la consulta. |
+| 101 | `if (!$existe) {` | Si no existe (o es de otro pedido)... |
+| 102 | `return null;` | ...devuelve `null` (nada). |
+| 103 | `}` | Cierra el `if`. |
+| 104 | `return $this->obtenerTransaccion($id);` | Devuelve el pago (`obtenerTransaccion()` de abajo). |
+| 105 | `}` | Cierra la función `obtenerTransaccionDePedido()`. |
+| 107 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Guarda la transaccion de prueba (nace PENDING) y devuelve su id."* |
+| 108 | `private function insertarTransaccion($idCliente, $idPedido, $referencia, $centavos, $metodo, $telefono)` | Método privado `insertarTransaccion(...)`: guarda el pago de prueba. Lo usan `crearTransaccion()` (pago del cliente) y `crearTransaccionDePedido()` (pago por link), para no repetir el código. |
+| 109 | `{` | Abre la función `insertarTransaccion()`. |
+| 110 | `$telefonoLimpio = preg_replace('/\D/', '', (string) $telefono);` | Deja solo los números del celular. |
+| 111 | `if ($metodo !== 'bancolombia' && !preg_match('/^3\d{9}$/', $telefonoLimpio)) {` | Si no es Bancolombia y el celular no es `3` + 9 números... |
+| 112 | `throw new InvalidArgumentException('Ingresa un celular válido de 10 dígitos.');` | ...lanza el error "Ingresa un celular válido de 10 dígitos.". |
+| 113 | `}` | Cierra el `if`. |
+| 115 | `$final = 'APPROVED';` | El resultado final empieza como aprobado (`'APPROVED'`). |
+| 116 | `if ($telefonoLimpio === '3992222222') $final = 'DECLINED';` | Si el celular es el de prueba `3992222222`, será rechazado. |
+| 117 | `if ($telefonoLimpio === '3993333333') $final = 'ERROR';` | Si es `3993333333`, dará error. |
+| 119 | `$id = 'sbx-' . strtolower(bin2hex(random_bytes(8)));` | Crea el número del pago: `sbx-` + 16 letras al azar. |
+| 120 | `$moneda = self::MONEDA;` | Guarda la moneda. |
+| 121 | `$telefonoGuardado = $telefonoLimpio ?: null;` | Guarda el celular (si quedó vacío, `null`). |
+| 123 | `$stmtI = $this->conn->prepare(` | Prepara la consulta: "guarda el pago en `PAGO_TRANSACCION` como pendiente (`'PENDING'`), con su resultado final". |
+| 124 | `"INSERT INTO PAGO_TRANSACCION (id, referencia, id_cliente, id_pedido, monto_centavos, moneda, metodo, telefono, estado, estado_final)` | ↑ (sigue la misma instrucción) |
+| 125 | `VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)"` | ↑ (sigue la misma instrucción) |
+| 126 | `);` | ↑ (sigue la misma instrucción) |
+| 127 | `$stmtI->bind_param("ssiiissss", $id, $referencia, $idCliente, $idPedido, $centavos, $moneda, $metodo, $telefonoGuardado, $final);` | Llena los `?` de la consulta, en orden: `$id`, `$referencia` (texto), `$idCliente`, `$idPedido`, `$centavos` (números enteros; el cliente o el pedido pueden ser `null`), `$moneda`, `$metodo`, `$telefonoGuardado`, `$final` (texto). |
+| 128 | `$stmtI->execute();` | Ejecuta la consulta. |
+| 129 | `$stmtI->close();` | Cierra la consulta. |
+| 131 | `return $id;` | Devuelve el número del pago guardado. |
+| 132 | `}` | Cierra la función `insertarTransaccion()`. |
+| 134-137 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Lee la transaccion. Si ya paso el tiempo de espera, pasa de PENDING a su estado final. Con $idCliente solo devuelve transacciones de ese cliente."* |
+| 138 | `public function obtenerTransaccion($id, $idCliente = null)` | Método `obtenerTransaccion($id, $idCliente)`: consulta un pago. Si ya pasaron los 4 segundos, lo pasa a su resultado final. Lo usan `PaymentController::showTransaction()` y `verificarTransaccion()`. |
+| 139 | `{` | Abre la función `obtenerTransaccion()`. |
+| 140 | `$id = (string) $id;` | Convierte el número del pago a texto. |
+| 141 | `$stmt = $this->conn->prepare("SELECT *, TIMESTAMPDIFF(SECOND, creado_en, NOW()) AS segundos FROM PAGO_TRANSACCION WHERE id = ?");` | Prepara la consulta: "trae el pago y cuántos segundos han pasado desde que se creó (`TIMESTAMPDIFF`)". |
+| 142 | `$stmt->bind_param("s", $id);` | Llena los `?` de la consulta, en orden: `$id` (texto). |
+| 143 | `$stmt->execute();` | Ejecuta la consulta. |
+| 144 | `$row = $stmt->get_result()->fetch_assoc();` | Trae la fila que encontró y la guarda en `$row` (si no encontró nada, queda vacía). |
+| 145 | `$stmt->close();` | Cierra la consulta. |
+| 147 | `if (!$row \|\| ($idCliente !== null && (int) $row['id_cliente'] !== (int) $idCliente)) {` | Si no existe, o no es de este cliente... |
+| 148 | `return null;` | ...devuelve `null`. |
+| 149 | `}` | Cierra el `if`. |
+| 151 | `if ($row['estado'] === 'PENDING' && (int) $row['segundos'] >= self::SEGUNDOS_PENDIENTE) {` | Si sigue pendiente y ya pasaron 4 segundos o más... |
+| 152 | `$stmtU = $this->conn->prepare("UPDATE PAGO_TRANSACCION SET estado = ?, resuelto_en = NOW() WHERE id = ? AND estado = 'PENDING'");` | ...prepara la consulta: "cambia el estado al resultado final y anota cuándo". |
+| 153 | `$stmtU->bind_param("ss", $row['estado_final'], $row['id']);` | Llena los `?` de la consulta, en orden: `$row['estado_final']` (texto), `$row['id']` (texto). |
+| 154 | `$stmtU->execute();` | Ejecuta la consulta. |
+| 155 | `$stmtU->close();` | Cierra la consulta. |
+| 156 | `$row['estado'] = $row['estado_final'];` | Cambia también el estado en `$row`. |
+| 157 | `}` | Cierra el `if`. |
+| 159 | `return [` | Devuelve el pago con los nombres que usa React: |
+| 160 | `'id'              => $row['id'],` | el número, |
+| 161 | `'status'          => $row['estado'],` | el estado, |
+| 162 | `'reference'       => $row['referencia'],` | la referencia, |
+| 163 | `'amount_in_cents' => (int) $row['monto_centavos'],` | el monto en centavos, |
+| 164 | `'currency'        => $row['moneda'],` | la moneda, |
+| 165 | `'payment_method'  => $row['metodo'],` | el banco, |
+| 166 | `'status_message'  => $this->mensaje($row['estado']),` | y el mensaje del estado (`mensaje()` de abajo). |
+| 167 | `];` | Cierra la lista. |
+| 168 | `}` | Cierra la función `obtenerTransaccion()`. |
+| 170 | `private function mensaje($estado)` | Método `mensaje($estado)` (privado): el mensaje de cada estado. |
+| 171 | `{` | Abre la función `mensaje()`. |
+| 172 | `$mensajes = [` | Lista de mensajes: |
+| 173 | `'PENDING'  => 'Esperando la aprobación en tu celular.',` | pendiente: "Esperando la aprobación en tu celular.", |
+| 174 | `'APPROVED' => 'Transacción aprobada.',` | aprobado: "Transacción aprobada.", |
+| 175 | `'DECLINED' => 'La transacción fue rechazada.',` | rechazado: "La transacción fue rechazada.", |
+| 176 | `'ERROR'    => 'Ocurrió un error al procesar la transacción.',` | error: "Ocurrió un error al procesar la transacción.". |
+| 177 | `];` | Cierra la lista. |
+| 178 | `return $mensajes[$estado] ?? '';` | Devuelve el mensaje de ese estado (si no hay, vacío). |
+| 179 | `}` | Cierra la función `mensaje()`. |
+| 181 | *(comentario)* | Comentario: no se ejecuta, solo explica. Dice: *"Revisa que la transaccion sirva para pagar este pedido (la llama PedidoService::crear)."* |
+| 182 | `public function verificarTransaccion($idTransaccion, $totalEsperado, $idCliente)` | Método `verificarTransaccion(...)`: revisa que el pago sirva para el pedido antes de crearlo. Lo usa `PedidoService::crear()`. |
+| 183 | `{` | Abre la función `verificarTransaccion()`. |
+| 184 | `if (!preg_match('/^sbx-[a-f0-9]{16}$/', $idTransaccion)) {` | Si el número del pago no tiene la forma `sbx-` + 16 letras... |
+| 185 | `throw new Exception('Falta la confirmación del pago. Intenta pagar de nuevo.');` | ...lanza el error "Falta la confirmación del pago.". |
+| 186 | `}` | Cierra el `if`. |
+| 188 | `$tx = $this->obtenerTransaccion($idTransaccion, $idCliente);` | Busca el pago. |
+| 189 | `if ($tx === null) {` | Si no existe... |
+| 190 | `throw new Exception('No encontramos ese pago. Intenta pagar de nuevo.');` | ...lanza el error "No encontramos ese pago.". |
+| 191 | `}` | Cierra el `if`. |
+| 192 | `if ($tx['status'] === 'PENDING') {` | Si sigue pendiente... |
+| 193 | `throw new Exception('Tu pago aún está en proceso. Espera unos segundos e inténtalo de nuevo.');` | ...lanza el error "Tu pago aún está en proceso.". |
+| 194 | `}` | Cierra el `if`. |
+| 195 | `if ($tx['status'] !== 'APPROVED') {` | Si no fue aprobado... |
+| 196 | `throw new Exception('El pago fue rechazado por la pasarela. Intenta con otro método.');` | ...lanza el error "El pago fue rechazado por la pasarela.". |
+| 197 | `}` | Cierra el `if`. |
+| 198 | `if ($tx['amount_in_cents'] !== (int) round($totalEsperado * 100) \|\| $tx['currency'] !== self::MONEDA) {` | Si el monto pagado no es igual al total del pedido, o la moneda no es la misma... |
+| 199 | `throw new Exception('El monto pagado no coincide con el del pedido.');` | ...lanza el error "El monto pagado no coincide con el del pedido.". |
+| 200 | `}` | Cierra el `if`. |
+| 202 | `return ['id' => $tx['id'], 'referencia' => $tx['reference']];` | Si todo está bien, devuelve el número y la referencia del pago. |
+| 203 | `}` | Cierra la función `verificarTransaccion()`. |
+| 204 | `}` | Cierra la clase `PagoService`. |
+| 205 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
 | Si se borra… | Qué deja de funcionar | Error que sale |
@@ -173,6 +208,9 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | el método `prepararCheckout()` | empezar un pago en línea | `Call to undefined method PagoService::prepararCheckout()` |
 | el método `crearTransaccion()` | crear el pago | `Call to undefined method PagoService::crearTransaccion()` |
 | el método `obtenerTransaccion()` | hacer pedidos (cliente), crear el pago, saber si el pago fue aprobado | `Call to undefined method PagoService::obtenerTransaccion()` |
+| el método `crearTransaccionDePedido()` | pagar un pedido manual por link | `Call to undefined method PagoService::crearTransaccionDePedido()` |
+| el método `obtenerTransaccionDePedido()` | saber si el pago por link fue aprobado | `Call to undefined method PagoService::obtenerTransaccionDePedido()` |
+| el método `insertarTransaccion()` | crear el pago, pagar un pedido por link | `Call to undefined method PagoService::insertarTransaccion()` |
 | el método `mensaje()` | hacer pedidos (cliente), crear el pago, saber si el pago fue aprobado | `Call to undefined method PagoService::mensaje()` |
 | el método `verificarTransaccion()` | hacer pedidos (cliente) | `Call to undefined method PagoService::verificarTransaccion()` |
 | la constante `MONEDA` | lo que la usa dentro de la clase | `Undefined constant PagoService::MONEDA` |

@@ -41,7 +41,11 @@ class SettingController
         if ($categoria === '') {
             responderError('Datos inválidos.', 422, ['category' => ['El campo category es obligatorio.']]);
         }
-        $this->configModel->agregarCategoria($categoria);
+        try {
+            $this->configModel->agregarCategoria($categoria);
+        } catch (InvalidArgumentException $e) {
+            responderError($e->getMessage(), 422);
+        }
         responderJson($this->configModel->obtener());
     }
 

@@ -34,6 +34,11 @@ class PaginaController
         $this->mostrar('recuperar');
     }
 
+    public function pagar()
+    {
+        $this->mostrar('pagar');
+    }
+
     public function admin()
     {
         $this->mostrar('admin');
@@ -79,6 +84,8 @@ if ($accion === 'landing') {
     $controller->register();
 } elseif ($accion === 'forgotPassword') {
     $controller->forgotPassword();
+} elseif ($accion === 'pagar') {
+    $controller->pagar();
 } elseif ($accion === 'admin') {
     $controller->admin();
 } elseif ($accion === 'client') {

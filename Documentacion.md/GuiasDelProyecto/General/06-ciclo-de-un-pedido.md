@@ -21,13 +21,14 @@ Califica                                                                  Cierre
 ## Estados del pedido
 | En MySQL (`PEDIDO.estado`) | En pantalla | Quién lo cambia | Ruta |
 |---|---|---|---|
-| `pendiente` | Pendiente | Se crea así | `POST /api/orders` |
+| `esperando_pago` | Esperando Pago | Pedido manual con **link de pago**: nace así y no va a cocina hasta que el cliente paga | `POST /api/orders/manual` |
+| `pendiente` | Pendiente | Se crea así (o al pagar el link) | `POST /api/orders` |
 | `en_preparacion` | En Preparación | Cocina (o admin) | `PATCH /api/orders/{id}/preparing` |
 | `listo` | Listos | Cocina (o admin) | `PATCH /api/orders/{id}/ready` |
 | `listo` + domiciliario asignado | Listos | Domiciliario | `PATCH /api/orders/{id}/take` |
 | `en_camino` | En Camino | Domiciliario | `PATCH /api/orders/{id}/accept` |
 | `entregado` | Entregado | Domiciliario con el PIN | `PATCH /api/orders/{id}/deliver` |
-| `cancelado` | Cancelado | (existe en la base de datos; hoy no hay pantalla para cancelar) | — |
+| `cancelado` | Cancelado | El sistema, cuando un link de pago vence sin pagarse (30 minutos) | (automático) |
 
 PHP no deja saltarse pasos: por ejemplo, no se puede marcar como listo un pedido que ya va en camino
 (responde 409 "Transición de estado no permitida").
@@ -58,7 +59,21 @@ Ingreso de Orden Manual** (`PedidoService::crearManual()`, ruta `POST /api/order
 - Se aplican las mismas reglas: horario, precios recalculados en el servidor e inventario.
 - Si el celular es de un **cliente registrado**, el pedido queda en su cuenta (y suma puntos al
   entregarse). Si no, queda como **cliente invitado**.
-- Se paga en **efectivo** al entregar. Desde ahí sigue el mismo camino que un pedido web.
+- Elige la **forma de pago**:
+  - **Efectivo:** se cobra al entregar. El pedido va directo a cocina.
+  - **Link de pago:** el pedido queda **"Esperando Pago"** y el sistema crea un link
+    (`/pagar?c=código`) que dura **30 minutos**. El cliente lo abre en su celular y paga con Nequi,
+    Daviplata o Bancolombia (pasarela de prueba). Al aprobarse, el pedido pasa a **Pendiente** y
+    llega a cocina. Si no paga a tiempo, se **cancela solo** y se devuelve el inventario.
+- Al crear el pedido sale la pantalla **"Pedido Registrado"** con el **código de entrega** y el botón
+  **"Enviar por WhatsApp"**, que abre el chat del cliente con el mensaje ya escrito:
+  - efectivo: resumen, total y el código de entrega;
+  - link: el link de pago (el código se le muestra al cliente cuando paga).
+  - Si el cliente **no está registrado**, el mensaje lleva una invitación a registrarse con los
+    beneficios (puntos, 15 % en el cumpleaños, seguimiento del pedido).
+- El administrador ve el **código de entrega** de los pedidos manuales en el detalle del pedido, para
+  dictárselo por teléfono si hace falta. Desde ahí también puede **reenviar** el mensaje o el link.
+- Desde ahí sigue el mismo camino que un pedido web.
 
 ## Paso 2: la cocina
 - Con cada pedido nuevo suena una campana en el panel de cocina y en el del admin.
@@ -95,4 +110,5 @@ Solo se puede hacer **un cierre por día** por administrador.
 |---|---|
 | Crear pedido | Se descuenta la receta (menos lo quitado, más los extras y la bolsa) y se registra una "salida" con el número del pedido. |
 | Admin suma stock | "Entrada" en el historial. |
+| Link de pago vencido | El pedido se cancela y se devuelve lo descontado: una "entrada" con el motivo "Devolución pedido #ORD-… cancelado". |
 | Cierre de caja | Se calcula cuánto se gastó de cada insumo en el turno, con base en esas salidas. |

@@ -100,9 +100,60 @@ dibuja la sección activa.
 `RoutePolyline` (ruta OSRM en el mapa, igual que en `DeliveryDashboard.tsx`) y `CustomTooltip`
 (cuadro que aparece al pasar el mouse sobre una barra de la gráfica, con el valor en pesos).
 
+## Barra de arriba (cabecera)
+Es la franja blanca que queda fija arriba del panel. Tiene, de izquierda a derecha:
+1. **Botón de menú** (solo en celular): abre el menú lateral.
+2. **Sección actual:** el ícono y el nombre de la pestaña abierta (`seccionActual`, sale de `navItems`) y, encima, la fecha de hoy.
+3. **Estado de la tienda:** un aviso verde "Tienda abierta · Hasta las 23:00" o gris "Tienda cerrada · Abre a las 11:00" (usa `isStoreAutomaticallyOpen` y el horario de `storeConfig`). Solo en pantallas grandes.
+4. **Nuevo pedido:** atajo que abre la ventana de pedido manual (`setShowManualForm(true)`).
+5. **Botones agrupados:** la campana (se mueve sola cada 5 segundos si hay pedidos nuevos) y el botón de modo claro/oscuro.
+6. **Perfil:** cuadro naranja con un escudo, el texto "Administrador" y un puntito verde de "En línea".
+
+### Panel de notificaciones
+Al tocar la campana sale un **panel por la derecha** y el resto de la pantalla se oscurece un poco
+(así no queda un cuadro encima tapando el contenido). Se cierra con la X, tocando afuera o con Escape.
+- `pedidosNuevos`: los pedidos en estado **Pendiente** o **Pagado**.
+- Cada pedido muestra cliente, dirección, estado, total y hace cuánto llegó (`haceCuanto(fecha)`: "hace 5 min", "hace 2 h").
+- Al tocar un pedido, va a **Comandas Activas** y lo resalta (`handleNavigateToOrders(id)`).
+- El botón de abajo, **Ver todas las comandas**, lleva a esa pestaña.
+
 ## Pedido manual (ventana "Ingreso de Orden Manual")
-1. **Datos del cliente:** nombre, celular, por dónde llegó (**Llamada** o **WhatsApp**) y dirección.
-2. **Productos:** se eligen del menú, con lo que se quita y los extras.
+La ventana tiene **dos vistas** (`manualView`), para que todo se vea sin tener que bajar:
+
+- **Vista del pedido (`'datos'`):** a la izquierda los datos del cliente y a la derecha los productos ya agregados.
+  Si no hay productos, sale un botón grande **"Agregar productos"**.
+- **Vista de catálogo (`'catalogo'`):** se abre con ese botón. A la izquierda está la lista del menú con un buscador
+  (`manualSearch`) y botones por categoría (`manualCategory`). Al tocar un producto, a la derecha se elige la
+  cantidad (con − y +) y se quitan o se añaden ingredientes. El botón **"Agregar"** muestra el precio
+  (`manualPrecioSeleccion`) y lo suma a la orden. El numerito naranja de cada producto dice cuántos van en la
+  orden (`manualCantidadEnOrden`). Con la flecha o con **"Listo, volver al pedido"** se regresa.
+  Para **quitar la selección** se toca la **X** del panel derecho o se vuelve a tocar el mismo producto.
+  **Ingredientes:** el **+** agrega un extra cada vez que se toca (se ve "x2", "x3"...) y el **−** quita
+  un extra. Si no tiene extras, el **−** lo marca como "sin" (tachado). Cada extra repetido se cobra y se
+  descuenta del inventario las veces que se pidió.
+  La vista tiene un alto fijo (la ventana no se agranda). El panel derecho tiene 3 partes: arriba,
+  fijos, el producto, la cantidad y el título "Personalizar Ingredientes"; en el medio, **solo la lista
+  de ingredientes** sube y baja; abajo, fijo, el botón "Agregar".
+
+- **Vista "Pedido Registrado" (`'listo'`):** sale al crear el pedido (`manualCreatedOrder`). Muestra el
+  cliente (registrado o invitado), el total, el **código de entrega** y, si es por link, el link con el
+  botón **Copiar link**. Botones: **Enviar por WhatsApp** (abre el chat del cliente con el mensaje ya
+  escrito, `abrirWhatsApp()`) y **Copiar mensaje**. Si el cliente paga mientras la ventana está abierta,
+  cambia sola a "¡El cliente ya pagó!".
+
+**Forma de pago** (`manualPaymentMode`): **Efectivo** (va directo a cocina) o **Link de pago** (queda
+"Esperando Pago" hasta que el cliente paga en `/pagar?c=...`; vence en 30 minutos). Los textos de los
+mensajes salen de `src/utils/mensajesWhatsApp.ts` (`mensajeDePedido()` elige cuál usar).
+
+Cada vez que se abre la ventana, empieza en la vista del pedido.
+
+### Código de entrega en el detalle del pedido
+En los pedidos manuales (llamada o WhatsApp), la ventana de detalle muestra el **código de entrega** y
+un botón para **reenviar** la confirmación o el link de pago por WhatsApp (y **copiar link** si aún no
+pagan). El servidor solo le manda el código al admin en pedidos manuales (`views/json/pedido.php`).
+
+1. **Datos del cliente:** nombre, celular, dirección y por dónde llegó (**Llamada** o **WhatsApp**).
+2. **Productos:** se eligen en la vista de catálogo, con lo que se quita y los extras.
 3. **Enviar a Cocina:** el servidor recalcula los precios, descuenta el inventario y busca al cliente
    por su celular. Si está registrado, el pedido queda en su cuenta (y suma puntos al entregarse);
    si no, queda como **cliente invitado**. Se cobra en efectivo al entregar.

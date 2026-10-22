@@ -52,8 +52,22 @@ export const modificacionesDe = (item: { name?: string; removed?: { name: string
   const esCreador = item.name === 'Hamburguesa Personalizada';
   return [
     ...(item.removed || []).map(r => ({ texto: `SIN ${r.name}`, tipo: 'sin' as const })),
-    ...(item.extras || []).map(e => esCreador
-      ? { texto: e.name, tipo: 'ingrediente' as const }
-      : { texto: `EXTRA ${e.name}`, tipo: 'extra' as const }),
+    ...(esCreador
+      ? (item.extras || []).map(e => ({ texto: e.name, tipo: 'ingrediente' as const }))
+      : agruparPorNombre(item.extras || []).map(e => ({ texto: `EXTRA ${e.name}${e.veces > 1 ? ` x${e.veces}` : ''}`, tipo: 'extra' as const }))),
   ];
+};
+
+/**
+ * Junta los ingredientes repetidos: [Tocino, Tocino, Queso] → [Tocino ×2, Queso ×1].
+ * Un mismo extra puede pedirse varias veces (llega repetido en la lista).
+ */
+export const agruparPorNombre = (lista: { name: string }[]): { name: string; veces: number }[] => {
+  const grupos: { name: string; veces: number }[] = [];
+  for (const ing of lista) {
+    const grupo = grupos.find(g => g.name === ing.name);
+    if (grupo) grupo.veces++;
+    else grupos.push({ name: ing.name, veces: 1 });
+  }
+  return grupos;
 };

@@ -58,3 +58,9 @@ aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm r
 |---|---|
 | **El archivo completo** | `npm run build` falla con `Could not resolve ".../format"` porque lo importan: `src/pages/AdminDashboard.tsx`, `src/pages/ClientDashboard.tsx`, `src/pages/DeliveryDashboard.tsx`, `src/pages/KitchenDashboard.tsx`, `src/pages/Landing.tsx`, `src/pages/admin/ClientsSection.tsx`, `src/pages/admin/InventorySection.tsx`, `src/pages/admin/MapSection.tsx`, `src/pages/admin/MenuSection.tsx`, `src/pages/admin/OrdersSection.tsx`, `src/pages/admin/OverviewSection.tsx`, `src/pages/admin/SettingsSection.tsx`, `src/pages/client/ActiveOrdersSection.tsx`, `src/pages/client/BuilderSection.tsx`, `src/pages/client/CartSection.tsx`, `src/pages/client/CheckoutSection.tsx`, `src/pages/client/HistorySection.tsx`, `src/pages/client/PaymentGatewayModal.tsx`. |
 | Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |
+
+## `agruparPorNombre(lista)`
+Junta los ingredientes repetidos para mostrarlos una sola vez con su cantidad:
+`[Tocino, Tocino, Queso]` → `Tocino x2, Queso`. Un mismo extra puede pedirse varias veces (llega
+repetido en la lista). La usan `modificacionesDe()` (en las comandas sale "EXTRA Tocino x2"),
+`KitchenDashboard.tsx` y la lista de productos del pedido manual en `AdminDashboard.tsx`.

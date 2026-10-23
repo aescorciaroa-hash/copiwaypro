@@ -2,7 +2,7 @@
 /**
  * Controlador de Productos (menu).
  */
-require_once __DIR__ . '/../models/Producto.php';
+
 
 class ProductController
 {

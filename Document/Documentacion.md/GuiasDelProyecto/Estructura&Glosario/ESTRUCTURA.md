@@ -323,15 +323,26 @@ src/
 ## Otras carpetas
 
 ```
-├── Documentacion.md/   → explicación de cada archivo
-│   └── GuiasDelProyecto/   → guías de todo el proyecto (no de un solo archivo)
-│       ├── Estructura&Glosario/
-│       │   ├── ESTRUCTURA.md   → este archivo: el árbol del proyecto
-│       │   └── GLOSARIO.md     → qué significa cada palabra y símbolo
-│       ├── General/            → guías por tema: instalar, arrancar, pedidos, seguridad...
-│       └── ManualUsuario&Logica/
-│           └── MANUAL_USUARIO_Y_LOGICA.md → cómo se usa el sistema y su lógica
-├── Documentos/         → requerimientos e historias de usuario
+├── Document/                    → toda la documentación del proyecto
+│   ├── Documentacion.md/        → explicación de cada archivo
+│   │   │                          (tiene las mismas carpetas que el proyecto:
+│   │   │                           config/, controllers/, models/, views/, src/,
+│   │   │                           public/, sql/ y un .md por cada archivo)
+│   │   ├── README.md            → índice de la documentación
+│   │   ├── Documentacion/       → material de estudio
+│   │   │   ├── INSTRUCCION PROYECTO.md
+│   │   │   └── Guia_Estudio_CopiwayPRO.docx
+│   │   └── GuiasDelProyecto/    → guías de todo el proyecto (no de un solo archivo)
+│   │       ├── Estructura&Glosario/
+│   │       │   ├── ESTRUCTURA.md   → este archivo: el árbol del proyecto
+│   │       │   └── GLOSARIO.md     → qué significa cada palabra y símbolo
+│   │       ├── General/            → guías por tema: instalar, arrancar, pedidos, seguridad...
+│   │       └── ManualUsuario&Logica/
+│   │           └── MANUAL_USUARIO_Y_LOGICA.md → cómo se usa el sistema y su lógica
+│   │
+│   └── DocumentacionProyecto/   → requerimientos e historias de usuario (Word y Excel)
+│       └── REQUERIMIENTOS ACTUALIZADOS/ → la versión más nueva de esos documentos
+│
 ├── node_modules/       → librerías de React (no se toca)
 └── vendor/             → librerías de PHP (no se toca)
 ```

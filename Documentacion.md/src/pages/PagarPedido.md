@@ -63,3 +63,15 @@ beneficios (puntos, 15 % en el cumpleaños, seguimiento) y el botón **Crear mi 
 ## Celulares de prueba
 Los mismos de la pasarela: `3991111111` aprobado, `3992222222` rechazado, `3993333333` error
 (ver [Pagos de prueba](../../GuiasDelProyecto/General/10-pagos.md)).
+
+## ¿Qué pasa si se borra?
+
+Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
+sigue usando la versión ya compilada (`public/assets/main.js`). Por eso, si el instructor borra algo
+aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm run dev`).
+
+| Si se borra… | Qué pasa |
+|---|---|
+| **El archivo completo** | `npm run build` falla con `Could not resolve ".../PagarPedido"` porque lo importa: `src/main.tsx`. |
+| La línea `pagar: PagarPedido` de `main.tsx` | El link `/pagar?c=...` abre la página de inicio (Landing) y el cliente no puede pagar. |
+| Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |

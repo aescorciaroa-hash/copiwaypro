@@ -1,6 +1,6 @@
-# views/paginas/ — las 8 páginas
+# views/paginas/ — las 9 páginas
 
-Las 8 vistas son **casi iguales**. Ninguna tiene HTML propio: todas cargan la misma aplicación de
+Las 9 vistas son **casi iguales**. Ninguna tiene HTML propio: todas cargan la misma aplicación de
 React y solo cambian el valor de `$pagina`, que le dice a React qué pantalla mostrar.
 
 ## La forma de todas
@@ -33,7 +33,7 @@ Navegador: /admin
  → src/pages/AdminDashboard.tsx (la pantalla que ves)
 ```
 
-## Tabla de las 8 páginas
+## Tabla de las 9 páginas
 | Archivo | `$pagina` | Dirección | Pantalla de React (`src/pages/`) |
 |---|---|---|---|
 | [landing.php](landing.md) | `landing` | `/` | `Landing.tsx` |
@@ -44,6 +44,7 @@ Navegador: /admin
 | [cliente.php](cliente.md) | `client` | `/client` | `ClientDashboard.tsx` |
 | [cocina.php](cocina.md) | `kitchen` | `/kitchen` | `KitchenDashboard.tsx` |
 | [domiciliario.php](domiciliario.md) | `delivery` | `/delivery` | `DeliveryDashboard.tsx` |
+| [pagar.php](pagar.md) | `pagar` | `/pagar?c=código` | `PagarPedido.tsx` |
 
 **Importante:** el valor de `$pagina` debe coincidir con una clave de `PAGINAS` en `src/main.tsx`.
 Si no coincide, React muestra la página de inicio (Landing).

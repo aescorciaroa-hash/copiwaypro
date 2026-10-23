@@ -122,6 +122,7 @@ nuevos se guardan en `store/almacenAplicacion.ts` y todas las pantallas se actua
 | [SyncController](controllers/SyncController.md) | `/api/sync` |
 | [PushController](controllers/PushController.md) | `/api/push` |
 | [UploadController](controllers/UploadController.md) | `/api/uploads/product-image` |
+| [PaymentLinkController](controllers/PaymentLinkController.md) | `/api/pay-link/...` link de pago del pedido manual |
 
 ### models/ — [cómo funciona un modelo](models/README.md)
 [Cliente](models/Cliente.md) · [Producto](models/Producto.md) · [Ingrediente](models/Ingrediente.md) ·
@@ -138,7 +139,7 @@ Servicios (las reglas grandes, también en `models/`):
 ### views/
 - json/ — [qué son](views/json/README.md): [cliente](views/json/cliente.md) · [ingrediente](views/json/ingrediente.md) · [pedido](views/json/pedido.md) · [personal](views/json/personal.md) · [producto](views/json/producto.md)
 - layouts/: [cabecera](views/layouts/cabecera.md) · [pie](views/layouts/pie.md)
-- paginas/ — [las 8 páginas](views/paginas/README.md): [admin](views/paginas/admin.md) · [cliente](views/paginas/cliente.md) · [cocina](views/paginas/cocina.md) · [domiciliario](views/paginas/domiciliario.md) · [landing](views/paginas/landing.md) · [login](views/paginas/login.md) · [recuperar](views/paginas/recuperar.md) · [registro](views/paginas/registro.md)
+- paginas/ — [las 9 páginas](views/paginas/README.md): [admin](views/paginas/admin.md) · [cliente](views/paginas/cliente.md) · [cocina](views/paginas/cocina.md) · [domiciliario](views/paginas/domiciliario.md) · [landing](views/paginas/landing.md) · [login](views/paginas/login.md) · [recuperar](views/paginas/recuperar.md) · [registro](views/paginas/registro.md) · [pagar](views/paginas/pagar.md)
 
 ### src/ (React) — [React en 5 minutos](src/README.md)
 | Carpeta | Archivos |
@@ -150,8 +151,8 @@ Servicios (las reglas grandes, también en `models/`):
 | context/ | [ThemeContext.tsx](src/context/ThemeContext.md) — tema claro/oscuro |
 | hooks/ | [useForm.ts](src/hooks/useForm.md) — formularios |
 | lib/ | [format.ts](src/lib/format.md) · [pasarela.ts](src/lib/pasarela.md) · [pushNotifications.ts](src/lib/pushNotifications.md) |
-| utils/ | [audio.ts](src/utils/audio.md) · [generarCierrePdf.ts](src/utils/generarCierrePdf.md) |
-| pages/ | [Landing](src/pages/Landing.md) · [Login](src/pages/Login.md) · [Register](src/pages/Register.md) · [ForgotPassword](src/pages/ForgotPassword.md) · [AdminDashboard](src/pages/AdminDashboard.md) · [ClientDashboard](src/pages/ClientDashboard.md) · [KitchenDashboard](src/pages/KitchenDashboard.md) · [DeliveryDashboard](src/pages/DeliveryDashboard.md) |
+| utils/ | [audio.ts](src/utils/audio.md) · [generarCierrePdf.ts](src/utils/generarCierrePdf.md) · [mensajesWhatsApp.ts](src/utils/mensajesWhatsApp.md) |
+| pages/ | [Landing](src/pages/Landing.md) · [Login](src/pages/Login.md) · [Register](src/pages/Register.md) · [ForgotPassword](src/pages/ForgotPassword.md) · [AdminDashboard](src/pages/AdminDashboard.md) · [ClientDashboard](src/pages/ClientDashboard.md) · [KitchenDashboard](src/pages/KitchenDashboard.md) · [DeliveryDashboard](src/pages/DeliveryDashboard.md) · [PagarPedido](src/pages/PagarPedido.md) |
 | pages/admin/ | [qué son](src/pages/admin/README.md): [Overview](src/pages/admin/OverviewSection.md) · [Orders](src/pages/admin/OrdersSection.md) · [Map](src/pages/admin/MapSection.md) · [Menu](src/pages/admin/MenuSection.md) · [Inventory](src/pages/admin/InventorySection.md) · [Staff](src/pages/admin/StaffSection.md) · [Clients](src/pages/admin/ClientsSection.md) · [Settings](src/pages/admin/SettingsSection.md) |
 | pages/client/ | [qué son](src/pages/client/README.md): [Catalog](src/pages/client/CatalogSection.md) · [Builder](src/pages/client/BuilderSection.md) · [Cart](src/pages/client/CartSection.md) · [Checkout](src/pages/client/CheckoutSection.md) · [PaymentGatewayModal](src/pages/client/PaymentGatewayModal.md) · [ActiveOrders](src/pages/client/ActiveOrdersSection.md) · [History](src/pages/client/HistorySection.md) · [Profile](src/pages/client/ProfileSection.md) · [ingredientArt](src/pages/client/ingredientArt.md) |
 

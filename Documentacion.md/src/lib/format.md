@@ -12,6 +12,7 @@ nombre del vehículo y las personalizaciones de un producto (SIN / EXTRA).
 | `vehicleWithModel` | `AdminDashboard.tsx`, `admin/MapSection.tsx`, `admin/OrdersSection.tsx`, `DeliveryDashboard.tsx`, `client/HistorySection.tsx` |
 | `vehicleLabel` | Lo usa `vehicleWithModel` aquí mismo |
 | `modificacionesDe` | `KitchenDashboard.tsx` (tarjetas), `admin/OrdersSection.tsx` (comandas activas), `AdminDashboard.tsx` (detalle del pedido) |
+| `agruparPorNombre` | Lo usa `modificacionesDe` aquí mismo, y también `KitchenDashboard.tsx`, `AdminDashboard.tsx` (pedido manual) y `PagarPedido.tsx` |
 
 ## Funciones
 ### `orderCode(id)`
@@ -48,6 +49,12 @@ En la hamburguesa del Creador Interactivo, `extras` es la receta completa que ar
 adicional; por eso no se le pone "EXTRA". Las pantallas eligen el color con `tipo`, no buscando la
 palabra "SIN" dentro del texto (así un ingrediente como "Salsa Insignia" no se pinta de rojo).
 
+### `agruparPorNombre(lista)`
+Junta los ingredientes repetidos para mostrarlos una sola vez con su cantidad:
+`[Tocino, Tocino, Queso]` → `Tocino x2, Queso`. Un mismo extra puede pedirse varias veces (llega
+repetido en la lista). La usan `modificacionesDe()` (en las comandas sale "EXTRA Tocino x2"),
+`KitchenDashboard.tsx` y la lista de productos del pedido manual en `AdminDashboard.tsx`.
+
 ## ¿Qué pasa si se borra?
 
 Los cambios en `src/` **no se ven** hasta compilar con `npm run build`: mientras tanto el navegador
@@ -58,9 +65,3 @@ aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm r
 |---|---|
 | **El archivo completo** | `npm run build` falla con `Could not resolve ".../format"` porque lo importan: `src/pages/AdminDashboard.tsx`, `src/pages/ClientDashboard.tsx`, `src/pages/DeliveryDashboard.tsx`, `src/pages/KitchenDashboard.tsx`, `src/pages/Landing.tsx`, `src/pages/admin/ClientsSection.tsx`, `src/pages/admin/InventorySection.tsx`, `src/pages/admin/MapSection.tsx`, `src/pages/admin/MenuSection.tsx`, `src/pages/admin/OrdersSection.tsx`, `src/pages/admin/OverviewSection.tsx`, `src/pages/admin/SettingsSection.tsx`, `src/pages/client/ActiveOrdersSection.tsx`, `src/pages/client/BuilderSection.tsx`, `src/pages/client/CartSection.tsx`, `src/pages/client/CheckoutSection.tsx`, `src/pages/client/HistorySection.tsx`, `src/pages/client/PaymentGatewayModal.tsx`. |
 | Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |
-
-## `agruparPorNombre(lista)`
-Junta los ingredientes repetidos para mostrarlos una sola vez con su cantidad:
-`[Tocino, Tocino, Queso]` → `Tocino x2, Queso`. Un mismo extra puede pedirse varias veces (llega
-repetido en la lista). La usan `modificacionesDe()` (en las comandas sale "EXTRA Tocino x2"),
-`KitchenDashboard.tsx` y la lista de productos del pedido manual en `AdminDashboard.tsx`.

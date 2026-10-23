@@ -39,3 +39,10 @@ Muestra la notificación del sistema. `options` tiene el texto (`body`), el íco
 1. Cierra la notificación.
 2. Si ya hay una pestaña de la app abierta, la lleva a la URL y le da el foco.
 3. Si no hay ninguna, abre una ventana nueva (`openWindow`).
+
+## ¿Qué pasa si se borra?
+| Si se borra… | Qué pasa |
+|---|---|
+| el archivo | el resto de la app funciona, pero al activar las notificaciones falla `navigator.serviceWorker.register(...)` (404) y **no llegan notificaciones push** |
+| el evento `push` | el navegador recibe el mensaje pero no muestra nada |
+| el evento `notificationclick` | la notificación sale, pero al tocarla no abre la página |

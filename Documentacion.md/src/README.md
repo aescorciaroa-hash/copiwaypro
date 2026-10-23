@@ -27,8 +27,8 @@ window.__DATOS__ = {usuario, ...}   → servicios/api.ts y SyncDatos.tsx lo leen
 | [context/](context/) | `ThemeContext.tsx`: tema claro/oscuro. |
 | [hooks/](hooks/) | `useForm.ts`: manejo de formularios. |
 | [lib/](lib/) | Funciones de ayuda: formato de dinero, pasarela de pago, notificaciones push. |
-| [utils/](utils/) | Sonidos y el PDF del cierre de caja. |
-| [pages/](pages/) | Las **pantallas**: Landing, Login, paneles de admin, cliente, cocina y domiciliario. |
+| [utils/](utils/) | Sonidos, el PDF del cierre de caja y los mensajes de WhatsApp del pedido manual. |
+| [pages/](pages/) | Las **pantallas**: Landing, Login, paneles de admin, cliente, cocina y domiciliario, y la página del link de pago (`PagarPedido`). |
 
 ---
 

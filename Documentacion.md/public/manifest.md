@@ -20,3 +20,9 @@ pantalla de inicio** (nombre, ícono, colores). Así funciona casi como una app 
 | `background_color` | `#ffffff` | Color de fondo al abrir. |
 | `theme_color` | `#f97316` | Color naranja de la barra superior (el mismo de `<meta name="theme-color">`). |
 | `icons` | `favicon.svg` | Ícono de la app. |
+
+## ¿Qué pasa si se borra?
+| Si se borra… | Qué pasa |
+|---|---|
+| el archivo | la página sigue funcionando; solo sale un error 404 de `manifest.json` en la consola del navegador y la app ya no se puede **instalar** en el celular con su nombre e ícono |
+| un campo (ej. `icons`) | al instalarla, el celular usa un ícono o nombre por defecto |

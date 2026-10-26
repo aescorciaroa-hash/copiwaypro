@@ -21,6 +21,40 @@ Bloquea el inicio de sesión de **un correo** después de 5 intentos fallidos en
 - **Lo cargan:** `controllers/AuthController.php`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** INTENTO_LOGIN.
+3. **Quién lo usa:** `controllers/AuthController.php` (en el login).
+4. **Otros que usa:** ningún otro modelo.
+5. **Sus métodos que otros pueden llamar:** `registrar()`, `contarFallosRecientes()`, `excedeLimite()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → IntentoLogin → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `IntentoLogin` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `IntentoLogin`?**  
+Con la base de datos (tablas INTENTO_LOGIN); con quien lo usa: `controllers/AuthController.php` (en el login). Y con: ningún otro modelo.
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Para qué sirve?**  
+Guarda cada intento de entrar. Si hay muchos fallos seguidos (`excedeLimite()`), bloquea por un rato. Evita que adivinen la clave probando.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...IntentoLogin.php'"* o *"Class 'IntentoLogin' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

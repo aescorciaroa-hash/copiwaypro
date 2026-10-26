@@ -31,6 +31,55 @@ Sabe quién inició sesión y con qué rol.
 ## ¿Con qué se conecta?
 - **Lo carga:** `public/index.php` (en todas las peticiones).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** **no tiene constructor**. Hace `global $conn;` **dentro de cada método** que consulta (`buscarPorCorreo()`, `usuarioSinDominio()`, `usuarioActual()`).
+2. **Tablas que toca:** ADMINISTRADOR, AYUDANTE_COCINA, DOMICILIARIO, CLIENTE.
+3. **Quién lo usa:** no se crea con `new`: se usa directo `Auth::check()`, `Auth::rol()`… (métodos `static`). Lo carga `public/index.php` y lo usan `helpers.php` (`requiereSesion()`), `AuthController`, `PaginaController`, `SyncController` y casi todos los controladores (`Auth::id()`).
+4. **Otros que usa:** `Session` (para cerrar sesión) y `$_SESSION` (donde guarda el usuario).
+5. **Sus métodos que otros pueden llamar:** `check()`, `rol()`, `id()`, `intentarLogin()`, `intentarLoginConPin()`, `login()`, `usuarioActual()`, `logout()`.
+
+```
+React (Login) → /api/auth/login → AuthController → Auth::intentarLogin() → MySQL (4 tablas) → $_SESSION
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `Auth` a la base de datos?**  
+Este **no tiene constructor**. Hace `global $conn;` **dentro de cada método** que consulta (`buscarPorCorreo()`, `usuarioSinDominio()`, `usuarioActual()`).
+
+**¿Con qué se conecta `Auth`?**  
+Con la base de datos (tablas ADMINISTRADOR, AYUDANTE_COCINA, DOMICILIARIO, CLIENTE); con quien lo usa: no se crea con `new`: se usa directo `Auth::check()`, `Auth::rol()`… (métodos `static`). Lo carga `public/index.php` y lo usan `helpers.php` (`requiereSesion()`), `AuthController`, `PaginaController`, `SyncController` y casi todos los controladores (`Auth::id()`). Y con: `Session` (para cerrar sesión) y `$_SESSION` (donde guarda el usuario).
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Por qué `Auth` no tiene `new Auth()`?**  
+Porque sus métodos son `static`: se llaman con `Auth::metodo()`. No guarda datos propios; lo que recuerda está en `$_SESSION`.
+
+**¿En qué tabla busca al usuario?**  
+En las 4: `ADMINISTRADOR`, `AYUDANTE_COCINA`, `DOMICILIARIO` y `CLIENTE` (la constante `TABLAS`). Prueba una por una hasta encontrar el correo.
+
+**¿Cómo sabe el rol?**  
+Por la tabla donde encontró el correo: si estaba en `CLIENTE`, el rol es `client`. Lo guarda en `$_SESSION['usuario_rol']`.
+
+**¿Cómo revisa la contraseña?**  
+Con `password_verify($clave, $fila['contrasena'])`: compara lo que escribiste con la clave cifrada de la base de datos.
+
+**¿Qué hace `session_regenerate_id(true)`?**  
+Cambia el id de la sesión al entrar, para que nadie pueda usar un id viejo robado.
+
+**¿Qué pasa si desactivan la cuenta mientras el usuario está conectado?**  
+`usuarioActual()` vuelve a leer la cuenta en cada petición; si está inactiva, cierra la sesión y responde 401.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...Auth.php'"* o *"Class 'Auth' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

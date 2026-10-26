@@ -27,7 +27,7 @@ Algunas carpetas tienen además un `README.md` que explica lo que tienen en com�
 
 ## 📘 Guías generales (empieza aquí)
 Si es la primera vez, lee primero las guías por tema en [GuiasDelProyecto/General/](GuiasDelProyecto/General/README.md):
-[qué es](GuiasDelProyecto/General/01-que-es-copiwaypro.md) · [instalación](GuiasDelProyecto/General/02-instalacion.md) · [arrancar el sistema](GuiasDelProyecto/General/03-arrancar-el-sistema.md) · [cómo funciona](GuiasDelProyecto/General/04-como-funciona.md) · [roles](GuiasDelProyecto/General/05-roles-y-usuarios.md) · [ciclo de un pedido](GuiasDelProyecto/General/06-ciclo-de-un-pedido.md) · [base de datos](GuiasDelProyecto/General/07-base-de-datos.md) · [configuración](GuiasDelProyecto/General/08-configuracion.md) · [seguridad](GuiasDelProyecto/General/09-seguridad.md) · [pagos](GuiasDelProyecto/General/10-pagos.md) · [notificaciones y correo](GuiasDelProyecto/General/11-notificaciones-y-correo.md) · [hacer cambios](GuiasDelProyecto/General/12-como-hacer-cambios.md) · [problemas comunes](GuiasDelProyecto/General/13-problemas-comunes.md) · [comandos](GuiasDelProyecto/General/14-comandos.md) · [**si algo deja de funcionar**](GuiasDelProyecto/General/15-si-algo-deja-de-funcionar.md)
+[qué es](GuiasDelProyecto/General/01-que-es-copiwaypro.md) · [instalación](GuiasDelProyecto/General/02-instalacion.md) · [arrancar el sistema](GuiasDelProyecto/General/03-arrancar-el-sistema.md) · [cómo funciona](GuiasDelProyecto/General/04-como-funciona.md) · [roles](GuiasDelProyecto/General/05-roles-y-usuarios.md) · [ciclo de un pedido](GuiasDelProyecto/General/06-ciclo-de-un-pedido.md) · [base de datos](GuiasDelProyecto/General/07-base-de-datos.md) · [configuración](GuiasDelProyecto/General/08-configuracion.md) · [seguridad](GuiasDelProyecto/General/09-seguridad.md) · [pagos](GuiasDelProyecto/General/10-pagos.md) · [notificaciones y correo](GuiasDelProyecto/General/11-notificaciones-y-correo.md) · [hacer cambios](GuiasDelProyecto/General/12-como-hacer-cambios.md) · [problemas comunes](GuiasDelProyecto/General/13-problemas-comunes.md) · [comandos](GuiasDelProyecto/General/14-comandos.md) · [**si algo deja de funcionar**](GuiasDelProyecto/General/15-si-algo-deja-de-funcionar.md) · [**¿cómo se conecta todo? + preguntas**](GuiasDelProyecto/General/16-conexiones-y-preguntas.md) · [**banco de preguntas (todos los temas)**](GuiasDelProyecto/General/17-banco-de-preguntas.md)
 
 El resto de esta carpeta documenta **cada archivo** del proyecto.
 
@@ -82,7 +82,6 @@ nuevos se guardan en `store/almacenAplicacion.ts` y todas las pantallas se actua
 |---|---|
 | [.gitignore](.gitignore.md) | Qué no se sube a GitHub. |
 | [.htaccess](.htaccess.md) | Reglas de Apache: todo va a `public/index.php`. |
-| [composer.json](composer.md) | Librerías de PHP (PHPMailer, web-push). |
 | [package.json](package.md) | Librerías de React y comandos (`npm run build`). |
 | [vite.config.ts](vite.config.md) | Configuración de la compilación de React. |
 | [tsconfig.json](tsconfig.md) | Configuración de TypeScript. |
@@ -161,8 +160,8 @@ Servicios (las reglas grandes, también en `models/`):
 ## 3. Lo que no se documenta archivo por archivo
 | Qué | Por qué |
 |---|---|
-| `node_modules/` y `vendor/` | Son librerías descargadas (`npm install`, `composer install`), no código del proyecto. |
-| `package-lock.json` y `composer.lock` | Los genera el instalador solo: guardan la versión exacta de cada librería. No se editan a mano. |
+| `node_modules/` | Son librerías de React descargadas (`npm install`), no código del proyecto. |
+| `package-lock.json` | Lo genera `npm install` solo: guardan la versión exacta de cada librería. No se editan a mano. |
 | `public/assets/` | Es `src/` compilado por `npm run build`. Se documenta su código fuente (`src/`). |
 | `Documentos/`, archivos `.docx` y `.xlsx` | Documentos del proyecto (requerimientos, historias de usuario), no código. |
 | [GuiasDelProyecto/ManualUsuario&Logica/MANUAL_USUARIO_Y_LOGICA.md](GuiasDelProyecto/ManualUsuario&Logica/MANUAL_USUARIO_Y_LOGICA.md) | Manual de usuario del sistema. |

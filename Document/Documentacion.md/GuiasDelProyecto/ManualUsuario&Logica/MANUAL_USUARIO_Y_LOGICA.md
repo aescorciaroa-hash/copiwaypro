@@ -59,7 +59,7 @@ Cada persona entra con su propio usuario y solo ve lo que le corresponde a su ro
 
 ## 3. REGLAS DE NEGOCIO INQUEBRANTABLES
 
-1.  **Cero Crédito**: un pedido con pago digital solo llega a cocina si el pago fue **aprobado**. Un pedido en efectivo (incluidos los que registra el administrador por llamada o WhatsApp) llega a cocina de inmediato y se cobra al entregarlo.
+1.  **Cero Crédito**: un pedido con pago digital solo llega a cocina si el pago fue **aprobado**. Un pedido en efectivo (incluidos los que registra el administrador por llamada o WhatsApp) llega a cocina de inmediato y se cobra al entregarlo. Un pedido manual con **link de pago** espera ("Esperando Pago") y solo llega a cocina cuando el cliente paga.
 2.  **Tarifa Plana de Domicilio**: todos los pedidos pagan el mismo valor de envío, sin importar la distancia. Lo define el administrador.
 3.  **Punto de No Retorno**: una vez confirmado el pedido, el cliente ya no puede editarlo ni cancelarlo.
 4.  **Habeas Data**: nadie puede registrarse como cliente sin aceptar la política de tratamiento de datos. El sistema guarda la fecha de aceptación.
@@ -77,13 +77,15 @@ Cada persona entra con su propio usuario y solo ve lo que le corresponde a su ro
 ### 4.1 Los estados
 | Estado | Qué significa | Quién lo cambia |
 |---|---|---|
-| **Pendiente** | El pedido fue confirmado y espera a la cocina. | Se crea así cuando el cliente confirma. |
+| **Esperando Pago** | Pedido manual con link de pago que el cliente todavía no ha pagado. **No llega a cocina.** | Se crea así cuando el administrador elige "Link de pago". |
+| **Pendiente** | El pedido fue confirmado y espera a la cocina. | Se crea así cuando el cliente confirma (o cuando paga el link). |
 | **En Preparación** | La cocina lo está preparando. | Ayudante de cocina (o administrador). |
 | **Listo** | Está empacado y espera domiciliario. | Ayudante de cocina (o administrador). |
 | **Listo – Recepcionado** | Un domiciliario lo tomó, pero aún no ha salido. | Domiciliario. |
 | **En Camino** | El domiciliario salió hacia la dirección del cliente. | Domiciliario. |
 | **Entregado** | El cliente lo recibió y dio su PIN. | Domiciliario, con el PIN correcto. |
 | **Archivado** | Ya se incluyó en un cierre de caja. Desaparece de las vistas del día, pero se conserva. | Cierre de caja. |
+| **Cancelado** | El link de pago venció (30 minutos) sin que el cliente pagara. Se devuelve el inventario. | El sistema, automáticamente. |
 
 El sistema **no deja saltarse pasos**: por ejemplo, no se puede marcar como "Listo" un pedido que ya va en camino.
 
@@ -102,8 +104,17 @@ El sistema **no deja saltarse pasos**: por ejemplo, no se puede marcar como "Lis
 
 ### 4.3 Pedidos que llegan por llamada o WhatsApp
 El administrador los registra en **Comandas Activas → Ingreso de Orden Manual**. Desde ahí siguen
-exactamente el mismo recorrido (pasos 3 a 11), con dos diferencias:
-*   Se pagan **en efectivo** al entregar.
+el mismo recorrido (pasos 3 a 11), con estas diferencias:
+*   El administrador elige **cómo paga** el cliente:
+    *   **Efectivo**: se cobra al entregar. El pedido va directo a cocina.
+    *   **Link de pago**: el pedido queda en **"Esperando Pago"** y el sistema crea un link
+        (`/pagar?c=...`) que dura **30 minutos**. El cliente lo abre en su celular, **sin crear cuenta**, y
+        paga con Nequi, Daviplata o Bancolombia. Al aprobarse el pago, el pedido pasa a "Pendiente" y llega
+        a cocina. Si no paga a tiempo, el pedido se **cancela solo** y se devuelve el inventario.
+*   Al registrarlo aparece la ventana **"Pedido Registrado"** con el botón **"Enviar por WhatsApp"**, que
+    abre el chat del cliente con el mensaje ya escrito: en efectivo, el resumen, el total y el **código de
+    entrega**; con link, el link de pago (el código se le muestra al cliente cuando paga). Si el cliente no
+    está registrado, el mensaje lo invita a registrarse.
 *   Si el celular que da la persona ya está registrado como cliente, el pedido queda **en su cuenta**
     (y le suma puntos). Si no, queda como **cliente invitado**: solo con su nombre, celular y dirección.
 
@@ -267,9 +278,10 @@ El panel tiene un menú lateral con ocho secciones, además de una campana de **
 *   **Ingreso de Orden Manual** (pedidos por llamada o WhatsApp):
     1.  Datos del cliente: nombre, celular, por dónde llegó (**Llamada** o **WhatsApp**) y dirección. Los cuatro son obligatorios.
     2.  Productos: se eligen del menú, con lo que se quita y los extras.
-    3.  **Enviar a Cocina**: el sistema calcula los precios, descuenta el inventario y busca al cliente por su celular. El aviso confirma el número del pedido y si quedó en la cuenta de un cliente registrado o como invitado.
+    3.  **Forma de pago**: **Efectivo** (se cobra al entregar) o **Link de pago** ("Pago por Nequi, Daviplata o Bancolombia. El link vence en 30 minutos.").
+    4.  **Enviar a Cocina**: el sistema calcula los precios, descuenta el inventario y busca al cliente por su celular. Sale la ventana **"Pedido Registrado"** con el **código de entrega** y el botón **"Enviar por WhatsApp"** (ver 4.3).
 
-    Se cobra en efectivo al entregar. Fuera del horario de atención tampoco se pueden registrar pedidos manuales.
+    En el detalle de un pedido manual el administrador ve el **código de entrega** (para dictárselo por teléfono si hace falta) y puede **reenviar la confirmación** o **reenviar el link de pago**. Los pedidos con link sin pagar aparecen como **"Esperando Pago"**. Fuera del horario de atención tampoco se pueden registrar pedidos manuales.
 
 ### 8.3 Rutas & Zonas
 Mapa con la flota de domiciliarios y los pedidos en reparto, para ver de un vistazo cómo va la logística.
@@ -435,7 +447,9 @@ Mensajes cortos que aparecen en una esquina y se cierran solos. Tienen un color 
 El cliente que las activa recibe **"¡Tu pedido ha llegado!"** cuando el domiciliario confirma la entrega, aunque tenga la página cerrada. Funcionan en Chrome, Edge y Firefox. En iPhone, solo si la página se agregó a la pantalla de inicio.
 
 ### 14.4 WhatsApp
-El sistema **no envía WhatsApp automáticamente**: cuando el pedido va En Camino, el domiciliario tiene el botón **Contactar Cliente**, que abre WhatsApp con el mensaje ya escrito para que solo lo envíe.
+El sistema **no envía WhatsApp automáticamente**: abre WhatsApp con el mensaje ya escrito y la persona solo lo envía. Pasa en dos lugares:
+*   **Domiciliario**: cuando el pedido va En Camino, el botón **Contactar Cliente**.
+*   **Administrador**: al registrar un pedido manual, el botón **Enviar por WhatsApp** (confirmación con el código de entrega, o el link de pago). Desde el detalle del pedido también puede reenviarlo.
 
 ---
 
@@ -449,10 +463,12 @@ El sistema **no envía WhatsApp automáticamente**: cuando el pedido va En Camin
 *   **¿El pago digital es rechazado?** No se crea el pedido, no se descuenta inventario y el cliente puede intentarlo de nuevo.
 *   **¿El cliente pierde internet durante el pago?** El pedido solo se crea cuando el pago queda aprobado y verificado. Un mismo pago no puede generar dos pedidos.
 *   **¿Dos domiciliarios quieren el mismo pedido?** Solo uno lo consigue; el otro recibe el aviso de que ya no está disponible.
-*   **¿El domiciliario tomó un pedido pero no puede llevarlo?** Lo **suelta** (si no ha salido), o el administrador se lo quita desde Comandas Activas.
+*   **¿El domiciliario tomó un pedido pero no puede llevarlo?** Lo **suelta** él mismo, si todavía no ha salido, y vuelve a "Listos" para que lo tome otro. Solo el domiciliario que lo tomó puede soltarlo.
 *   **¿El domiciliario no encuentra la dirección?** Usa **Contactar Cliente** (WhatsApp) mientras el pedido va En Camino.
 *   **¿El cliente se equivocó de dirección después de pagar?** Llama al local y el administrador la corrige en **Comandas Activas → Editar dirección**. El domiciliario ve la nueva dirección y la ruta en pocos segundos, con un aviso. Si el pedido ya fue entregado, ya no se puede cambiar.
-*   **¿Alguien sin cuenta quiere pedir por teléfono?** El administrador lo registra como pedido manual; queda como cliente invitado y se paga en efectivo.
+*   **¿Alguien sin cuenta quiere pedir por teléfono?** El administrador lo registra como pedido manual; queda como cliente invitado y paga en efectivo al recibir o por **link de pago**, sin crear cuenta.
+*   **¿El cliente no paga el link?** A los 30 minutos el pedido se **cancela solo** y el inventario vuelve. Si abre el link después, ve "Este link ya venció" y debe comunicarse con el restaurante.
+*   **¿El cliente perdió el link de pago?** El administrador lo reenvía desde el detalle del pedido ("Reenviar link de pago").
 *   **¿Un cliente registrado pide por WhatsApp?** Al registrar el pedido manual con su celular, queda en su cuenta y suma puntos al entregarse.
 *   **¿El cliente tiene pocos puntos?** La casilla "Usar mis puntos" aparece desactivada y le indica desde cuántos puntos podrá usarlos.
 *   **¿Se creó un empleado por error?** Se da de baja y luego se elimina. Si ya alcanzó a preparar o entregar un pedido, solo puede quedar dado de baja.
@@ -483,6 +499,9 @@ El sistema **no envía WhatsApp automáticamente**: cuando el pedido va En Camin
 | "Este pedido ya fue entregado y no se puede cambiar su dirección" | La dirección solo se corrige con el pedido en curso. | — |
 | "Completa el nombre, el celular y la dirección del cliente" | Falta un dato en el pedido manual. | Completar los cuatro datos del cliente. |
 | "El pago fue rechazado por el banco" | La pasarela no aprobó el pago. | Intentar de nuevo o pagar en efectivo. |
+| "Este link de pago ya venció. Comunícate con el restaurante." | Pasaron los 30 minutos y el pedido se canceló. | El administrador registra el pedido otra vez. |
+| "Este link de pago no existe." | El link está mal copiado. | Pedirle al administrador que lo reenvíe. |
+| "Solo puedes soltar un pedido tuyo que aún no has iniciado." | El domiciliario intentó soltar un pedido ajeno o que ya va En Camino. | Entregarlo, o pedir ayuda al administrador. |
 
 ---
 
@@ -529,7 +548,7 @@ Descripción de cómo se ven las pantallas reales, para quien necesite dibujarla
 *   **Menú**: lista de productos con miniatura y formulario en cuatro pasos.
 *   **Inventario**: tarjetas de insumos con punto de color (semáforo), botones "+" y "−", e historial de movimientos.
 *   **Personal**: tabla con nombre, rol, estado (activo/inactivo con un punto que late) y acciones.
-*   **Comandas**: la ventana de pedido manual tiene tres bloques: datos del cliente (con dos botones para elegir Llamada o WhatsApp), productos añadidos y el pie con subtotal, envío, total y "Enviar a Cocina".
+*   **Comandas**: la ventana de pedido manual tiene tres bloques: datos del cliente (con dos botones para elegir Llamada o WhatsApp), productos añadidos y el pie con subtotal, envío, total, la forma de pago (dos botones: **Efectivo** o **Link de pago**) y "Enviar a Cocina". Después sale la ventana "Pedido Registrado" con el código de entrega y el botón verde "Enviar por WhatsApp".
 *   **Ajustes y Caja**: dos columnas. A la izquierda, la tarifa de domicilio, el horario (con el interruptor de apertura), los seis datos del negocio para el ticket y una **vista previa del ticket** que cambia mientras se escribe (con la etiqueta "Sin guardar" si hay cambios pendientes). A la derecha, el margen de ganancia, el programa de puntos (valor del punto, mínimo y un ejemplo), el botón de cierre de caja y, al final, la pausa de emergencia, separados para que no se presionen por accidente.
 
 ### 17.6 Panel de cocina
@@ -543,7 +562,13 @@ Descripción de cómo se ven las pantallas reales, para quien necesite dibujarla
 *   Lista de pedidos disponibles a un lado (o arriba en celular) y el mapa con la ruta en el área principal.
 *   Botones Waze y Maps, botón verde "Contactar Cliente" y ventana de "Validar Entrega" con cuatro casillas para el PIN.
 
-### 17.8 Pantallas vacías
+### 17.8 Página del link de pago (`/pagar`)
+*   Página pública, sin iniciar sesión, pensada para celular.
+*   Resumen del pedido (productos, envío y total) y los bancos para pagar (Nequi, Daviplata o Bancolombia).
+*   La misma ventana de pasarela del checkout; al aprobarse, muestra el **código de entrega**. Si el cliente no tiene cuenta, lo invita a registrarse.
+*   Si el link venció, muestra "Este link ya venció".
+
+### 17.9 Pantallas vacías
 El sistema nunca muestra una pantalla en blanco. Ejemplos: "Tu carrito está vacío", "No tienes órdenes en curso", "No hay productos en esta categoría", "Sin pedidos pendientes", "No hay comandas activas en este momento", "No hay entregas asignadas en este momento".
 
 ---
@@ -554,7 +579,7 @@ Estas funciones están planeadas para una próxima versión:
 
 | Función | Situación actual |
 |---|---|
-| **Cancelar pedidos** | El estado "Cancelado" existe, pero todavía no hay ninguna pantalla para cancelar un pedido. |
+| **Cancelar pedidos** | Solo se cancelan solos los pedidos con link de pago que vencen sin pagarse. Todavía no hay una pantalla para cancelar un pedido a mano. |
 | **Pasarela de pago** | Es de prueba: simula un pago real, pero no cobra dinero. |
 
 > **Antes de usar el sistema con clientes reales**, el administrador debe revisar en **Ajustes → Datos del Negocio** el NIT, la dirección y el teléfono: vienen con datos de ejemplo.
@@ -582,6 +607,8 @@ Estas funciones están planeadas para una próxima versión:
 | **Base** | Dinero de cambio con el que sale el domiciliario. |
 | **Cliente invitado** | Persona sin cuenta cuyo pedido registró el administrador por llamada o WhatsApp. |
 | **Pedido manual** | Pedido que el administrador registra a mano porque llegó por llamada o WhatsApp. |
+| **Link de pago** | Enlace (`/pagar?c=...`) que el administrador le envía al cliente de un pedido manual para que pague por internet sin crear cuenta. Vence a los 30 minutos. |
+| **Esperando Pago** | Estado de un pedido manual con link que aún no se paga. No llega a cocina hasta que se pague. |
 | **Canjear puntos** | Usar los puntos acumulados para pagar parte de los productos de un pedido. |
 | **Liquidación** | Lo que cada domiciliario debe entregar al cierre: su base más el efectivo que cobró. |
 | **Cierre de caja** | Resumen de ventas, pagos e insumos de la jornada, que archiva los pedidos entregados. |

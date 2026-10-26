@@ -24,7 +24,7 @@ Todo lo que aparece en el código del proyecto, explicado fácil.
 | **Rol** | El tipo de usuario: `admin` (administrador), `client` (cliente), `kitchen` (cocina), `delivery` (domiciliario). |
 | **Token de seguridad (CSRF)** | Una clave secreta que la pantalla manda en cada cambio, para demostrar que viene del sistema y no de otra página. |
 | **Compilar** | Convertir el código de React (`src/`) en los archivos que entiende el navegador (`public/assets/`). Se hace con `npm run build`. |
-| **Librería** | Código hecho por otras personas que el proyecto usa (ej. PHPMailer para enviar correos). |
+| **Librería** | Código hecho por otras personas que el proyecto usa (ej. Leaflet para los mapas o jsPDF para el PDF). El PHP del proyecto no usa librerías: el correo y las notificaciones están hechos con funciones que ya trae PHP. |
 
 ## Las partes del MVC
 
@@ -126,6 +126,23 @@ Todo lo que aparece en el código del proyecto, explicado fácil.
 | `date('Y-m-d')` | La fecha de hoy. |
 | `preg_match('/.../', $x)` | Revisa si un texto cumple un patrón (ej. que el PIN sean 4 números). |
 | `random_int(1, 9)` | Un número al azar. |
+| `random_bytes(16)` | 16 bytes al azar (para llaves y códigos que nadie pueda adivinar). |
+| `base64_encode($x)` / `base64_decode($x)` | Convierte bytes en letras y números (y al revés), para poder mandarlos como texto. |
+
+## Correo y notificaciones (sin librerías)
+| Palabra | Qué es |
+|---|---|
+| **SMTP** | El "idioma" de los servidores de correo. `CorreoService` lo usa para hablar con Gmail. |
+| `stream_socket_client(...)` | Abre una conexión con otro servidor (ej. `smtp.gmail.com:587`). |
+| `stream_socket_enable_crypto(...)` | Cifra esa conexión (TLS), para que nadie lea la clave ni el correo. |
+| `fwrite($socket, ...)` / `fgets($socket)` | Escribe / lee una línea en la conexión. |
+| **Código SMTP** | El número con que Gmail contesta: `220` listo, `250` ok, `235` sesión iniciada, `354` mándalo, `221` adiós. |
+| **Web Push** | El estándar para mandar notificaciones al celular aunque la página esté cerrada. |
+| **VAPID** | Un par de llaves (pública y privada) que prueban que el aviso viene de esta tienda. |
+| **openssl** | Funciones de PHP para cifrar (`openssl_encrypt`) y firmar (`openssl_sign`). |
+| **curl** | Funciones de PHP para llamar a otra página o servicio (`curl_init`, `curl_exec`). |
+| **Cifrar** | Volver un mensaje ilegible; solo quien tiene la llave lo puede leer. |
+| **Firmar** | Ponerle un sello que prueba quién lo mandó y que nadie lo cambió. |
 
 ## La base de datos en PHP (MySQLi)
 

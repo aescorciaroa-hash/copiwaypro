@@ -57,6 +57,49 @@ Tiene las reglas de los pedidos: crearlos, cambiar su estado y entregarlos.
 - **Usa:** `Pedido`, `Configuracion`, `Ingrediente`, `PagoService`, `PushNotificationService`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** PEDIDO, DETALLE_PEDIDO, PERSONALIZACION, PRODUCTO, RECETA, INGREDIENTE, CATEGORIA, CLIENTE, RESENA.
+3. **Quién lo usa:** `OrderController`, `PaymentController`, `PaymentLinkController` y `SyncController`.
+4. **Otros que usa:** `Pedido`, `Configuracion`, `Ingrediente`, `PagoService` y `PushNotificationService` (los 5 con `require_once` arriba del archivo, y `new` cuando los necesita, ej. `$ingredienteModel->descontarPorReceta(...)`).
+5. **Sus métodos que otros pueden llamar:** `crear()`, `crearManual()`, `pedidoPorLink()`, `iniciarPagoLink()`, `consultarPagoLink()`, `cancelarLinksVencidos()`, `cotizar()`, `marcarPreparando()`, `marcarListo()`, `tomarPedido()`, `liberarPedido()`, `aceptarEntrega()`, `confirmarEntrega()`, `cambiarDireccion()`, `guardarDestino()`, `calificar()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → PedidoService → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `PedidoService` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `PedidoService`?**  
+Con la base de datos (tablas PEDIDO, DETALLE_PEDIDO, PERSONALIZACION, PRODUCTO, RECETA, INGREDIENTE, CATEGORIA, CLIENTE, RESENA); con quien lo usa: `OrderController`, `PaymentController`, `PaymentLinkController` y `SyncController`. Y con: `Pedido`, `Configuracion`, `Ingrediente`, `PagoService` y `PushNotificationService` (los 5 con `require_once` arriba del archivo, y `new` cuando los necesita, ej. `$ingredienteModel->descontarPorReceta(...)`).
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Por qué es el modelo más grande?**  
+Porque tiene todo el ciclo del pedido: crear, preparar, listo, tomar, entregar, calificar, pagos por link.
+
+**¿Cómo se conecta con el inventario?**  
+Con `Ingrediente`: al crear un pedido descuenta los ingredientes de la receta.
+
+**¿Cómo se conecta con las notificaciones?**  
+Con `PushNotificationService`: al entregar el pedido le manda un aviso al celular del cliente.
+
+**¿Por qué usa transacciones?**  
+Crear un pedido guarda en varias tablas y descuenta inventario. Si algo falla, `rollback` deshace todo.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...PedidoService.php'"* o *"Class 'PedidoService' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

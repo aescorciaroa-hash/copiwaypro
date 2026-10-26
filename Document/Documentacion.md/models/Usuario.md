@@ -20,6 +20,43 @@ Maneja los administradores (tabla ADMINISTRADOR).
 - **Lo cargan:** `sql/create-admin.php`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** ADMINISTRADOR.
+3. **Quién lo usa:** solo `sql/create-admin.php` (el script para crear el primer administrador). La app no lo usa.
+4. **Otros que usa:** ningún otro modelo.
+5. **Sus métodos que otros pueden llamar:** `buscarPorCorreo()`, `esUsado()`, `crear()`.
+
+```
+php sql/create-admin.php → config/database.php ($conn) → Usuario → MySQL (tabla ADMINISTRADOR)
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `Usuario` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `Usuario`?**  
+Con la base de datos (tablas ADMINISTRADOR); con quien lo usa: solo `sql/create-admin.php` (el script para crear el primer administrador). La app no lo usa. Y con: ningún otro modelo.
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php`, pero aquí no la carga `public/index.php`: la carga el propio `sql/create-admin.php` con `require`.
+
+**¿Por qué la app no lo usa?**  
+Porque el login lo hace `Auth` y el personal lo maneja `Personal`. `Usuario` solo sirve para crear el admin inicial.
+
+**¿Cómo se conecta si no pasa por `public/index.php`?**  
+`sql/create-admin.php` hace él mismo `require` de `config/database.php` y de `models/Usuario.php`.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...Usuario.php'"* o *"Class 'Usuario' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

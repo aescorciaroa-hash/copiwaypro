@@ -24,7 +24,7 @@ Cliente      ──(se registra solo en /register)
 | Pestaña | Puede |
 |---|---|
 | Tablero Analítico | Ver ventas, gráficas, productos más vendidos y el estado de la operación. |
-| Comandas Activas | Ver todos los pedidos y el mapa, soltar un pedido de un domiciliario, **corregir la dirección** de un pedido en curso y registrar un **pedido manual** (llamada o WhatsApp). |
+| Comandas Activas | Ver todos los pedidos y el mapa, **corregir la dirección** de un pedido en curso y registrar un **pedido manual** (llamada o WhatsApp). |
 | Rutas & Zonas | Ver la flota y los pedidos en reparto en el mapa. |
 | Gestión de Menú | Crear, editar, ocultar y eliminar productos; recetas; categorías; fotos. |
 | Inventario Express | Registrar insumos, sumar stock, ver el historial. |

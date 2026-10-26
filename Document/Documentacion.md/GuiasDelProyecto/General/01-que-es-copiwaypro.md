@@ -30,7 +30,7 @@ para atender público). CopiwayPRO es el sistema que maneja todo el negocio:
 | Servidor | PHP 8 sin framework, estructura MVC | `config/`, `controllers/`, `models/`, `views/`, `public/` |
 | Base de datos | MySQL 8 | `sql/` |
 | Entorno local | Laragon (Apache + PHP + MySQL) | — |
-| Librerías extra | PHPMailer (correo), web-push (notificaciones), Leaflet (mapas), Recharts (gráficas), jsPDF (PDF) | `vendor/`, `node_modules/` |
+| Librerías extra | Solo en React: Leaflet (mapas), Recharts (gráficas), jsPDF (PDF). El PHP no usa librerías: el correo (Gmail) y las notificaciones push están hechos con PHP puro (`openssl`, `curl`) | `node_modules/` |
 
 ## Cómo se ve por dentro (en una frase)
 **React** dibuja las pantallas y le pide los datos a **PHP**; PHP los busca en **MySQL** y responde en

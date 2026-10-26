@@ -6,7 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
-vendor/
 public/assets/
 public/index.html
 public/uploads/

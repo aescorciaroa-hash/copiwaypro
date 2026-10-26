@@ -14,6 +14,23 @@ Maneja la sesión del usuario.
 - **Lo usan:** `public/index.php` (iniciar), `Auth` (cerrar sesión), `AuthController` y `PaginaController` (token).
 - **Sus constantes:** `NOMBRE` (nombre de la sesión) y `DURACION_MINUTOS` (120).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Con qué se conecta?**  
+Con `$_SESSION` de PHP y la cookie del navegador. La inicia `public/index.php`; la cierra `Auth::logout()`; el token lo usan `AuthController` y `PaginaController`.
+
+**¿Dónde se guarda el token CSRF?**  
+En `$_SESSION['_csrf']`. `Session::csrf()` lo crea y `verificarCsrf()` lo compara.
+
+**¿Cuánto dura la sesión?**  
+`DURACION_MINUTOS` = 120 minutos.
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

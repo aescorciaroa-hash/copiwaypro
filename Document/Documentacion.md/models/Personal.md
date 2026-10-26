@@ -32,6 +32,43 @@ Maneja el personal (tablas AYUDANTE_COCINA y DOMICILIARIO).
 - **Lo cargan:** `controllers/StaffController.php`, `controllers/SyncController.php`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** ADMINISTRADOR, AYUDANTE_COCINA, DOMICILIARIO, LIQUIDACION_DOMICILIARIO, PEDIDO.
+3. **Quién lo usa:** `StaffController` y `SyncController`.
+4. **Otros que usa:** ningún otro modelo. Usa `views/json/personal.php`.
+5. **Sus métodos que otros pueden llamar:** `listar()`, `comoJsonCocina()`, `comoJsonDomicilio()`, `crear()`, `actualizar()`, `eliminarPermanente()`, `actualizarUbicacion()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → Personal → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `Personal` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `Personal`?**  
+Con la base de datos (tablas ADMINISTRADOR, AYUDANTE_COCINA, DOMICILIARIO, LIQUIDACION_DOMICILIARIO, PEDIDO); con quien lo usa: `StaffController` y `SyncController`. Y con: ningún otro modelo. Usa `views/json/personal.php`.
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Por qué una sola clase para 3 tablas?**  
+Porque admin, cocina y domiciliario son "el personal": se crean y editan igual, solo cambia la tabla.
+
+**¿Cómo guarda el PIN y la clave?**  
+Cifrados con `password_hash()`.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...Personal.php'"* o *"Class 'Personal' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

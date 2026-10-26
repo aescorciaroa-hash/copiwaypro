@@ -35,6 +35,43 @@ Maneja los ajustes de la tienda (tabla CONFIGURACION_SISTEMA).
 - **Lo cargan:** `controllers/PaginaController.php`, `controllers/SettingController.php`, `controllers/SyncController.php`, `models/PedidoService.php`, `models/CorreoService.php` (los datos del negocio para el pie del correo de recuperación).
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** CONFIGURACION_SISTEMA, CATEGORIA, PRODUCTO.
+3. **Quién lo usa:** `PaginaController`, `SettingController`, `SyncController`, `models/PedidoService.php` y `models/CorreoService.php`.
+4. **Otros que usa:** ningún otro modelo.
+5. **Sus métodos que otros pueden llamar:** `get()`, `obtener()`, `actualizar()`, `agregarCategoria()`, `eliminarCategoria()`, `tiendaAbiertaAhora()`, `tarifaDomicilio()`, `idIngredienteBolsaGlobal()`, `reglasPuntos()`, `margenGanancia()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → Configuracion → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `Configuracion` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `Configuracion`?**  
+Con la base de datos (tablas CONFIGURACION_SISTEMA, CATEGORIA, PRODUCTO); con quien lo usa: `PaginaController`, `SettingController`, `SyncController`, `models/PedidoService.php` y `models/CorreoService.php`. Y con: ningún otro modelo.
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Por qué lo usan tantos archivos?**  
+Porque tiene los datos de la tienda que todos necesitan: horario, tarifa de domicilio, puntos, nombre del negocio, categorías.
+
+**¿Por qué toca la tabla PRODUCTO?**  
+Para no dejar borrar una categoría que todavía usa algún producto activo.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...Configuracion.php'"* o *"Class 'Configuracion' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

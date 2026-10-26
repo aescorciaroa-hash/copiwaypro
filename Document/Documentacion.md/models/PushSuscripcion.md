@@ -20,6 +20,40 @@ Guarda los celulares que reciben notificaciones.
 - **Lo cargan:** `models/PushNotificationService.php`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** PUSH_SUSCRIPCION.
+3. **Quién lo usa:** `PushController` (cuando el cliente acepta notificaciones) y `models/PushNotificationService.php`.
+4. **Otros que usa:** ningún otro modelo.
+5. **Sus métodos que otros pueden llamar:** `guardar()`, `eliminarPorEndpoint()`, `listarPorCliente()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → PushSuscripcion → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `PushSuscripcion` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `PushSuscripcion`?**  
+Con la base de datos (tablas PUSH_SUSCRIPCION); con quien lo usa: `PushController` (cuando el cliente acepta notificaciones) y `models/PushNotificationService.php`. Y con: ningún otro modelo.
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Qué guarda?**  
+La "dirección" (endpoint) de cada celular o navegador del cliente que aceptó las notificaciones.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...PushSuscripcion.php'"* o *"Class 'PushSuscripcion' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

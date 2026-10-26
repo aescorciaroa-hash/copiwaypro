@@ -34,6 +34,43 @@ Maneja los clientes (tabla CLIENTE).
 - **Lo cargan:** `controllers/AuthController.php`, `controllers/ClientController.php`, `controllers/SyncController.php`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** CLIENTE, CLIENTE_NOTIFICACION, PEDIDO.
+3. **Quién lo usa:** `AuthController` (registro y recuperar clave), `ClientController` (perfil) y `SyncController` (datos de la pantalla).
+4. **Otros que usa:** ningún otro modelo. Usa `views/json/cliente.php` para organizar los datos para React.
+5. **Sus métodos que otros pueden llamar:** `listar()`, `buscar()`, `buscarCrudo()`, `buscarIdPorCorreo()`, `correoOTelefonoExiste()`, `comoJson()`, `notificacionesDe()`, `actualizar()`, `crear()`, `actualizarContrasena()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → Cliente → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `Cliente` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `Cliente`?**  
+Con la base de datos (tablas CLIENTE, CLIENTE_NOTIFICACION, PEDIDO); con quien lo usa: `AuthController` (registro y recuperar clave), `ClientController` (perfil) y `SyncController` (datos de la pantalla). Y con: ningún otro modelo. Usa `views/json/cliente.php` para organizar los datos para React.
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Cómo guarda la contraseña del cliente?**  
+Cifrada con `password_hash()` antes del `INSERT`/`UPDATE`. Nunca se guarda tal cual.
+
+**¿Qué diferencia hay entre `buscar()` y `buscarCrudo()`?**  
+`buscarCrudo()` devuelve la fila tal como está en la tabla. `buscar()` la devuelve organizada para React (sin la contraseña).
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...Cliente.php'"* o *"Class 'Cliente' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

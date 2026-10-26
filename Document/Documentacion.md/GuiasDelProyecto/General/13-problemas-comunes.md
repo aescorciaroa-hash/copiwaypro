@@ -76,8 +76,9 @@ La base de datos se importó sin `--default-character-set=utf8mb4`. Vuelve a imp
 Necesitan internet (OpenStreetMap). Revisa la conexión o F12 → Consola.
 
 ## No llegan las notificaciones ni el correo
-Ver [Notificaciones y correo](11-notificaciones-y-correo.md). Lo más común: no se ejecutó
-`composer install`, faltan las claves en `models/PushNotificationService.php` o los datos en `models/CorreoService.php`, o en Windows falta `OPENSSL_CONF`.
+Ver [Notificaciones y correo](11-notificaciones-y-correo.md). Lo más común: faltan las claves en
+`models/PushNotificationService.php` o los datos de Gmail en `models/CorreoService.php`, o en `php.ini`
+están apagadas las extensiones `openssl` o `curl` (en Laragon vienen prendidas).
 
 ## Comportamientos conocidos (no son errores de configuración)
 - No hay pantalla para **cancelar** un pedido (el estado existe en la base de datos).

@@ -23,3 +23,5 @@ hace cada rol...). Si quieres el detalle de un archivo en particular, está en e
 | 13 | [Problemas comunes](13-problemas-comunes.md) | Errores frecuentes y cómo solucionarlos. |
 | 14 | [Comandos útiles](14-comandos.md) | Todos los comandos en un solo lugar. |
 | 15 | [Si algo deja de funcionar](15-si-algo-deja-de-funcionar.md) | Cómo encontrar lo que se borró a partir del mensaje de error. |
+| 16 | [¿Cómo se conecta todo? + preguntas](16-conexiones-y-preguntas.md) | Cómo se conecta un modelo, con qué se conecta cada archivo y el banco de preguntas del instructor. |
+| 17 | [Banco de preguntas (todos los temas)](17-banco-de-preguntas.md) | Más de 200 preguntas con respuesta corta: MVC, PHP, base de datos, SQL, React, seguridad, pedidos, pagos, caja, errores y cambios. |

@@ -21,6 +21,59 @@ Se encarga de los productos del menú.
 - **Desde la pantalla:** MenuSection.tsx (Gestión de Menú).
 - **Usa los modelos:** `Producto`.
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+
+1. React llama la API (`src/servicios/api.ts`, con `fetch`, la cookie de sesión y el `X-CSRF-Token`).
+2. `public/index.php` → `despacharRuta()` busca la ruta en `config/rutas.php`.
+3. `verificarCsrf()` (si falla → 419) y `requiereRol()` (sin sesión → 401, otro rol → 403).
+4. `cargarControlador()` pone la acción y los `{parametros}` en `$_GET` y hace `require` de este archivo.
+5. Al final del archivo: `new ProductController()` y un `if` elige el método según `$_GET['accion']`.
+6. El método le pide los datos a `Producto` y este usa `$conn` para ir a MySQL.
+7. Contesta con `responderJson()` o `responderError()` (JSON para React).
+
+**Sus rutas** (de `config/rutas.php`):
+
+| Método | Dirección | Acción | Quién puede |
+|---|---|---|---|
+| `POST` | `/api/products` | `store()` | admin |
+| `PUT` | `/api/products/{id}` | `update()` | admin |
+| `DELETE` | `/api/products/{id}` | `destroy()` | admin |
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Con qué modelo se conecta `ProductController`?**  
+Con `Producto`. Lo trae con `require_once __DIR__ . '/../models/...'` y lo crea con `new` (los `static`, como `Auth`, se usan con `::`).
+
+**¿El controlador se conecta directo a la base de datos?**  
+No. El controlador nunca escribe SQL: se lo pide al modelo, y el modelo usa `$conn`.
+
+**¿Quién llama a este controlador?**  
+`cargarControlador()` de `config/helpers.php`, después de que `despacharRuta()` encuentra la ruta en `config/rutas.php`.
+
+**¿Cómo sabe qué método ejecutar?**  
+Por `$_GET['accion']`, que lo pone `cargarControlador()`. El `if` del final del archivo llama el método que corresponde.
+
+**¿Cómo recibe los datos?**  
+Con `entrada()` (junta `$_GET` y el JSON que mandó React) y el `{id}` de la dirección en `$_GET['id']`.
+
+**¿Por qué valida antes de llamar al modelo?**  
+Para contestar 422 con un mensaje claro ("El campo name es obligatorio") sin ir a la base de datos.
+
+**¿Por qué después de `crear()` llama `buscar()`?**  
+Para devolverle a React el producto completo como quedó guardado (con id, categoría y receta).
+
+**¿Qué pasa si se borra este archivo?**  
+Las rutas que lo usan dan error 500 (*"Failed opening required"*) y esa parte de la pantalla deja de funcionar.
+
+**¿Qué pasa si se borra una ruta suya de `config/rutas.php`?**  
+React recibe **404 Ruta no encontrada** al usar esa acción.
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

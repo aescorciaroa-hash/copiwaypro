@@ -39,6 +39,43 @@ Maneja el inventario (tablas INGREDIENTE y MOVIMIENTO_INVENTARIO).
 - **Lo cargan:** `controllers/InventoryController.php`, `models/PedidoService.php`, `models/Producto.php`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** INGREDIENTE, MOVIMIENTO_INVENTARIO, CATEGORIA.
+3. **Quién lo usa:** `InventoryController`, `SyncController`, `models/Producto.php` (la receta) y `models/PedidoService.php` (descontar al vender).
+4. **Otros que usa:** ningún otro modelo. Usa `views/json/ingrediente.php` para organizar los datos.
+5. **Sus métodos que otros pueden llamar:** `listarInventario()`, `listarIngredientes()`, `buscar()`, `comoInventario()`, `crearConStockInicial()`, `actualizar()`, `eliminar()`, `ajustarStock()`, `descontarPorReceta()`, `devolverDePedido()`, `resolverOCrear()`, `registrosDeMovimientos()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → Ingrediente → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `Ingrediente` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `Ingrediente`?**  
+Con la base de datos (tablas INGREDIENTE, MOVIMIENTO_INVENTARIO, CATEGORIA); con quien lo usa: `InventoryController`, `SyncController`, `models/Producto.php` (la receta) y `models/PedidoService.php` (descontar al vender). Y con: ningún otro modelo. Usa `views/json/ingrediente.php` para organizar los datos.
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Cómo se conecta con los pedidos?**  
+`PedidoService` llama `descontarPorReceta()` al crear un pedido y `devolverDePedido()` si se cancela.
+
+**¿Para qué es MOVIMIENTO_INVENTARIO?**  
+Cada vez que el stock sube o baja se guarda una fila: así queda el historial de quién y por qué.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...Ingrediente.php'"* o *"Class 'Ingrediente' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

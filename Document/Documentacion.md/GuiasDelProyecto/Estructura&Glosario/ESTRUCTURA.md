@@ -9,7 +9,6 @@ copiwaypro/
 ├── .htaccess          → hace que todas las direcciones pasen por public/index.php
 ├── .gitignore         → lo que no se sube a GitHub
 ├── README.md          → explicación general del proyecto
-├── composer.json      → librerías de PHP (correos y notificaciones)
 ├── package.json       → librerías de React y los comandos de npm
 ├── vite.config.ts     → configuración para compilar React
 ├── tsconfig.json      → configuración de TypeScript
@@ -336,15 +335,14 @@ src/
 │   │       ├── Estructura&Glosario/
 │   │       │   ├── ESTRUCTURA.md   → este archivo: el árbol del proyecto
 │   │       │   └── GLOSARIO.md     → qué significa cada palabra y símbolo
-│   │       ├── General/            → guías por tema: instalar, arrancar, pedidos, seguridad...
+│   │       ├── General/            → guías por tema: instalar, arrancar, pedidos, seguridad, conexiones y banco de preguntas
 │   │       └── ManualUsuario&Logica/
 │   │           └── MANUAL_USUARIO_Y_LOGICA.md → cómo se usa el sistema y su lógica
 │   │
 │   └── DocumentacionProyecto/   → requerimientos e historias de usuario (Word y Excel)
 │       └── REQUERIMIENTOS ACTUALIZADOS/ → la versión más nueva de esos documentos
 │
-├── node_modules/       → librerías de React (no se toca)
-└── vendor/             → librerías de PHP (no se toca)
+└── node_modules/       → librerías de React (no se toca)
 ```
 
 ## Cómo funciona (ejemplo: cambiar el precio de un producto)

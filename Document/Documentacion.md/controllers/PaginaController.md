@@ -31,6 +31,49 @@ Muestra las páginas del sistema.
 - **Lo abre:** `config/helpers.php`, cuando la pantalla pide una de sus acciones.
 - **Usa los modelos:** `Configuracion`.
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+
+1. El navegador abre una página (ej. `/admin`).
+2. `public/index.php` ve que no empieza con `/api` y llama `despacharPagina()`.
+3. `despacharPagina()` busca la página en `config/paginas.php` y revisa el rol (si no, manda a `/login`).
+4. `cargarControlador()` pone `$_GET['accion']` y hace `require` de este archivo.
+5. El controlador arma los datos y llama `mostrarVista()` → `views/paginas/*.php` (HTML).
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Con qué modelo se conecta `PaginaController`?**  
+Con `Configuracion`, `Auth`. Los trae con `require_once __DIR__ . '/../models/...'` y los crea con `new` (los `static`, como `Auth`, se usan con `::`).
+
+**¿El controlador se conecta directo a la base de datos?**  
+No. El controlador nunca escribe SQL: se lo pide al modelo, y el modelo usa `$conn`.
+
+**¿Quién llama a este controlador?**  
+`cargarControlador()` de `config/helpers.php`, después de `despacharPagina()`.
+
+**¿Cómo sabe qué método ejecutar?**  
+Por `$_GET['accion']`, que lo pone `cargarControlador()`. El `if` del final del archivo llama el método que corresponde.
+
+**¿Cómo recibe los datos?**  
+Con `entrada()` (junta `$_GET` y el JSON que mandó React) y el `{id}` de la dirección en `$_GET['id']`.
+
+**¿Por qué este controlador no está en `rutas.php`?**  
+Porque no es de la API: lo abre `despacharPagina()` con `config/paginas.php`, y devuelve HTML, no JSON.
+
+**¿Cómo le pasa datos a React?**  
+Mete el usuario, el rol, el `csrfToken` y la configuración en la vista (`window.__DATOS__`), así React no tiene que pedirlos otra vez.
+
+**¿Qué pasa si se borra este archivo?**  
+Las rutas que lo usan dan error 500 (*"Failed opening required"*) y esa parte de la pantalla deja de funcionar.
+
+**¿Qué pasa si se borra una ruta suya de `config/rutas.php`?**  
+React recibe **404 Ruta no encontrada** al usar esa acción.
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

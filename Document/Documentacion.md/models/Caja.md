@@ -28,6 +28,43 @@ Lee los datos para el cierre de caja.
 - **Lo cargan:** `models/CajaService.php`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** REPORTE_CAJA, DETALLE_AUDITORIA, LIQUIDACION_DOMICILIARIO, PEDIDO, CLIENTE, DOMICILIARIO, INGREDIENTE, MOVIMIENTO_INVENTARIO.
+3. **Quién lo usa:** `models/CajaService.php` (con `new Caja()`).
+4. **Otros que usa:** ningún otro modelo.
+5. **Sus métodos que otros pueden llamar:** `yaGeneradoHoy()`, `pedidosDelTurno()`, `consumoTeorico()`, `domiciliariosActivos()`, `stockActual()`, `pedidosActivosCount()`, `reporte()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → Caja → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `Caja` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `Caja`?**  
+Con la base de datos (tablas REPORTE_CAJA, DETALLE_AUDITORIA, LIQUIDACION_DOMICILIARIO, PEDIDO, CLIENTE, DOMICILIARIO, INGREDIENTE, MOVIMIENTO_INVENTARIO); con quien lo usa: `models/CajaService.php` (con `new Caja()`). Y con: ningún otro modelo.
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Qué diferencia hay entre `Caja` y `CajaService`?**  
+`Caja` solo **lee** los datos (pedidos del turno, stock, domiciliarios). `CajaService` hace las cuentas y **guarda** el cierre.
+
+**¿Un controlador usa `Caja` directo?**  
+No. `CashClosingController` usa `CajaService`, y `CajaService` usa `Caja`.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...Caja.php'"* o *"Class 'Caja' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

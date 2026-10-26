@@ -1,10 +1,9 @@
 <?php
 /**
- * Envio de correos por SMTP (PHPMailer). Se configura con las constantes de esta clase.
+ * Envio de correos por SMTP (con PHP puro, sin librerias). Se configura con las constantes de esta clase.
  * Si no esta configurado, enviar() devuelve false y la app sigue funcionando.
  */
 
-use PHPMailer\PHPMailer\PHPMailer;
 require_once __DIR__ . '/Configuracion.php';
 
 class CorreoService
@@ -33,42 +32,117 @@ class CorreoService
             return false;
         }
 
+        $textoPlano = $textoPlano !== '' ? $textoPlano : trim(strip_tags($html));
+        $mensaje = self::armarMensaje($para, $asunto, $html, $textoPlano);
+        $socket = null;
+
         try {
-            $mail = new PHPMailer(true);
-            $mail->isSMTP();
-            $mail->Host = self::HOST;
-            $mail->Port = self::PUERTO;
-
+            // 1. Conectarse al servidor de correo ('ssl' cifra desde el inicio, ej. puerto 465)
             $cifrado = strtolower(self::CIFRADO);
+            $servidor = self::HOST . ':' . self::PUERTO;
             if ($cifrado === 'ssl') {
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            } elseif ($cifrado === 'tls') {
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            } else {
-                $mail->SMTPSecure = '';
-                $mail->SMTPAutoTLS = false;
+                $servidor = 'ssl://' . $servidor;
+            }
+            $socket = stream_socket_client($servidor, $codigoError, $textoError, 10);
+            if (!$socket) {
+                throw new Exception('No se pudo conectar a ' . self::HOST . ': ' . $textoError);
+            }
+            stream_set_timeout($socket, 10);
+            self::leerRespuesta($socket, 220);
+
+            // 2. Saludar y, con 'tls', pasar a conexion cifrada (STARTTLS, ej. puerto 587)
+            $nombreEquipo = $_SERVER['SERVER_NAME'] ?? 'localhost';
+            self::comando($socket, 'EHLO ' . $nombreEquipo, 250);
+            if ($cifrado === 'tls') {
+                self::comando($socket, 'STARTTLS', 220);
+                if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+                    throw new Exception('No se pudo cifrar la conexion (TLS).');
+                }
+                self::comando($socket, 'EHLO ' . $nombreEquipo, 250);
             }
 
+            // 3. Iniciar sesion con el usuario y la clave (van en base64)
             if (self::USUARIO !== '') {
-                $mail->SMTPAuth = true;
-                $mail->Username = self::USUARIO;
-                $mail->Password = self::CLAVE;
+                self::comando($socket, 'AUTH LOGIN', 334);
+                self::comando($socket, base64_encode(self::USUARIO), 334);
+                self::comando($socket, base64_encode(self::CLAVE), 235);
             }
-            $mail->Timeout = 10;
-            $mail->CharSet = 'UTF-8';
 
-            $mail->setFrom(self::REMITENTE, self::REMITENTE_NOMBRE);
-            $mail->addAddress($para);
-            $mail->isHTML(true);
-            $mail->Subject = $asunto;
-            $mail->Body = $html;
-            $mail->AltBody = $textoPlano !== '' ? $textoPlano : trim(strip_tags($html));
-            $mail->send();
+            // 4. Quien envia, a quien, y el mensaje (termina con una linea que solo tiene un punto)
+            self::comando($socket, 'MAIL FROM:<' . self::REMITENTE . '>', 250);
+            self::comando($socket, 'RCPT TO:<' . $para . '>', 250);
+            self::comando($socket, 'DATA', 354);
+            self::comando($socket, $mensaje . "\r\n.", 250);
+            self::comando($socket, 'QUIT', 221);
+            fclose($socket);
             return true;
         } catch (Exception $e) {
+            if ($socket) {
+                fclose($socket);
+            }
             error_log('No se pudo enviar el correo a ' . $para . ': ' . $e->getMessage());
             return false;
         }
+    }
+
+    /** Manda una linea al servidor SMTP y revisa que conteste con el codigo esperado. */
+    private static function comando($socket, $linea, $codigoEsperado)
+    {
+        fwrite($socket, $linea . "\r\n");
+        return self::leerRespuesta($socket, $codigoEsperado);
+    }
+
+    /**
+     * Lee la respuesta del servidor. Puede tener varias lineas: "250-..." sigue, "250 ..." es la ultima.
+     * Si el codigo no es el esperado lanza un error.
+     */
+    private static function leerRespuesta($socket, $codigoEsperado)
+    {
+        $respuesta = '';
+        while (($linea = fgets($socket, 515)) !== false) {
+            $respuesta .= $linea;
+            if (strlen($linea) < 4 || $linea[3] === ' ') {
+                break;
+            }
+        }
+        if ((int) substr($respuesta, 0, 3) !== $codigoEsperado) {
+            throw new Exception('El servidor de correo respondio: ' . trim($respuesta));
+        }
+        return $respuesta;
+    }
+
+    /** Arma el correo completo: cabeceras + version texto + version HTML. */
+    private static function armarMensaje($para, $asunto, $html, $textoPlano)
+    {
+        // Separador entre la version de texto y la HTML
+        $separador = 'copiway-' . bin2hex(random_bytes(8));
+        // Los textos con tildes en las cabeceras van asi: =?UTF-8?B?...base64...?=
+        $asuntoCodificado = '=?UTF-8?B?' . base64_encode($asunto) . '?=';
+        $nombreCodificado = '=?UTF-8?B?' . base64_encode(self::REMITENTE_NOMBRE) . '?=';
+        $dominio = substr(strrchr(self::REMITENTE, '@'), 1);
+
+        $lineas = [
+            'Date: ' . date('r'),
+            'From: ' . $nombreCodificado . ' <' . self::REMITENTE . '>',
+            'To: <' . $para . '>',
+            'Subject: ' . $asuntoCodificado,
+            'Message-ID: <' . bin2hex(random_bytes(16)) . '@' . $dominio . '>',
+            'MIME-Version: 1.0',
+            'Content-Type: multipart/alternative; boundary="' . $separador . '"',
+            '',
+            '--' . $separador,
+            'Content-Type: text/plain; charset=UTF-8',
+            'Content-Transfer-Encoding: base64',
+            '',
+            chunk_split(base64_encode($textoPlano)),
+            '--' . $separador,
+            'Content-Type: text/html; charset=UTF-8',
+            'Content-Transfer-Encoding: base64',
+            '',
+            chunk_split(base64_encode($html)),
+            '--' . $separador . '--',
+        ];
+        return implode("\r\n", $lineas);
     }
 
     /** Correo con el codigo para recuperar la contrasena (vence en 15 min). */

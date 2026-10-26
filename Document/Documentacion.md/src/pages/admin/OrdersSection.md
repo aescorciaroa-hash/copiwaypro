@@ -3,8 +3,9 @@
 ## ¿Para qué sirve?
 Es la pestaña **"Comandas Activas"**: el admin ve todos los pedidos con su estado, el domiciliario
 asignado, y un mapa de Neiva con la cocina, los domiciliarios y los destinos. Desde aquí puede ver el
-detalle de un pedido, cambiar la dirección, soltar un pedido de un domiciliario y abrir el formulario
-de pedido manual.
+detalle de un pedido (con el código de entrega y el reenvío por WhatsApp de los pedidos manuales),
+cambiar la dirección y abrir el formulario de pedido manual. Soltar un pedido ya no se hace desde aquí:
+solo lo puede hacer el domiciliario que lo tomó.
 
 ## ¿Con qué se conecta?
 | Dirección | Archivo | Para qué |

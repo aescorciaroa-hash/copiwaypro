@@ -20,6 +20,43 @@ Calcula y guarda el cierre de caja.
 - **Usa:** `Caja`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** REPORTE_CAJA, DETALLE_AUDITORIA, LIQUIDACION_DOMICILIARIO, PEDIDO.
+3. **Quién lo usa:** `controllers/CashClosingController.php` (con `new CajaService()`).
+4. **Otros que usa:** `Caja` (con `require_once __DIR__ . '/Caja.php'` y `new Caja()`).
+5. **Sus métodos que otros pueden llamar:** `previsualizar()`, `generar()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → CajaService → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `CajaService` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `CajaService`?**  
+Con la base de datos (tablas REPORTE_CAJA, DETALLE_AUDITORIA, LIQUIDACION_DOMICILIARIO, PEDIDO); con quien lo usa: `controllers/CashClosingController.php` (con `new CajaService()`). Y con: `Caja` (con `require_once __DIR__ . '/Caja.php'` y `new Caja()`).
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Por qué usa una transacción?**  
+Porque el cierre guarda en varias tablas (reporte, auditoría, liquidaciones). Si una falla, `rollback` deshace todo y no queda un cierre a medias.
+
+**¿Qué diferencia hay entre `previsualizar()` y `generar()`?**  
+`previsualizar()` solo calcula y muestra; `generar()` calcula y **guarda** el cierre.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...CajaService.php'"* o *"Class 'CajaService' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

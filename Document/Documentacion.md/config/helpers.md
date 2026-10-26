@@ -39,6 +39,32 @@ Tiene las funciones que usa todo el sistema.
 - **Lee:** `config/rutas.php` y `config/paginas.php`.
 - **Carga los controladores** de `controllers/`.
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Con qué se conecta este archivo?**  
+Con `config/rutas.php` y `config/paginas.php` (los lee), con los controladores (los carga con `cargarControlador()`), con `Auth` (revisa sesión y rol), con `views/json/` y `views/paginas/` (las vistas).
+
+**¿Qué función conecta la dirección con el controlador?**  
+`despacharRuta()` para `/api/...` y `despacharPagina()` para las páginas. Las dos terminan en `cargarControlador()`.
+
+**¿Cómo pasa el `{id}` al controlador?**  
+`despacharRuta()` lo saca de la dirección y `cargarControlador()` lo pone en `$_GET['id']`.
+
+**¿Qué devuelve `entrada()`?**  
+Los datos que mandó el navegador: `$_GET` + el cuerpo JSON (o `$_POST`).
+
+**¿Qué códigos de error salen de aquí?**  
+401 (sin sesión), 403 (otro rol), 404 (ruta no existe), 405 (método equivocado), 419 (CSRF malo).
+
+**¿Qué pasa si se borra?**  
+`public/index.php` falla al inicio y nada funciona.
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

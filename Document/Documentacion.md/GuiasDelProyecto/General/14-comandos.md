@@ -8,7 +8,6 @@ cd C:\laragon\www\copiwaypro
 ## Instalar
 | Comando | Qué hace |
 |---|---|
-| `composer install` | Instala las librerías de PHP (correo y notificaciones) en `vendor/`. |
 | `php sql\create-admin.php` | Crea el primer administrador. |
 
 ## React (frontend)

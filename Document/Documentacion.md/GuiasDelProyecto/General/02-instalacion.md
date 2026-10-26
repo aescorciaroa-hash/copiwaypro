@@ -8,7 +8,6 @@ Esta guía es para instalar el proyecto **en un computador nuevo**. Si ya lo tie
 |---|---|---|
 | **Laragon** (incluye Apache, PHP 8.1+ y MySQL 8) | Servidor web, PHP y base de datos | Abre Laragon y dale **Iniciar todo** |
 | **Node.js** (con npm) | Instalar y compilar React | `node -v` y `npm -v` en una terminal |
-| **Composer** (opcional) | Librerías de correo y notificaciones push | `composer --version` |
 | **Git** (opcional) | Descargar y versionar el código | `git --version` |
 
 ## Instalación paso a paso
@@ -30,10 +29,7 @@ Esta guía es para instalar el proyecto **en un computador nuevo**. Si ya lo tie
 npm install
 npm run build
 
-# 5. (Opcional) Librerías de PHP
-composer install
-
-# 6. (Si no cargaste los datos de ejemplo) Primer administrador
+# 5. (Si no cargaste los datos de ejemplo) Primer administrador
 php sql\create-admin.php
 ```
 

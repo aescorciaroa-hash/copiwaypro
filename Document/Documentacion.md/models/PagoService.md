@@ -28,6 +28,43 @@ Maneja los pagos en línea de prueba.
 - **Lo cargan:** `models/PedidoService.php`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** PAGO_TRANSACCION.
+3. **Quién lo usa:** `models/PedidoService.php` y `controllers/PaymentController.php`.
+4. **Otros que usa:** ningún otro modelo. Habla con la pasarela de pagos (ver [10 — Pagos](../GuiasDelProyecto/General/10-pagos.md)).
+5. **Sus métodos que otros pueden llamar:** `prepararCheckout()`, `crearTransaccion()`, `crearTransaccionDePedido()`, `obtenerTransaccionDePedido()`, `obtenerTransaccion()`, `verificarTransaccion()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → PagoService → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `PagoService` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `PagoService`?**  
+Con la base de datos (tablas PAGO_TRANSACCION); con quien lo usa: `models/PedidoService.php` y `controllers/PaymentController.php`. Y con: ningún otro modelo. Habla con la pasarela de pagos (ver [10 — Pagos](../GuiasDelProyecto/General/10-pagos.md)).
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Dónde se guarda cada pago?**  
+En `PAGO_TRANSACCION`, unido al pedido.
+
+**¿Quién decide si el pedido quedó pagado?**  
+`verificarTransaccion()` revisa el estado del pago y `PedidoService` actualiza el pedido.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...PagoService.php'"* o *"Class 'PagoService' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

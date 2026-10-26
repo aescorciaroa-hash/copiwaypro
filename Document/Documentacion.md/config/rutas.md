@@ -15,6 +15,29 @@ Es la lista de rutas de la API.
 -   = método y dirección → controlador, método y roles que pueden usarla.
 - **Roles:** `admin` (administrador), `client` (cliente), `kitchen` (cocina), `delivery` (domiciliario). `[]` = cualquiera.
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta una dirección con un controlador?**  
+Con una línea aquí: `'POST /api/products' => ['ProductController', 'store', ['admin']]` = método + dirección → controlador, acción y roles.
+
+**¿Quién lee este archivo?**  
+`despacharRuta()` en `config/helpers.php`.
+
+**¿Cómo agrego una ruta nueva?**  
+Agrego una línea aquí y el método en el controlador (y su `elseif` al final del controlador).
+
+**¿Qué significa `[]` en los roles?**  
+Que la ruta es pública: no pide sesión.
+
+**¿Qué pasa si la dirección existe pero con otro método?**  
+405 Método no permitido.
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

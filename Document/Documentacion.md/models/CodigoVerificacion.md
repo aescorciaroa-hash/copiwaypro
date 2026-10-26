@@ -22,6 +22,43 @@ Maneja los códigos para recuperar la contraseña.
 - **Lo cargan:** `controllers/AuthController.php`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** CODIGO_VERIFICACION, CLIENTE.
+3. **Quién lo usa:** `controllers/AuthController.php` (en "olvidé mi contraseña").
+4. **Otros que usa:** ningún otro modelo. El correo lo manda `CorreoService` (desde el controlador).
+5. **Sus métodos que otros pueden llamar:** `crearParaCliente()`, `buscarValidoPorCorreo()`, `marcarUsado()`, `incrementarIntentos()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → CodigoVerificacion → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `CodigoVerificacion` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `CodigoVerificacion`?**  
+Con la base de datos (tablas CODIGO_VERIFICACION, CLIENTE); con quien lo usa: `controllers/AuthController.php` (en "olvidé mi contraseña"). Y con: ningún otro modelo. El correo lo manda `CorreoService` (desde el controlador).
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Cómo se conecta con el correo?**  
+No directamente. `AuthController` crea el código con este modelo y luego llama `CorreoService::enviarCodigoRecuperacion()`.
+
+**¿Por qué cuenta los intentos?**  
+Para que nadie pruebe códigos sin parar. Si se pasa del límite, el código ya no sirve.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...CodigoVerificacion.php'"* o *"Class 'CodigoVerificacion' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

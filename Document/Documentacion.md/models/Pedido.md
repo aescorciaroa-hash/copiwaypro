@@ -24,6 +24,43 @@ Lee los pedidos (tablas PEDIDO, DETALLE_PEDIDO y PERSONALIZACION).
 - **Lo cargan:** `controllers/SyncController.php`, `models/PedidoService.php`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** PEDIDO, DETALLE_PEDIDO, PERSONALIZACION, CLIENTE, DOMICILIARIO, AYUDANTE_COCINA.
+3. **Quién lo usa:** `OrderController`, `SyncController` y `models/PedidoService.php`.
+4. **Otros que usa:** ningún otro modelo. Usa `views/json/pedido.php` para organizar los datos.
+5. **Sus métodos que otros pueden llamar:** `porRol()`, `buscar()`, `buscarCrudo()`, `itemsDe()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → Pedido → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `Pedido` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `Pedido`?**  
+Con la base de datos (tablas PEDIDO, DETALLE_PEDIDO, PERSONALIZACION, CLIENTE, DOMICILIARIO, AYUDANTE_COCINA); con quien lo usa: `OrderController`, `SyncController` y `models/PedidoService.php`. Y con: ningún otro modelo. Usa `views/json/pedido.php` para organizar los datos.
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Qué diferencia hay entre `Pedido` y `PedidoService`?**  
+`Pedido` solo **lee** (listar, buscar, items). `PedidoService` **cambia** cosas con las reglas del negocio.
+
+**¿Qué hace `porRol()`?**  
+Trae los pedidos según quién pregunta: el cliente ve los suyos, cocina los que tiene que preparar, el domiciliario los de entrega, el admin todos.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...Pedido.php'"* o *"Class 'Pedido' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

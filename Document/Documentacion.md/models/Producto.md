@@ -31,6 +31,46 @@ Maneja los productos del menú y su receta (tablas PRODUCTO y RECETA).
 - **Usa:** `Ingrediente`.
 - **La base de datos:** con `global $conn;` en el constructor (la conexión de `config/database.php`).
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+2. **Tablas que toca:** PRODUCTO, RECETA, CATEGORIA, INGREDIENTE.
+3. **Quién lo usa:** `ProductController` (crear, editar, borrar) y `SyncController` (mostrar el menú).
+4. **Otros que usa:** `Ingrediente` (con `require_once __DIR__ . '/Ingrediente.php'`), para la receta. Usa `views/json/producto.php` (`producto_a_json()`).
+5. **Sus métodos que otros pueden llamar:** `listar()`, `buscar()`, `comoJson()`, `crear()`, `actualizar()`, `eliminar()`.
+
+```
+React → /api/... → public/index.php → config/rutas.php → Controlador → Producto → MySQL
+```
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Cómo se conecta `Producto` a la base de datos?**  
+En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
+
+**¿Con qué se conecta `Producto`?**  
+Con la base de datos (tablas PRODUCTO, RECETA, CATEGORIA, INGREDIENTE); con quien lo usa: `ProductController` (crear, editar, borrar) y `SyncController` (mostrar el menú). Y con: `Ingrediente` (con `require_once __DIR__ . '/Ingrediente.php'`), para la receta. Usa `views/json/producto.php` (`producto_a_json()`).
+
+**¿Dónde se crea la conexión que usa?**  
+En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
+
+**¿Por qué `Producto` usa `Ingrediente`?**  
+Porque cada producto tiene una receta (tabla `RECETA`) hecha de ingredientes.
+
+**¿Qué pasa con la categoría si no existe?**  
+`resolverCategoria()` la busca y, si no está, la crea.
+
+**¿Por qué usa una transacción en `crear()`?**  
+Guarda el producto y su receta. Si la receta falla, se deshace el producto también.
+
+**¿Qué pasa si se borra este archivo?**  
+Los archivos que lo usan fallan con *"Failed opening required '...Producto.php'"* o *"Class 'Producto' not found"* (error 500).
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

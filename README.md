@@ -7,11 +7,11 @@ Sistema para un restaurante de hamburguesas a domicilio con cinco roles: Cliente
 
 Corre en local con Laragon en **`http://localhost/copiwaypro/`**.
 
-> 📘 **Guías generales** (instalar, arrancar, cómo funciona, roles, pedidos, seguridad, problemas comunes...): [Documentacion.md/GuiasDelProyecto/General/README.md](Documentacion.md/GuiasDelProyecto/General/README.md).
+> 📘 **Guías generales** (instalar, arrancar, cómo funciona, roles, pedidos, seguridad, problemas comunes...): [Documentacion.md/GuiasDelProyecto/General/README.md](Document/Documentacion.md/GuiasDelProyecto/General/README.md).
 >
-> 🌳 **Estructura completa en forma de árbol:** [Documentacion.md/GuiasDelProyecto/Estructura&Glosario/ESTRUCTURA.md](Documentacion.md/GuiasDelProyecto/Estructura&Glosario/ESTRUCTURA.md).
+> 🌳 **Estructura completa en forma de árbol:** [Documentacion.md/GuiasDelProyecto/Estructura&Glosario/ESTRUCTURA.md](Document/Documentacion.md/GuiasDelProyecto/Estructura&Glosario/ESTRUCTURA.md).
 >
-> 📚 **Documentación archivo por archivo:** [Documentacion.md/README.md](Documentacion.md/README.md). Explica qué hace cada archivo, con qué se conecta y para qué sirve cada variable.
+> 📚 **Documentación archivo por archivo:** [Documentacion.md/README.md](Document/Documentacion.md/README.md). Explica qué hace cada archivo, con qué se conecta y para qué sirve cada variable.
 
 ## Estructura
 
@@ -156,9 +156,7 @@ Los controladores responden **JSON** (con `responderJson()`) en vez de redirigir
 
 3. **Frontend**: `npm install` y luego `npm run build` (crea `public/assets/main.js` y `public/assets/main.css`).
 
-4. **(Opcional) Librerías de PHP**: `composer install`. Instala PHPMailer (correo de recuperación de contraseña) y `minishlink/web-push` (notificaciones push). Sin esto la app funciona igual, pero sin esas dos funciones.
-
-5. **Primer Administrador** (si no cargaste `seed.sql`): `php sql\create-admin.php`
+4. **Primer Administrador** (si no cargaste `seed.sql`): `php sql\create-admin.php`
 
 ## Cómo abrir el sitio
 
@@ -198,7 +196,7 @@ Las rutas que cambian datos (`POST`, `PUT`, `PATCH`, `DELETE`) exigen el token C
 - `GET /api/push/public-key`, `POST /api/push/subscribe`
 - `GET /api/sync`: **todos los datos que muestra la pantalla** (productos, inventario, pedidos, clientes, personal, ajustes). Responde `304` si nada cambió.
 
-La lista completa, con el controlador y los roles de cada ruta, está en `config/rutas.php` y en [Documentacion.md/config/rutas.md](Documentacion.md/config/rutas.md).
+La lista completa, con el controlador y los roles de cada ruta, está en `config/rutas.php` y en [Documentacion.md/config/rutas.md](Document/Documentacion.md/config/rutas.md).
 
 ## Antes de publicar en un servidor real
 
@@ -206,4 +204,4 @@ La lista completa, con el controlador y los roles de cada ruta, está en `config
 - En `config/app.php` pon `'debug' => false` y `'entorno' => 'production'`.
 - Cambia `CLAVE_FIRMA` en `models/PagoService.php` por un texto largo al azar.
 - Usa HTTPS (las cookies de sesión se marcan `secure` solas si la conexión es HTTPS).
-- La sección **"Observaciones encontradas al documentar"** de [Documentacion.md/README.md](Documentacion.md/README.md) lista las fallas corregidas y los pendientes conocidos.
+- La sección **"Observaciones encontradas al documentar"** de [Documentacion.md/README.md](Document/Documentacion.md/README.md) lista las fallas corregidas y los pendientes conocidos.

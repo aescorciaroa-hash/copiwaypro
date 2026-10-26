@@ -18,6 +18,57 @@ Se encarga de subir fotos.
 - **Lo abre:** `config/helpers.php`, cuando la pantalla pide una de sus acciones.
 - **Desde la pantalla:** InventorySection.tsx.
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Paso a paso: cómo se conecta
+
+1. React llama la API (`src/servicios/api.ts`, con `fetch`, la cookie de sesión y el `X-CSRF-Token`).
+2. `public/index.php` → `despacharRuta()` busca la ruta en `config/rutas.php`.
+3. `verificarCsrf()` (si falla → 419) y `requiereRol()` (sin sesión → 401, otro rol → 403).
+4. `cargarControlador()` pone la acción y los `{parametros}` en `$_GET` y hace `require` de este archivo.
+5. Al final del archivo: `new UploadController()` y un `if` elige el método según `$_GET['accion']`.
+6. El método hace su trabajo (aquí no hay modelo ni base de datos).
+7. Contesta con `responderJson()` o `responderError()` (JSON para React).
+
+**Sus rutas** (de `config/rutas.php`):
+
+| Método | Dirección | Acción | Quién puede |
+|---|---|---|---|
+| `POST` | `/api/uploads/product-image` | `productImage()` | admin |
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Con qué modelo se conecta `UploadController`?**  
+Con ningún modelo.
+
+**¿El controlador se conecta directo a la base de datos?**  
+No. Este controlador no usa la base de datos.
+
+**¿Quién llama a este controlador?**  
+`cargarControlador()` de `config/helpers.php`, después de que `despacharRuta()` encuentra la ruta en `config/rutas.php`.
+
+**¿Cómo sabe qué método ejecutar?**  
+Por `$_GET['accion']`, que lo pone `cargarControlador()`. El `if` del final del archivo llama el método que corresponde.
+
+**¿Cómo recibe los datos?**  
+Con `entrada()` (junta `$_GET` y el JSON que mandó React) y el `{id}` de la dirección en `$_GET['id']`.
+
+**¿Con qué modelo se conecta?**  
+Con ninguno. No toca la base de datos: guarda la imagen en `public/uploads/productos/` y devuelve su dirección. Esa dirección después la guarda `Producto`.
+
+**¿Por qué no se guarda la foto en la base de datos?**  
+Porque la columna `imagen` es `VARCHAR(255)` y una foto en base64 no cabe (*Data too long*).
+
+**¿Qué pasa si se borra este archivo?**  
+Las rutas que lo usan dan error 500 (*"Failed opening required"*) y esa parte de la pantalla deja de funcionar.
+
+**¿Qué pasa si se borra una ruta suya de `config/rutas.php`?**  
+React recibe **404 Ruta no encontrada** al usar esa acción.
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

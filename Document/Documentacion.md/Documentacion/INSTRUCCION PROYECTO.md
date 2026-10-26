@@ -41,6 +41,7 @@ Lo que hace una persona lo ven las demás en pocos segundos, sin recargar la pá
 1. **Cero Crédito (No se fía)**: no existe la opción de fiar.
    - Pedido con **pago digital**: solo llega a cocina si el pago fue **aprobado**.
    - Pedido en **efectivo** (del cliente en la página o registrado por el administrador): llega a cocina de inmediato y se cobra al entregar.
+   - Pedido manual con **link de pago**: queda en "Esperando Pago" y solo llega a cocina cuando el cliente paga. Si no paga en 30 minutos, se cancela solo y se devuelve el inventario.
 2. **Tarifa Plana de Domicilio**: un solo valor de envío para toda la ciudad, sin importar la distancia. Lo define el administrador y se suma automáticamente al total.
 3. **Punto de No Retorno**: el cliente puede modificar o vaciar su carrito libremente antes de confirmar. Una vez confirma el pedido, ya no lo puede editar ni cancelar, y no hay devoluciones.
 4. **Privacidad (Habeas Data)**: nadie se registra como cliente sin marcar la casilla de aceptación de la política de tratamiento de datos. El sistema guarda la fecha en que la aceptó.
@@ -68,10 +69,10 @@ Reglas de acceso:
 - Los empleados **no pueden registrarse solos**: reciben sus credenciales del Administrador.
 - El PIN de acceso permite que varias personas usen la misma tablet o celular y el sistema sepa quién preparó o entregó cada pedido.
 - Cada persona solo ve lo que corresponde a su rol. Si alguien intenta abrir el panel de otro rol, el sistema lo devuelve al inicio de sesión.
-- **5 intentos fallidos en 15 minutos** bloquean temporalmente el acceso.
+- **5 intentos fallidos en 1 minuto** con el mismo correo bloquean ese correo por 1 minuto. Al entrar bien, el conteo vuelve a 0.
 - La sesión se cierra sola después de un tiempo sin uso (por defecto, 2 horas).
 - Un empleado dado de baja pierde el acceso al instante, aunque tenga la sesión abierta.
-- **Recuperar contraseña**: el usuario escribe su correo y recibe un código de 6 dígitos (sirve una vez, vence a los 15 minutos y se anula tras 5 intentos equivocados). El sistema responde lo mismo exista o no el correo.
+- **Recuperar contraseña**: el usuario escribe su correo y recibe un código de 6 dígitos (sirve una vez, vence a los 15 minutos y se anula tras 5 intentos equivocados). El correo sale directo desde Gmail. Si el correo no está registrado, el sistema avisa "El correo es incorrecto o no existe." y no envía nada.
 
 ---
 
@@ -81,10 +82,12 @@ Reglas de acceso:
 
 - **Tablero analítico**: ventas totales, órdenes de hoy, ticket promedio y empleados activos; comparativos de esta semana contra la anterior y de este mes contra el anterior; productos más vendidos, órdenes recientes y resumen de despacho. Incluye una **alerta de stock crítico** (insumos entre 1 y 10 unidades).
 - **Comandas activas**: todos los pedidos del día en tiempo real, con estado, cliente, dirección y domiciliario asignado (nombre, vehículo y placa).
-- **Pedido manual (Operación externa)**: si un cliente llama o escribe por WhatsApp, el administrador registra nombre, celular, canal (Llamada o WhatsApp) y dirección, elige los productos con lo que se quita y los extras, y presiona "Enviar a Cocina". Se paga en **efectivo al entregar**. Si el celular ya está registrado, el pedido queda en la cuenta de ese cliente (y le suma puntos); si no, queda como **cliente invitado**.
+- **Pedido manual (Operación externa)**: si un cliente llama o escribe por WhatsApp, el administrador registra nombre, celular, canal (Llamada o WhatsApp) y dirección, elige los productos con lo que se quita y los extras, elige la forma de pago y presiona "Enviar a Cocina". Si el celular ya está registrado, el pedido queda en la cuenta de ese cliente (y le suma puntos); si no, queda como **cliente invitado**.
+  - **Efectivo**: se cobra al entregar; el pedido va directo a cocina.
+  - **Link de pago**: el pedido queda en **"Esperando Pago"** y se crea un link (`/pagar?c=...`) que dura **30 minutos**. El cliente lo abre sin crear cuenta y paga con Nequi, Daviplata o Bancolombia; al aprobarse, el pedido pasa a cocina. Si no paga a tiempo, se cancela solo y se devuelve el inventario.
+  - Al registrarlo sale la ventana **"Pedido Registrado"** con el **código de entrega** y el botón **"Enviar por WhatsApp"** (mensaje ya escrito con el resumen y el código, o con el link; si el cliente no está registrado, lo invita a registrarse). Desde el detalle del pedido puede reenviar la confirmación o el link.
 - **Monitoreo automático**: el administrador no aprueba pagos. Si el pago digital es aprobado, el pedido pasa solo a cocina. Una campana suena en su panel con cada pedido nuevo.
 - **Edición de dirección en curso**: si el cliente se equivocó, el administrador corrige la dirección de un pedido aún no entregado. El domiciliario ve la nueva ruta en pocos segundos con el aviso "Dirección Actualizada".
-- **Soltar pedido**: puede quitarle un pedido a un domiciliario que todavía no ha salido, para que lo tome otro.
 - **Mapa de entregas (Rutas & Zonas)**: ubicación real de los domiciliarios y la ruta de cada uno hasta su pedido.
 - **Gestión de menú**: crear y editar productos (información, foto, receta y empaques), ocultar, eliminar y administrar categorías. Al cambiar un precio, los pedidos ya confirmados conservan el precio con que se pagaron.
 - **Inventario Express (Abastecimiento)**:
@@ -148,7 +151,7 @@ Reglas de acceso:
 - **Pedidos disponibles**: los que cocina marcó como "Listos", con dirección, productos, valor y forma de pago (**Pagado digital**: no cobra nada; **Efectivo**: cobra el total al entregar).
 - **Acciones, en orden**:
   1. **Tomar pedido**: queda asignado a él. Nunca lo pueden tomar dos personas.
-  2. **Soltar**: si todavía no ha salido, lo devuelve para que lo tome otro.
+  2. **Soltar**: si todavía no ha salido, lo devuelve para que lo tome otro. Solo lo puede soltar el domiciliario que lo tomó (el administrador no).
   3. **Iniciar ruta (En Camino)**: el cliente lo ve de inmediato.
   4. **Ver ruta**: mapa dentro de la app hasta la dirección, con botones para abrir Waze o Google Maps. Si el administrador corrige la dirección, la ruta cambia sola.
   5. **Contactar cliente**: abre WhatsApp con un mensaje ya escrito. Este botón y el teléfono del cliente **solo aparecen mientras el pedido va En Camino**; después de entregar desaparecen para proteger los datos del cliente.
@@ -160,13 +163,15 @@ Reglas de acceso:
 
 | Estado | Significado | Quién lo cambia |
 |---|---|---|
-| **Pendiente** | Confirmado, espera a la cocina. | Se crea así al confirmar. |
+| **Esperando Pago** | Pedido manual con link de pago aún sin pagar. No llega a cocina. | Se crea así si el administrador elige "Link de pago". |
+| **Pendiente** | Confirmado, espera a la cocina. | Se crea así al confirmar (o al pagar el link). |
 | **En Preparación** | La cocina lo está preparando. | Cocina (o administrador). |
 | **Listo** | Empacado, espera domiciliario. | Cocina (o administrador). |
 | **Listo – Recepcionado** | Un domiciliario lo tomó, pero aún no sale. | Domiciliario. |
 | **En Camino** | Va hacia el cliente. | Domiciliario. |
 | **Entregado** | El cliente lo recibió y dio su PIN. | Domiciliario, con el PIN correcto. |
 | **Archivado** | Ya entró en un cierre de caja. Se conserva en el historial. | Cierre de caja. |
+| **Cancelado** | El link de pago venció sin pagarse; se devolvió el inventario. | El sistema, automáticamente a los 30 minutos. |
 
 El sistema **no deja saltarse pasos** (ej. no se puede marcar "Listo" un pedido que ya va en camino).
 
@@ -203,7 +208,7 @@ El sistema **no deja saltarse pasos** (ej. no se puede marcar "Listo" un pedido 
 2. Crea las cuentas (correo, contraseña y PIN) de ayudantes de cocina y domiciliarios y se las entrega.
 3. Configura horario, tarifa de domicilio, margen, puntos y datos del negocio.
 4. Supervisa cómo los pedidos de la página entran solos a la cocina.
-5. Si llega un pedido por llamada o WhatsApp, lo registra como pedido manual y lo envía a cocina.
+5. Si llega un pedido por llamada o WhatsApp, lo registra como pedido manual: en efectivo va directo a cocina; con link de pago, le envía el link por WhatsApp y el pedido entra a cocina cuando el cliente paga.
 6. Si un cliente llama porque puso mal la dirección, la corrige en el pedido y el mapa del domiciliario se actualiza.
 7. Cuando llega del mercado, entra a Inventario Express, presiona "+" en cada insumo y actualiza el stock en segundos.
 8. Si hay una emergencia, activa la pausa de emergencia.
@@ -229,7 +234,9 @@ El sistema **no deja saltarse pasos** (ej. no se puede marcar "Listo" un pedido 
 
 ## 9. SITUACIÓN ACTUAL Y PENDIENTES
 
-- **Pasarela de pago**: es de prueba. Simula el pago (Nequi, Daviplata, Bancolombia) pero no cobra dinero real. Está lista para cambiarse por una real.
+- **Pasarela de pago**: es de prueba. Simula el pago (Nequi, Daviplata, Bancolombia) pero no cobra dinero real. Está lista para cambiarse por una real. La usan el checkout del cliente y el link de pago.
+- **Cancelar pedidos**: solo se cancelan solos los pedidos con link de pago vencido. No hay una pantalla para cancelar a mano.
+- **Tecnología**: PHP MVC simple (sin frameworks ni Composer) con MySQL, y React para las pantallas. El correo (Gmail) y las notificaciones push están hechos con funciones que ya trae PHP, sin librerías.
 
 ---
 

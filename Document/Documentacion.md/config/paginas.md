@@ -13,6 +13,20 @@ Es la lista de páginas del sistema.
 - **Ejemplo:** `'/admin' => ['PaginaController', 'admin', ['admin']]`
 - **Las abre:** `PaginaController`.
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿En qué se diferencia de `rutas.php`?**  
+`rutas.php` es la API (devuelve JSON). `paginas.php` son las páginas que se abren en el navegador (devuelven HTML).
+
+**¿Qué pasa si entro a `/admin` sin ser admin?**  
+`requiereRol()` me manda a `/login`.
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

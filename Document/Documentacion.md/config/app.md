@@ -14,6 +14,20 @@ Guarda los ajustes generales del sistema.
 - **Lo carga:** `public/index.php` y lo deja en la variable `$config`.
 - **Lo usan:** `rutaBase()` y `manejarError()` (en `helpers.php`) y `AuthController`.
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Con qué se conecta?**  
+`public/index.php` lo carga en `$config`. Lo usan `rutaBase()` y `manejarError()` (en `helpers.php`) y `AuthController`.
+
+**¿Para qué es `debug`?**  
+En `true` muestra el detalle del error; en producción va en `false` para no mostrar datos internos.
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

@@ -1,7 +1,8 @@
 # 11. Notificaciones y correo
 
 Las dos funciones son **opcionales**: si no están configuradas, el sistema funciona igual.
-Las dos necesitan las librerías de Composer: `composer install`.
+Las dos están hechas con **PHP puro**, sin librerías ni Composer: usan funciones que ya trae PHP
+(`openssl`, `curl` y `stream_socket_client`).
 
 ## Notificaciones push (al celular del cliente)
 ### Qué hace
@@ -17,27 +18,31 @@ tocarla, se abre el sistema directamente en la ventana para calificar el pedido.
       → se crea una suscripción y se guarda en la tabla PUSH_SUSCRIPCION
 2. El domiciliario entrega el pedido
       → PedidoService::confirmarEntrega()
-      → PushNotificationService envía el aviso a cada dispositivo del cliente
+      → PushNotificationService cifra el aviso (openssl), lo firma con las llaves VAPID
+        y lo manda con curl al servicio push de cada dispositivo del cliente
 3. El celular recibe el aviso
       → public/sw.js lo muestra
       → al tocarlo abre /?calificarPedido=ID
 ```
 
 ### Configurarlo
-1. `composer install`
-2. Generar un par de claves VAPID (una sola vez por instalación):
+Las claves VAPID **ya vienen puestas**. Solo si quieres unas nuevas (por ejemplo, para otro dominio):
+1. Generar un par de claves (una sola vez por instalación), con Node (el mismo que se usa para React):
    ```powershell
-   php -r "require 'vendor/autoload.php'; print_r(Minishlink\WebPush\VAPID::createVapidKeys());"
+   npx web-push generate-vapid-keys
    ```
-3. Copiar las claves en las constantes de `models/PushNotificationService.php`:
+   (`npx` lo descarga y lo ejecuta una vez; no se agrega nada al proyecto.)
+2. Copiar las claves en las constantes de `models/PushNotificationService.php`:
    ```php
    const VAPID_PUBLIC_KEY = '...';
    const VAPID_PRIVATE_KEY = '...';
    const VAPID_SUBJECT = 'mailto:tu-correo@ejemplo.com';
    ```
-4. **Solo en Windows con Apache/Laragon:** definir la variable de entorno de Windows `OPENSSL_CONF`
-   apuntando al `openssl.cnf` de tu PHP (ej: `C:\laragon\bin\php\php-8.3.8-nts-Win32-vs16-x64\extras\ssl\openssl.cnf`)
-   y reiniciar Laragon.
+3. Al cambiar las claves, los clientes tienen que volver a tocar "Activar" (las suscripciones viejas
+   se hicieron con la clave anterior).
+
+Ya **no** hace falta configurar `OPENSSL_CONF` en Windows: la llave temporal de cada aviso se crea sin
+leer el archivo `openssl.cnf`.
 
 ### Requisitos del navegador
 Las notificaciones push necesitan `localhost` o **HTTPS**. Funcionan en Chrome, Edge y Firefox; en
@@ -50,8 +55,7 @@ Cada envío queda registrado en la tabla `NOTIFICACION` (enviado o fallido).
 Envía el **código de 6 dígitos** para recuperar la contraseña.
 
 ### Configurarlo
-1. `composer install` (instala PHPMailer).
-2. Poner los datos del servidor de correo en las constantes de `models/CorreoService.php`. Ejemplo con **Gmail**:
+1. Poner los datos del servidor de correo en las constantes de `models/CorreoService.php`. Ejemplo con **Gmail**:
    ```php
    const HOST = 'smtp.gmail.com';
    const PUERTO = 587;
@@ -73,3 +77,12 @@ trae el código en `debugCode`. Para verlo: en el navegador **F12 → Red (Netwo
 - Revisa la carpeta de spam.
 - Revisa el log de PHP (`C:\laragon\tmp\php_errors.log`): ahí queda "No se pudo enviar el correo a ...".
 - Verifica que `HOST` y `REMITENTE` (en `models/CorreoService.php`) no estén vacíos.
+- El log dice qué contestó Gmail. Ej.: `535 ... Username and Password not accepted` = la contraseña de
+  aplicación está mal; `No se pudo conectar a smtp.gmail.com` = no hay internet o un antivirus bloquea
+  el puerto 587.
+
+### Cómo envía el correo (sin librerías)
+`CorreoService::enviar()` se conecta a Gmail con `stream_socket_client()` y le habla en **SMTP**:
+`EHLO` (hola) → `STARTTLS` (cifrar) → `AUTH LOGIN` (usuario y clave) → `MAIL FROM` / `RCPT TO` (de quién
+y para quién) → `DATA` (el correo) → `QUIT`. Gmail contesta cada paso con un código (`220`, `250`,
+`235`, `354`, `221`); si contesta otro, el envío se cancela y queda en el log.

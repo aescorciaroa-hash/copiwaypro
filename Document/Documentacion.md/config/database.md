@@ -15,6 +15,35 @@ Conecta el sistema con la base de datos MySQL.
 - **Lo carga:** `public/index.php` (una vez para todo el sistema) y `sql/create-admin.php`.
 - **Lo usan:** todos los modelos, con `global $conn;`.
 
+<!-- conexiones-y-preguntas:inicio -->
+
+### Preguntas que te pueden hacer sobre este archivo
+
+**¿Con qué se conecta este archivo?**  
+Con MySQL (servidor `127.0.0.1`, puerto `3306`, usuario `root`, base de datos `hamburguer_copiway`) usando `new mysqli(...)`.
+
+**¿Cómo llega la conexión a los modelos?**  
+`public/index.php` hace `require_once` de este archivo y crea `$conn`. Cada modelo hace `global $conn;` en su constructor.
+
+**¿Por qué una sola conexión?**  
+Para no abrir una conexión por cada modelo. Todos comparten la misma `$conn` durante la petición.
+
+**¿Para qué `set_charset("utf8mb4")`?**  
+Para que tildes, ñ y emojis se guarden y se lean bien.
+
+**¿Para qué `SET time_zone = '-05:00'`?**  
+Para que las fechas de MySQL (`NOW()`) salgan con la hora de Colombia.
+
+**¿Qué pasa si MySQL está apagado o la clave está mal?**  
+El `catch` atrapa el error y `die()` muestra *"Error de Conexion: ..."*. No carga nada más.
+
+**¿Dónde cambio la base de datos o la clave?**  
+Aquí mismo: variables `$bd` y `$password`.
+
+Más preguntas generales: [¿Cómo se conecta todo?](../GuiasDelProyecto/General/16-conexiones-y-preguntas.md).
+
+<!-- conexiones-y-preguntas:fin -->
+
 ## Línea por línea
 
 Cada línea del archivo y lo que hace. Las palabras y símbolos están explicados en el [glosario](../GuiasDelProyecto/Estructura&Glosario/GLOSARIO.md).

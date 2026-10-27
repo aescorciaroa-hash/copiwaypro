@@ -2,7 +2,7 @@
 $host = "localhost";
 $user = "root";
 $password = "";
-$bd = "bdhamburg";
+$bd = "hamburguer_copiway";
 $port = 3306;
 
 try {

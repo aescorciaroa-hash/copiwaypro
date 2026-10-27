@@ -1,33 +1,38 @@
-import {StrictMode, type ComponentType} from 'react';
+import {StrictMode, Suspense, lazy, type ComponentType} from 'react';
 import {createRoot} from 'react-dom/client';
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import ForgotPassword from './pages/ForgotPassword';
-import Register from './pages/Register';
-import AdminDashboard from './pages/AdminDashboard';
-import ClientDashboard from './pages/ClientDashboard';
-import KitchenDashboard from './pages/KitchenDashboard';
-import DeliveryDashboard from './pages/DeliveryDashboard';
-import PagarPedido from './pages/PagarPedido';
 import {ThemeProvider} from './context/ThemeContext';
 import SyncDatos from './components/SyncDatos';
+import {registrarModoSinInternet} from './lib/modoSinInternet';
 import './index.css';
 
 // Sin BrowserRouter: cada URL la resuelve el backend PHP (config/paginas.php)
 // y le dice a esta pagina, via data-pagina, que componente montar. Navegar
 // entre paginas es una recarga normal (window.location.href), no un cambio
 // de ruta en memoria.
-const PAGINAS: Record<string, ComponentType> = {
-  landing: Landing,
-  login: Login,
-  register: Register,
-  'forgot-password': ForgotPassword,
-  admin: AdminDashboard,
-  client: ClientDashboard,
-  kitchen: KitchenDashboard,
-  delivery: DeliveryDashboard,
-  pagar: PagarPedido,
+//
+// Cada pantalla se descarga SOLO cuando se abre (import() = "trae este archivo
+// cuando lo pida"): el login no descarga el admin, ni los mapas, ni los
+// graficos. Asi la primera carga pesa mucho menos.
+const PAGINAS: Record<string, () => Promise<{default: ComponentType}>> = {
+  landing: () => import('./pages/Landing'),
+  login: () => import('./pages/Login'),
+  register: () => import('./pages/Register'),
+  'forgot-password': () => import('./pages/ForgotPassword'),
+  admin: () => import('./pages/AdminDashboard'),
+  client: () => import('./pages/ClientDashboard'),
+  kitchen: () => import('./pages/KitchenDashboard'),
+  delivery: () => import('./pages/DeliveryDashboard'),
+  pagar: () => import('./pages/PagarPedido'),
 };
+
+/** Lo que se ve el instante en que la pantalla se esta descargando. */
+function Cargando() {
+  return (
+    <div className="min-h-[100dvh] flex items-center justify-center bg-[#f6f6f4] dark:bg-stone-950">
+      <div className="w-10 h-10 rounded-full border-4 border-brand-orange/20 border-t-brand-orange animate-spin" />
+    </div>
+  );
+}
 
 const contenedor = document.getElementById('app');
 
@@ -38,18 +43,25 @@ const nombrePagina =
   new URLSearchParams(window.location.search).get('pagina') ||
   '';
 
-const Pagina = PAGINAS[nombrePagina];
+const cargarPagina = PAGINAS[nombrePagina];
 
-if (!Pagina) {
+if (!cargarPagina) {
   // Sin pantalla valida se muestra el error en vez de abrir otra pantalla.
   contenedor!.textContent = `Pantalla no encontrada: "${nombrePagina}". Revisa $pagina en views/paginas/ (o ?pagina= con npm run dev).`;
 } else {
+  const Pagina = lazy(cargarPagina);
   createRoot(contenedor!).render(
     <StrictMode>
       <ThemeProvider>
         <SyncDatos />
-        <Pagina />
+        <Suspense fallback={<Cargando />}>
+          <Pagina />
+        </Suspense>
       </ThemeProvider>
     </StrictMode>,
   );
 }
+
+// Guarda los archivos del sistema en el navegador para que abra rapido
+// y funcione aunque no haya internet (ver public/sw.js).
+registrarModoSinInternet();

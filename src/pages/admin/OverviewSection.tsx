@@ -122,7 +122,7 @@ export default function OverviewSection({
               {/* Cocina en vivo: foto con los pedidos de cada estado encima */}
               <div className="relative hidden sm:block h-60 lg:h-auto lg:min-h-[270px] rounded-3xl overflow-hidden bg-gradient-to-br from-stone-800 to-[#3a1d08]">
                 {foto && (
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={foto}
                     alt=""
                     className="absolute inset-0 w-full h-full object-cover"
@@ -131,10 +131,6 @@ export default function OverviewSection({
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
-                <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur text-[11px] font-black uppercase tracking-wide">
-                  <span className="relative flex w-2 h-2"><span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75" /><span className="relative w-2 h-2 rounded-full bg-red-500" /></span>
-                  En vivo
-                </span>
                 <div className="absolute inset-x-0 bottom-0 p-3 grid grid-cols-4 gap-2">
                   {[
                     { label: 'Pendientes', valor: pendientes, icono: Bell, color: 'text-brand-orange', tab: 'orders' },

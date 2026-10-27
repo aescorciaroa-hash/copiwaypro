@@ -13,25 +13,36 @@ Es el **punto de entrada de React**. Es lo primero que se ejecuta cuando el nave
 | → envuelve todo con | `ThemeProvider` (`context/ThemeContext.tsx`) | Tema claro/oscuro para toda la app. |
 | → incluye | `SyncDatos` (`components/SyncDatos.tsx`) | Mantiene los datos actualizados. |
 | → importa | `index.css` | Los estilos. |
+| → llama a | `registrarModoSinInternet()` (`lib/modoSinInternet.ts`) | Instala el Service Worker para la carga rápida y el modo sin internet. |
 
 ## Variables
 | Variable | Qué es | De dónde sale |
 |---|---|---|
-| `PAGINAS` | Tabla "nombre → componente": `admin → AdminDashboard`... | Escrita aquí. |
+| `PAGINAS` | Tabla "nombre → cómo descargar la pantalla": `admin → () => import('./pages/AdminDashboard')`... | Escrita aquí. |
 | `contenedor` | El `<div id="app">` | `document.getElementById('app')` |
 | `nombrePagina` | Qué pantalla mostrar (`'admin'`, `'login'`...) | `data-pagina` del div (puesto por PHP) |
-| `Pagina` | El componente elegido | `PAGINAS[nombrePagina]` |
+| `cargarPagina` | La función que descarga la pantalla elegida | `PAGINAS[nombrePagina]` |
+| `Pagina` | La pantalla, lista para dibujarse cuando termine de bajar | `lazy(cargarPagina)` |
 
 ## Código explicado
 ```tsx
-const PAGINAS: Record<string, ComponentType> = {
-  landing: Landing,
-  login: Login,
+const PAGINAS: Record<string, () => Promise<{default: ComponentType}>> = {
+  landing: () => import('./pages/Landing'),
+  login: () => import('./pages/Login'),
   ...
 };
 ```
-`Record<string, ComponentType>` = un objeto cuyas claves son texto y cuyos valores son componentes.
+**Cada pantalla se descarga solo cuando se abre.** `import('./pages/Login')` (con paréntesis) significa
+"trae ese archivo **cuando** te lo pida", no al cargar la página. Al compilar, cada pantalla queda en su propio
+archivo dentro de `public/assets/chunks/`. Así el login no descarga el admin, ni los mapas, ni los gráficos.
+Antes todo iba en un solo `main.js` de 2,4 MB; ahora `main.js` pesa unos 195 KB (62 KB comprimido).
+
 Las claves **deben coincidir** con el `$pagina` de cada vista PHP (`views/paginas/*.php`).
+
+```tsx
+function Cargando() { ... }
+```
+Lo que se ve **el instante** en que la pantalla se está descargando: un círculo naranja girando.
 
 ```tsx
 const nombrePagina =
@@ -45,24 +56,27 @@ Busca el nombre en este orden:
 3. Si no hay nada → texto vacío `''`.
 
 ```tsx
-const Pagina = PAGINAS[nombrePagina];
+const cargarPagina = PAGINAS[nombrePagina];
 
-if (!Pagina) {
+if (!cargarPagina) {
   contenedor!.textContent = `Pantalla no encontrada: "${nombrePagina}". ...`;
 } else {
+  const Pagina = lazy(cargarPagina);
   createRoot(contenedor!).render(...);
 }
 ```
 Si el nombre no existe en la tabla, **no** abre otra pantalla en su lugar: muestra
-`Pantalla no encontrada: "..."`. Así, si se borra el `$pagina` de una vista PHP o una línea de
-`PAGINAS`, el error se ve de inmediato.
+`Pantalla no encontrada: "..."`. `lazy(...)` = convierte la descarga en un componente que React dibuja
+cuando termina de bajar.
 
 ```tsx
 createRoot(contenedor!).render(
   <StrictMode>
     <ThemeProvider>
       <SyncDatos />
-      <Pagina />
+      <Suspense fallback={<Cargando />}>
+        <Pagina />
+      </Suspense>
     </ThemeProvider>
   </StrictMode>,
 );
@@ -73,8 +87,15 @@ createRoot(contenedor!).render(
 | `.render(...)` | Dibuja lo que está adentro. |
 | `<StrictMode>` | Modo de React que avisa de errores comunes mientras se programa. |
 | `<ThemeProvider>` | Comparte el tema con todos los componentes de adentro. |
-| `<SyncDatos />` | No se ve; trae datos del servidor cada pocos segundos. |
+| `<SyncDatos />` | No se ve; trae datos del servidor cada pocos segundos. Empieza **mientras** baja la pantalla. |
+| `<Suspense fallback={<Cargando />}>` | Mientras la pantalla se descarga, muestra `<Cargando />`. |
 | `<Pagina />` | La pantalla elegida. |
+
+```tsx
+registrarModoSinInternet();
+```
+Instala el Service Worker (`public/sw.js`), que guarda los archivos para que la próxima vez todo abra al
+instante y funcione sin internet. Ver `lib/modoSinInternet.md`.
 
 **No hay React Router:** para cambiar de pantalla se recarga la página con `irA('/admin')`
 (en `servicios/api.ts`), y PHP decide de nuevo qué mostrar.
@@ -88,5 +109,7 @@ aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm r
 | Si se borra… | Qué pasa |
 |---|---|
 | **El archivo completo** | `npm run build` falla (`index.html` lo carga) y ninguna pantalla se dibuja. |
-| Una línea de `PAGINAS` (ej. `admin: AdminDashboard,`) | Esa pantalla muestra `Pantalla no encontrada: "admin"`. |
+| Una línea de `PAGINAS` (ej. `admin: () => import('./pages/AdminDashboard'),`) | Esa pantalla muestra `Pantalla no encontrada: "admin"`. |
+| `<Suspense fallback={<Cargando />}>` | La página sale en blanco con un error de React ("A component suspended..."). |
+| `registrarModoSinInternet();` | Todo funciona con internet, pero sin internet no abre. |
 | `<SyncDatos />` | Todas las pantallas se quedan sin datos (no se llama a `/api/sync`). |

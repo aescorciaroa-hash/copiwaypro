@@ -50,3 +50,14 @@ aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm r
 |---|---|
 | **El archivo completo** | `npm run build` falla con `Could not resolve ".../MapSection"` porque lo importan: `src/pages/AdminDashboard.tsx`. |
 | Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |
+
+## Ventanita (popup) de cada pedido en el mapa
+Al tocar el marcador de un cliente se abre una ventanita con diseño de tarjeta:
+- Arriba: el código `#ORD-11` y el estado con un puntito (violeta = En Camino, verde = Listos).
+- Nombre del cliente y dirección (ícono de ubicación naranja).
+- Si ya tiene domiciliario: una franja naranja con su nombre.
+- Abajo: el **Total** en pesos.
+
+`<Popup className="copi-popup" closeButton={false}>` = le pone el nombre `copi-popup` para darle estilo y
+le quita la X (se cierra tocando el mapa). Los estilos `.copi-popup` están al final de `src/index.css`:
+quitan el relleno que trae Leaflet por defecto y redondean las esquinas.

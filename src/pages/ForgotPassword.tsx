@@ -100,7 +100,7 @@ export default function ForgotPassword() {
       <div className="w-full max-w-[1040px] bg-white/90 dark:bg-stone-900/95 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_80px_-15px_rgba(255,112,0,0.1)] dark:shadow-[0_20px_80px_-15px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col lg:flex-row border border-white dark:border-stone-800/80 relative z-10 transition-all duration-100 ring-1 ring-black/5 dark:ring-white/10 hover:shadow-[0_30px_100px_-20px_rgba(255,112,0,0.15)] dark:hover:shadow-[0_30px_100px_-20px_rgba(0,0,0,0.6)]">
         <div className="hidden lg:flex lg:w-1/2 bg-zinc-950 relative flex-col justify-between p-14 text-white">
           <div className="absolute inset-0 opacity-100">
-            <img 
+            <img loading="lazy" decoding="async" 
               src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=1000&auto=format&fit=crop" 
               alt="Gourmet Burger"
               className="w-full h-full object-cover"

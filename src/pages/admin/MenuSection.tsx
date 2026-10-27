@@ -373,7 +373,7 @@ export default function MenuSection({
                 
                 {product.image ? (
                   <div className="h-28 sm:h-48 w-full overflow-hidden bg-gray-100 dark:bg-stone-800 relative">
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                    <img loading="lazy" decoding="async" src={product.image} alt={product.name} className="w-full h-full object-cover" />
                     {product.badge && (
                       <span className="absolute bottom-2 left-2 bg-brand-orange text-white text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1">
                         {product.badge === 'Más Vendido' && <Flame className="w-3 h-3 text-white" />}
@@ -639,7 +639,7 @@ export default function MenuSection({
 
                       {newProduct.image ? (
                         <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-stone-700 group">
-                          <img src={newProduct.image} alt="Producto" className="w-full h-36 object-cover" />
+                          <img loading="lazy" decoding="async" src={newProduct.image} alt="Producto" className="w-full h-36 object-cover" />
                           <button
                             type="button"
                             onClick={() => setNewProduct({...newProduct, image: ''})}
@@ -1196,7 +1196,7 @@ export default function MenuSection({
                       <div className="bg-white dark:bg-stone-900 rounded-3xl border border-gray-200 dark:border-stone-800 overflow-hidden shadow-md">
                         <div className="relative h-44 w-full bg-gray-100 dark:bg-stone-800 overflow-hidden flex items-center justify-center">
                           {newProduct.image ? (
-                            <img
+                            <img loading="lazy" decoding="async"
                               src={newProduct.image}
                               alt={newProduct.name || 'Preview'}
                               className="w-full h-full object-cover"

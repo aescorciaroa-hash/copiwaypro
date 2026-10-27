@@ -70,32 +70,11 @@ export default function Login() {
   });
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 lg:p-6 relative overflow-hidden bg-gray-50 dark:bg-stone-950 transition-colors duration-100">
-      {/* Impressive Modern Background */}
-      <style>{`
-        .bg-grid-pattern {
-          background-image: linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
-                            linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
-          background-size: 32px 32px;
-        }
-        .dark .bg-grid-pattern {
-          background-image: linear-gradient(to right, rgba(255,255,255,0.015) 1px, transparent 1px),
-                            linear-gradient(to bottom, rgba(255,255,255,0.015) 1px, transparent 1px);
-        }
-      `}</style>
-
-      {/* Base Grid */}
-      <div className="absolute inset-0 bg-grid-pattern [mask-image:radial-gradient(ellipse_at_center,black_50%,transparent_80%)]"></div>
-
-      {/* Glowing Orbs - High Performance Static Version */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full min-w-full min-h-full opacity-35 dark:opacity-25 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-[300px] md:w-[500px] h-[300px] md:h-[500px] rounded-full bg-brand-orange/30 blur-[80px]"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] md:w-[600px] h-[400px] md:h-[600px] rounded-full bg-[#ffb070]/20 blur-[90px]"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] md:w-[400px] h-[250px] md:h-[400px] rounded-full bg-blue-200/20 blur-[80px]"></div>
-      </div>
-
-      {/* Overlay to soften - Lightweight blur for fluid toggling */}
-      <div className="absolute inset-0 bg-white/70 dark:bg-stone-950/70 backdrop-blur-[6px] transition-colors duration-100"></div>
+    <div className="min-h-screen flex items-center justify-center p-4 lg:p-6 relative overflow-hidden bg-[#f6f6f4] dark:bg-stone-950 transition-colors duration-100">
+      {/* Fondo difuminado (igual al login de cocina): manchas de color borrosas por fuera de la tarjeta y una cuadrícula de puntos */}
+      <div className="absolute -top-40 -left-40 w-[560px] h-[560px] rounded-full bg-brand-orange/20 dark:bg-brand-orange/15 blur-[120px] pointer-events-none"></div>
+      <div className="absolute -bottom-40 -right-40 w-[560px] h-[560px] rounded-full bg-amber-300/25 dark:bg-amber-500/10 blur-[120px] pointer-events-none"></div>
+      <div className="absolute inset-0 opacity-[0.35] dark:opacity-[0.08] pointer-events-none [background-image:radial-gradient(#d6d3d1_1px,transparent_1px)] [background-size:22px_22px]"></div>
 
       {/* Floating corner theme selector */}
       <div className="absolute top-6 right-6 z-30">
@@ -109,12 +88,15 @@ export default function Login() {
         </button>
       </div>
 
-      <div className="w-full max-w-[1040px] bg-white/90 dark:bg-stone-900/95 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_80px_-15px_rgba(255,112,0,0.1)] dark:shadow-[0_20px_80px_-15px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col lg:flex-row border border-white dark:border-stone-800/80 relative z-10 transition-all duration-100 ring-1 ring-black/5 dark:ring-white/10 hover:shadow-[0_30px_100px_-20px_rgba(255,112,0,0.15)] dark:hover:shadow-[0_30px_100px_-20px_rgba(0,0,0,0.6)]">
+      {/* Halo borroso detrás de la tarjeta: hace que la orilla se funda con el fondo (sin línea de borde) */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(1040px,92vw)] h-[min(640px,85vh)] rounded-[80px] bg-brand-orange/10 dark:bg-brand-orange/[0.12] blur-[80px] pointer-events-none"></div>
+
+      <div className="w-full max-w-[1040px] bg-white dark:bg-[#151515] rounded-[36px] overflow-hidden flex flex-col lg:flex-row relative z-10 shadow-[0_30px_80px_-24px_rgba(0,0,0,0.20)] dark:shadow-[0_30px_90px_-20px_rgba(0,0,0,0.75)] transition-colors duration-100">
         
         {/* Left side styling for large screens - visible as sidebar */}
         <div className="hidden lg:flex lg:w-1/2 bg-zinc-950 relative flex-col justify-between p-14 text-white">
           <div className="absolute inset-0 opacity-100">
-            <img 
+            <img loading="eager" decoding="async" 
               src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=1000&auto=format&fit=crop" 
               alt="Gourmet Burger"
               className="w-full h-full object-cover"
@@ -150,7 +132,7 @@ export default function Login() {
         </div>
 
         {/* Right side - Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center bg-white dark:bg-stone-900 p-6 md:p-12 lg:p-16 transition-colors duration-100">
+        <div className="w-full lg:w-1/2 flex items-center justify-center bg-white dark:bg-[#151515] p-6 md:p-12 lg:p-16 transition-colors duration-100">
           
           <div className="w-full max-w-md">
             <a href={rutaBase() + '/'} className="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-stone-400 hover:text-brand-dark dark:hover:text-brand-orange mb-12 font-medium transition-colors">

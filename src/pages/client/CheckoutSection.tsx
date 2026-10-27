@@ -201,7 +201,7 @@ export default function CheckoutSection({
                   <div className="w-12 h-12 shrink-0 relative">
                     <div className="w-full h-full rounded-xl overflow-hidden bg-black/5 dark:bg-white/5 border border-gray-100 dark:border-stone-800">
                       {(item.image || item.product?.image) ? (
-                        <img src={item.image || item.product?.image} alt={item.name} className="w-full h-full object-cover object-center" />
+                        <img loading="lazy" decoding="async" src={item.image || item.product?.image} alt={item.name} className="w-full h-full object-cover object-center" />
                       ) : item.stack && item.stack.length > 0 ? (
                         <CustomBurgerThumb ingredientNames={item.stack.map(s => s.name)} size={48} className="!rounded-none border-0" />
                       ) : (

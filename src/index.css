@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @variant dark (&:where(.dark, .dark *));
@@ -140,4 +139,19 @@ html.dark ::-webkit-scrollbar-track {
      se afinan suaves (no agresivos) para no "quemar" el negro. saturate()
      baja el resto de color que sobra para que no se vea como un negativo. */
   filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.85) saturate(0.65);
+}
+
+/* Popup del mapa con diseño de tarjeta (MapSection) */
+.copi-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+.copi-popup .leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+}
+.copi-popup .leaflet-popup-content p {
+  margin: 0;
 }

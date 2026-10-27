@@ -32,3 +32,6 @@ aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm r
 |---|---|
 | **El archivo completo** | `npm run build` falla con `Could not resolve ".../Footer"` porque lo importan: `src/pages/Landing.tsx`. |
 | Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |
+
+## Sin línea arriba
+La parte oscura del pie (`bg-zinc-950`) ya no tiene `border-t`: esa línea se veía detrás del recuadro naranja "¿Listo para probar el auténtico sabor?".

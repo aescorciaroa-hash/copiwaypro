@@ -153,7 +153,7 @@ export default function CatalogSection({
               className="relative hidden sm:block h-56 lg:h-auto lg:min-h-[260px] rounded-3xl overflow-hidden group cursor-pointer text-left"
               title={`Pedir ${catalog[0].name}`}
             >
-              <img src={getProductImage(catalog[0].image)} alt={catalog[0].name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <img loading="lazy" decoding="async" src={getProductImage(catalog[0].image)} alt={catalog[0].name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
               <span className="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-orange text-[11px] font-black uppercase tracking-wide">
                 <Flame className="w-3 h-3" /> {catalog[0].badge || 'Más vendido'}
@@ -226,7 +226,7 @@ export default function CatalogSection({
               >
                 {prod.image && (
                   <div className="h-28 sm:h-48 md:h-56 relative bg-black/5 dark:bg-white/5 overflow-hidden shrink-0">
-                    <img src={getProductImage(prod.image)} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img loading="lazy" decoding="async" src={getProductImage(prod.image)} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     {!isAvailable && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px] z-10">
                         <span className="bg-red-600 text-white font-black px-4 py-2 rounded-xl text-sm tracking-widest uppercase shadow-lg border border-white/20">Agotado</span>

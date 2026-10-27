@@ -62,3 +62,8 @@ aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm r
 |---|---|
 | **El archivo completo** | `npm run build` falla con `Could not resolve ".../Register"` porque lo importan: `src/main.tsx`. |
 | Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |
+
+## Fondo y tarjeta
+- Fondo difuminado (igual al login): dos manchas de color muy borrosas (`blur-[120px]`), naranja arriba a la izquierda y ámbar abajo a la derecha, y una cuadrícula de puntos suave.
+- La tarjeta **no tiene borde**: detrás lleva un halo naranja muy borroso (`blur-[80px]`) y una sombra amplia, para que la orilla se funda con el fondo.
+- El lado del formulario usa el mismo color de la tarjeta (`#151515` en modo oscuro), para que no se note la unión con la foto.

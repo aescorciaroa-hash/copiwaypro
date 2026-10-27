@@ -95,6 +95,8 @@ dibuja la sección activa.
 3. **Tecla Escape:** cierra cualquier ventana abierta.
 4. **Pedido nuevo:** espera a `ordersSynced` (la primera carga real). Si después llegan más pedidos, muestra la alerta 5 segundos y suena la campana.
 5. **Pedidos vacíos:** quita del estado local los pedidos sin productos.
+6. **Alerta de stock crítico:** revisa qué insumos tienen entre 1 y 10 unidades (`criticalItems`). Si hay uno **nuevo** que no se había avisado, muestra el banner y lo oculta solo a los **15 segundos** (`STOCK_ALERT_MS`). Los insumos ya avisados se guardan en el navegador (`localStorage`, clave `stockAlertSeen`), así que al recargar la página no vuelve a salir por los mismos. Si un insumo se repone y luego vuelve a bajar, avisa otra vez. El temporizador de 15 segundos está en un `useEffect` aparte que depende de `showStockAlert` y `stockAlertTab`, para que las recargas del inventario no lo reinicien ni lo cancelen. **Solo cuenta mientras estás en una de las dos pestañas**: si llega un aviso estando en otra sección, espera a que entres; si sales antes de los 15 segundos, vuelve a empezar al regresar. El banner solo se dibuja en las pestañas **Tablero Analítico** (`overview`) e **Inventario Express** (`inventory`).
+7. **Ícono de advertencia (triángulo rojo):** junto a la campana aparece un ícono `TriangleAlert` con el número de insumos críticos, **solo mientras haya** insumos en `criticalItems`. Al tocarlo llama a `toggleStockAlert()`: muestra el banner en **cualquier sección** (`stockAlertManual`), sube al inicio de la página y lo oculta a los 15 segundos. Si el banner ya está abierto, el ícono lo cierra. Al cambiar de sección se olvida la apertura manual.
 
 ## Componentes internos (al inicio del archivo)
 `RoutePolyline` (ruta OSRM en el mapa, igual que en `DeliveryDashboard.tsx`) y `CustomTooltip`
@@ -168,3 +170,11 @@ aquí, primero hay que ejecutar `npm run build` para ver el error (o usar `npm r
 |---|---|
 | **El archivo completo** | `npm run build` falla con `Could not resolve ".../AdminDashboard"` porque lo importan: `src/main.tsx`, `src/pages/admin/InventorySection.tsx`, `src/pages/admin/MapSection.tsx`, `src/pages/admin/MenuSection.tsx`, `src/pages/admin/OrdersSection.tsx`, `src/pages/admin/OverviewSection.tsx`, `src/pages/admin/StaffSection.tsx`. |
 | Algo que este archivo exporta (`export ...`) | `npm run build` / `npm run lint` fallan en los archivos que lo importan: `"X" is not exported by ...` o `has no exported member`. |
+
+## Ventana "Editar dirección"
+Se abre con el lápiz de una comanda (`editingAddressOrder` = el pedido que se está editando).
+- Arriba: ícono de ubicación naranja, título y el código del pedido.
+- Una cajita gris con la **dirección actual** (para comparar).
+- El campo **Nueva dirección**. Al presionar **Enter** también se guarda.
+- Botones **Cancelar** y **Guardar cambios**. "Guardar" queda gris (deshabilitado) si el campo está vacío
+  o si la dirección no cambió.

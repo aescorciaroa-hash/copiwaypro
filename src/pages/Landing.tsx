@@ -135,8 +135,13 @@ export default function Landing() {
              <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.75)_0%,rgba(0,0,0,0)_40%,#0c0a09_100%)] z-10 pointer-events-none opacity-0 dark:opacity-100 transition-opacity duration-300"></div>
              {/* Text spotlight overlay */}
              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.65)_0%,rgba(0,0,0,0.3)_40%,transparent_70%)] z-10 pointer-events-none"></div>
+             {/* Desvanecido final: termina en el color exacto de la página para que no se vea una raya con la sección de abajo */}
+             <div className="absolute inset-x-0 -bottom-px h-56 bg-gradient-to-t from-gray-50 via-gray-50/80 to-transparent dark:from-stone-950 dark:via-stone-950/80 z-20 pointer-events-none"></div>
              <img 
-               src="https://images.unsplash.com/photo-1550547660-d9450f859349?q=100&w=2400&auto=format&fit=crop" 
+               src="https://images.unsplash.com/photo-1550547660-d9450f859349?q=75&w=1920&auto=format&fit=crop"
+               fetchPriority="high"
+               loading="eager"
+               decoding="async" 
                alt="Hamburguesa jugosa Copiway" 
                className="w-full h-full object-cover object-[60%_center] animate-pan"
              />
@@ -197,39 +202,31 @@ export default function Landing() {
         </section>
 
         {/* 2) BARRA DE VALORES */}
-        <section className="bg-white dark:bg-stone-900 py-20 px-6 border-b border-black/5 dark:border-white/5 relative z-30 transition-colors duration-300">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-gray-50 dark:bg-stone-950/40 border border-black/5 dark:border-white/5 p-6 md:p-8 rounded-[24px] flex flex-col items-center text-center hover:shadow-lg transition-all duration-300">
-              <div className="w-14 h-14 bg-brand-orange/10 rounded-full flex items-center justify-center mb-4">
-                <Clock className="w-6 h-6 text-brand-orange" />
+        {/* Sin franja de color: luces borrosas y cuadrícula de puntos que se desvanecen en los bordes (igual al login) */}
+        <section className="relative z-30 py-20 px-6 overflow-hidden">
+          <div className="absolute top-1/2 left-[15%] -translate-y-1/2 w-[420px] h-[420px] rounded-full bg-brand-orange/15 dark:bg-brand-orange/[0.12] blur-[120px] pointer-events-none"></div>
+          <div className="absolute top-1/2 right-[10%] -translate-y-1/2 w-[420px] h-[420px] rounded-full bg-amber-300/20 dark:bg-amber-500/[0.08] blur-[120px] pointer-events-none"></div>
+          <div className="absolute inset-0 opacity-[0.35] dark:opacity-[0.08] pointer-events-none [background-image:radial-gradient(#d6d3d1_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"></div>
+
+          <div className="relative max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { icon: Clock, titulo: 'Entrega Rápida', texto: 'Rastreo en tiempo real y tiempos de despacho optimizados.' },
+              { icon: Flame, titulo: 'Ingredientes Frescos', texto: 'Carnes seleccionadas y vegetales frescos todos los días.' },
+              { icon: Utensils, titulo: 'Hecho al Momento', texto: 'Directo de la parrilla a tu mesa, sin pre-cocidos.' },
+              { icon: ShieldCheck, titulo: 'Pago 100% Seguro', texto: 'Transacciones protegidas para que pidas con total confianza.' },
+            ].map(({ icon: Icon, titulo, texto }) => (
+              <div key={titulo} className="group relative">
+                {/* Halo naranja que aparece detrás de la tarjeta al pasar el mouse */}
+                <div className="absolute inset-4 rounded-[28px] bg-brand-orange/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                <div className="relative h-full bg-white dark:bg-[#151515] p-6 md:p-8 rounded-[28px] flex flex-col items-center text-center shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] group-hover:-translate-y-1 transition-transform duration-300">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-4">
+                    <Icon className="w-6 h-6 text-brand-orange" />
+                  </div>
+                  <h3 className="font-bold text-gray-900 dark:text-white mb-2">{titulo}</h3>
+                  <p className="text-sm text-gray-500 dark:text-stone-400">{texto}</p>
+                </div>
               </div>
-              <h3 className="font-bold text-gray-900 dark:text-white mb-2">Entrega Rápida</h3>
-              <p className="text-sm text-gray-500 dark:text-stone-400">Rastreo en tiempo real y tiempos de despacho optimizados.</p>
-            </div>
-            
-            <div className="bg-gray-50 dark:bg-stone-950/40 border border-black/5 dark:border-white/5 p-6 md:p-8 rounded-[24px] flex flex-col items-center text-center hover:shadow-lg transition-all duration-300">
-              <div className="w-14 h-14 bg-brand-orange/10 rounded-full flex items-center justify-center mb-4">
-                <Flame className="w-6 h-6 text-brand-orange" />
-              </div>
-              <h3 className="font-bold text-gray-900 dark:text-white mb-2">Ingredientes Frescos</h3>
-              <p className="text-sm text-gray-500 dark:text-stone-400">Carnes seleccionadas y vegetales frescos todos los días.</p>
-            </div>
-            
-            <div className="bg-gray-50 dark:bg-stone-950/40 border border-black/5 dark:border-white/5 p-6 md:p-8 rounded-[24px] flex flex-col items-center text-center hover:shadow-lg transition-all duration-300">
-              <div className="w-14 h-14 bg-brand-orange/10 rounded-full flex items-center justify-center mb-4">
-                <Utensils className="w-6 h-6 text-brand-orange" />
-              </div>
-              <h3 className="font-bold text-gray-900 dark:text-white mb-2">Hecho al Momento</h3>
-              <p className="text-sm text-gray-500 dark:text-stone-400">Directo de la parrilla a tu mesa, sin pre-cocidos.</p>
-            </div>
-            
-            <div className="bg-gray-50 dark:bg-stone-950/40 border border-black/5 dark:border-white/5 p-6 md:p-8 rounded-[24px] flex flex-col items-center text-center hover:shadow-lg transition-all duration-300">
-              <div className="w-14 h-14 bg-brand-orange/10 rounded-full flex items-center justify-center mb-4">
-                <ShieldCheck className="w-6 h-6 text-brand-orange" />
-              </div>
-              <h3 className="font-bold text-gray-900 dark:text-white mb-2">Pago 100% Seguro</h3>
-              <p className="text-sm text-gray-500 dark:text-stone-400">Transacciones protegidas para que pidas con total confianza.</p>
-            </div>
+            ))}
           </div>
         </section>
 
@@ -263,7 +260,7 @@ export default function Landing() {
             {filteredProducts.map(product => (
               <div key={product.id} className="bg-white dark:bg-[#151515] rounded-[24px] border border-gray-100 dark:border-stone-800 shadow-sm overflow-hidden hover:shadow-lg transition-shadow group flex flex-col">
                 <div className="h-48 md:aspect-[16/10] bg-gray-100 dark:bg-stone-800 relative overflow-hidden">
-                  <img src={getProductImage(product.image)} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=800'; }} />
+                  <img loading="lazy" decoding="async" src={getProductImage(product.image)} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=800'; }} />
                 </div>
                 <div className="p-6 flex flex-col flex-1 min-w-0">
                   <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">{product.name}</h3>
@@ -292,17 +289,21 @@ export default function Landing() {
         </section>
 
         {/* 4) NUESTRA HISTORIA */}
-        <section id="nosotros" className="py-24 px-6 bg-gray-100/50 dark:bg-stone-900/30 border-y border-black/5 dark:border-white/5">
-          <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
+        {/* Sin franja de color: luces borrosas y cuadrícula de puntos que se desvanecen (igual al login) */}
+        <section id="nosotros" className="relative py-24 px-6 overflow-hidden">
+          <div className="absolute top-1/2 left-[10%] -translate-y-1/2 w-[480px] h-[480px] rounded-full bg-brand-orange/15 dark:bg-brand-orange/[0.12] blur-[120px] pointer-events-none"></div>
+          <div className="absolute top-1/2 right-[5%] -translate-y-1/2 w-[480px] h-[480px] rounded-full bg-amber-300/20 dark:bg-amber-500/[0.08] blur-[120px] pointer-events-none"></div>
+          <div className="absolute inset-0 opacity-[0.35] dark:opacity-[0.08] pointer-events-none [background-image:radial-gradient(#d6d3d1_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"></div>
+          <div className="relative max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
             <div className="flex-1 w-full relative min-w-0">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-4 pt-12">
-                  <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=600&auto=format&fit=crop" alt="Hamburguesas" className="w-full h-48 md:h-64 object-cover rounded-[24px] shadow-lg" />
-                  <img src="https://images.unsplash.com/photo-1520072959219-c595dc870360?q=80&w=600&auto=format&fit=crop" alt="Papas Fritas" className="w-full h-32 md:h-48 object-cover rounded-[24px] shadow-lg" />
+                  <img loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=600&auto=format&fit=crop" alt="Hamburguesas" className="w-full h-48 md:h-64 object-cover rounded-[24px] shadow-lg" />
+                  <img loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1520072959219-c595dc870360?q=80&w=600&auto=format&fit=crop" alt="Papas Fritas" className="w-full h-32 md:h-48 object-cover rounded-[24px] shadow-lg" />
                 </div>
                 <div className="space-y-4">
-                  <img src="https://images.unsplash.com/photo-1586816001966-79b736744398?q=80&w=600&auto=format&fit=crop" alt="Chef preparando" className="w-full h-32 md:h-48 object-cover rounded-[24px] shadow-lg" />
-                  <img src="https://images.unsplash.com/photo-1606131731446-5568d87113aa?q=80&w=600&auto=format&fit=crop" alt="Entrega Dark Kitchen" className="w-full h-48 md:h-64 object-cover rounded-[24px] shadow-lg" />
+                  <img loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1586816001966-79b736744398?q=80&w=600&auto=format&fit=crop" alt="Chef preparando" className="w-full h-32 md:h-48 object-cover rounded-[24px] shadow-lg" />
+                  <img loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1606131731446-5568d87113aa?q=80&w=600&auto=format&fit=crop" alt="Entrega Dark Kitchen" className="w-full h-48 md:h-64 object-cover rounded-[24px] shadow-lg" />
                 </div>
               </div>
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-brand-orange rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,112,0,0.4)] border-4 border-white dark:border-stone-950">
@@ -347,7 +348,9 @@ export default function Landing() {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {reviews.map(review => (
-              <div key={review.id} className="bg-white dark:bg-[#151515] p-6 md:p-8 rounded-[24px] border border-gray-100 dark:border-stone-800 shadow-sm relative">
+              <div key={review.id} className="group relative">
+                <div className="absolute inset-4 rounded-[28px] bg-brand-orange/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+              <div className="relative h-full flex flex-col bg-white dark:bg-[#151515] p-6 md:p-8 rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] group-hover:-translate-y-1 transition-transform duration-300">
                 <div className="flex items-center gap-1 mb-6">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star key={i} className={`w-5 h-5 ${i < review.rating ? 'text-brand-orange fill-brand-orange' : 'text-gray-300 dark:text-stone-700'}`} />
@@ -366,13 +369,18 @@ export default function Landing() {
                   </div>
                 </div>
               </div>
+              </div>
             ))}
           </div>
         </section>
 
         {/* 6) CONTÁCTANOS */}
-        <section id="contacto" className="py-32 px-6 bg-white dark:bg-stone-900 border-t border-black/5 dark:border-white/5">
-          <div className="max-w-7xl mx-auto">
+        {/* Sin franja de color: luces borrosas y cuadrícula de puntos que se desvanecen (igual al login) */}
+        <section id="contacto" className="relative py-32 px-6 overflow-hidden">
+          <div className="absolute top-1/2 left-[10%] -translate-y-1/2 w-[480px] h-[480px] rounded-full bg-brand-orange/15 dark:bg-brand-orange/[0.12] blur-[120px] pointer-events-none"></div>
+          <div className="absolute top-1/2 right-[5%] -translate-y-1/2 w-[480px] h-[480px] rounded-full bg-amber-300/20 dark:bg-amber-500/[0.08] blur-[120px] pointer-events-none"></div>
+          <div className="absolute inset-0 opacity-[0.35] dark:opacity-[0.08] pointer-events-none [background-image:radial-gradient(#d6d3d1_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"></div>
+          <div className="relative max-w-7xl mx-auto">
             <div className="text-center mb-16">
               <span className="text-brand-orange font-bold text-xs tracking-widest uppercase mb-4 block">ESTAMOS PARA TI</span>
               <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white tracking-normal">Contáctanos</h2>
@@ -382,32 +390,32 @@ export default function Landing() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-              <div className="bg-gray-50 dark:bg-[#151515] p-6 rounded-[24px] border border-gray-100 dark:border-stone-800 text-center flex flex-col items-center">
-                <div className="w-12 h-12 bg-white dark:bg-stone-800 rounded-full flex items-center justify-center shadow-sm mb-4">
+              <div className="bg-white dark:bg-[#151515] p-6 rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-4">
                   <MapPin className="w-5 h-5 text-brand-orange" />
                 </div>
                 <h4 className="font-bold text-gray-900 dark:text-white mb-2">Dirección</h4>
                 <p className="text-sm text-gray-500 dark:text-stone-400">Cocina Oculta - Centro<br/>Neiva, Huila</p>
               </div>
               
-              <div className="bg-gray-50 dark:bg-[#151515] p-6 rounded-[24px] border border-gray-100 dark:border-stone-800 text-center flex flex-col items-center">
-                <div className="w-12 h-12 bg-white dark:bg-stone-800 rounded-full flex items-center justify-center shadow-sm mb-4">
+              <div className="bg-white dark:bg-[#151515] p-6 rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-4">
                   <Clock className="w-5 h-5 text-brand-orange" />
                 </div>
                 <h4 className="font-bold text-gray-900 dark:text-white mb-2">Horario</h4>
                 <p className="text-sm text-gray-500 dark:text-stone-400">De {storeConfig.openTime} a {storeConfig.closeTime}<br/>Lunes a Domingo</p>
               </div>
 
-              <div className="bg-gray-50 dark:bg-[#151515] p-6 rounded-[24px] border border-gray-100 dark:border-stone-800 text-center flex flex-col items-center">
-                <div className="w-12 h-12 bg-white dark:bg-stone-800 rounded-full flex items-center justify-center shadow-sm mb-4">
+              <div className="bg-white dark:bg-[#151515] p-6 rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-4">
                   <Phone className="w-5 h-5 text-brand-orange" />
                 </div>
                 <h4 className="font-bold text-gray-900 dark:text-white mb-2">Teléfono</h4>
                 <p className="text-sm text-gray-500 dark:text-stone-400">+57 300 123 4567<br/>Atención vía WhatsApp</p>
               </div>
 
-              <div className="bg-gray-50 dark:bg-[#151515] p-6 rounded-[24px] border border-gray-100 dark:border-stone-800 text-center flex flex-col items-center">
-                <div className="w-12 h-12 bg-white dark:bg-stone-800 rounded-full flex items-center justify-center shadow-sm mb-4">
+              <div className="bg-white dark:bg-[#151515] p-6 rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-4">
                   <Mail className="w-5 h-5 text-brand-orange" />
                 </div>
                 <h4 className="font-bold text-gray-900 dark:text-white mb-2">Email</h4>
@@ -417,7 +425,7 @@ export default function Landing() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-auto lg:h-[500px]">
               {/* Formulario */}
-              <div className="bg-gray-50 dark:bg-[#151515] p-8 rounded-[32px] border border-gray-100 dark:border-stone-800 flex flex-col justify-center">
+              <div className="bg-white dark:bg-[#151515] p-8 rounded-[32px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] flex flex-col justify-center">
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Envíanos un mensaje</h3>
                 <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); alert('Mensaje enviado exitosamente. Nos pondremos en contacto pronto.'); }}>
                   <div>
@@ -437,7 +445,7 @@ export default function Landing() {
               </div>
               
               {/* Mapa */}
-              <div className={`rounded-[32px] overflow-hidden border border-gray-100 dark:border-stone-800 h-[400px] lg:h-full relative z-0 [&_.leaflet-container]:bg-transparent [&_.leaflet-control-container]:z-[500] ${theme === 'dark' ? 'leaflet-dark-tiles' : ''}`}>
+              <div className={`rounded-[32px] overflow-hidden shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] h-[400px] lg:h-full relative z-0 [&_.leaflet-container]:bg-transparent [&_.leaflet-control-container]:z-[500] ${theme === 'dark' ? 'leaflet-dark-tiles' : ''}`}>
                 <MapContainer
                   center={[2.9273, -75.2818]}
                   zoom={13}

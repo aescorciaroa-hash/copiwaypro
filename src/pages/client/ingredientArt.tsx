@@ -487,7 +487,7 @@ export function renderBunBottom(kind: 'brioche' | 'pretzel'): React.ReactElement
 export function IngredientThumb({ name, image, size = 48, className = '' }: { name: string; image?: string; size?: number; className?: string }) {
   const style = { width: size, height: size };
   if (image) {
-    return <img src={image} alt={name} style={style} className={`rounded-xl object-cover shrink-0 border border-gray-200 dark:border-stone-700 ${className}`} />;
+    return <img loading="lazy" decoding="async" src={image} alt={name} style={style} className={`rounded-xl object-cover shrink-0 border border-gray-200 dark:border-stone-700 ${className}`} />;
   }
   return (
     <div style={style} className={`rounded-xl bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0 ${className}`}>

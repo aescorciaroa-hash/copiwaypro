@@ -124,7 +124,13 @@ Aviso de notificaciones, reseña (estrellas y comentario), detalle de un pedido,
   abierta (`activeTab`); si no la encuentra, usa la del menú.
 - **Derecha**, en este orden: el indicador de la cocina, una pastilla con las **iniciales, el nombre y los
   puntos** del cliente (al tocarla abre "Mi Perfil" con `setActiveTab('profile')`), la **campana** (con un
-  globito naranja que dice cuántas notificaciones no ha leído) y el botón de **modo claro / oscuro**.
+  globito naranja que dice cuántas notificaciones no ha leído) y el botón de **modo claro / oscuro**. La
+  campana y el botón de modo van **juntos dentro de una misma cápsula gris**, con el mismo estilo que en el
+  panel del admin.
+- Al tocar la campana se abre un **panel lateral** por la derecha (igual al del admin): oscurece el fondo,
+  tiene esquinas redondeadas, una tarjeta por notificación (las no leídas en naranja suave) y abajo el botón
+  **"Marcar todo leído"**. Tocar una notificación la marca como leída. El panel está **fuera del `<header>`**,
+  porque el difuminado del header (`backdrop-blur-xl`) haría que el panel quedara encerrado en la barra.
 - La barra es un poco transparente y difumina lo que pasa por detrás (`backdrop-blur-xl`).
 
 ### Indicador "Cocina Abierta / Cerrada" (arriba a la derecha)

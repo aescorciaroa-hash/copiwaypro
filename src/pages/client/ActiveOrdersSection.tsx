@@ -71,7 +71,7 @@ export default function ActiveOrdersSection({
                             return (
                             <div key={item.id || idx} className="w-8 h-8 rounded-full ring-2 ring-white dark:ring-[#151515] bg-gray-100 dark:bg-stone-800 overflow-hidden shrink-0">
                               {itemImage ? (
-                                <img src={itemImage} alt={item.name} className="w-full h-full object-cover" />
+                                <img loading="lazy" decoding="async" src={itemImage} alt={item.name} className="w-full h-full object-cover" />
                               ) : item.extras && item.extras.length > 0 ? (
                                 <CustomBurgerThumb ingredientNames={item.extras.map(e => e.name)} size={32} className="!rounded-none border-0" />
                               ) : (

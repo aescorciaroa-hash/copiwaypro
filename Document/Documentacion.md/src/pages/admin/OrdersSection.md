@@ -28,9 +28,27 @@ solo lo puede hacer el domiciliario que lo tomó.
 | `setSelectedDriverInfo`, `showManualForm` / `setShowManualForm`, `setEditingAddressOrder`, `setNewAddress`, `handleViewOrder` | Funciones del padre. |
 
 ## Colores de estado
-Cada tarjeta tiene una franja de color según el estado: naranja **PENDIENTE**, azul **PREPARANDO**,
-verde **LISTOS**, gris **EN CAMINO**, amarillo **ESPERANDO PAGO** (pedido manual con link sin pagar)
-y rojo **CANCELADO** (link de pago vencido).
+Cada tarjeta tiene un brillo suave arriba y una etiqueta (chip) con un puntito del color del estado:
+naranja **Pendiente**, azul **Preparando**, verde **Listo**, violeta **En camino**, amarillo
+**Esperando pago** (pedido manual con link sin pagar) y rojo **Cancelado** (link de pago vencido).
+El puntito titila (`animate-ping`) mientras el pedido sigue activo.
+
+Los colores se guardan en la variable `tone`, que tiene tres partes:
+- `chip` = colores de la etiqueta del estado.
+- `dot` = color del puntito.
+- `glow` = color del brillo de arriba de la tarjeta (`bg-gradient-to-b`, un degradado que se desvanece).
+
+## Cómo se ve cada tarjeta (de arriba hacia abajo)
+1. **Código y hora:** `#ORD-13` grande, debajo la hora (ícono reloj) y el canal (web / llamada / whatsapp).
+2. **Cliente y dirección:** una cajita con dos filas: teléfono del cliente y "Entregar en" con el lápiz
+   para editar la dirección.
+3. **Pedido:** foto de cada producto con la cantidad en una bolita naranja encima, y cuántos productos son en total
+   (`totalUnidades` suma las cantidades).
+4. **Equipo:** fila azul "Preparó" (cocinero, ícono gorro de chef) y fila naranja "Domiciliario"
+   (ícono moto) con la placa en una etiqueta tipo matrícula.
+5. **Pie:** el **Total** en pesos (`formatCOP`) y el botón negro **Ver detalle**.
+
+Al pasar el mouse la tarjeta sube un poquito (`hover:-translate-y-1`) y gana sombra.
 
 ## El mapa
 - **Origen:** la cocina.

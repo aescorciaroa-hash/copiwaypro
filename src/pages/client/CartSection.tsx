@@ -93,7 +93,7 @@ export default function CartSection({
               <div key={item.id} className="bg-white dark:bg-[#151515] p-6 rounded-[24px] border border-gray-100 dark:border-stone-800 flex gap-6 shadow-sm">
                 <div className="w-24 h-24 rounded-2xl bg-black/5 dark:bg-white/5 overflow-hidden shrink-0 relative">
      {(item.image || item.product?.image) ? (
-       <img src={item.image || item.product?.image} alt={item.name} className="w-full h-full object-cover" />
+       <img loading="lazy" decoding="async" src={item.image || item.product?.image} alt={item.name} className="w-full h-full object-cover" />
      ) : (
        <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-stone-800 text-gray-400">
           <ShoppingBag className="w-8 h-8 opacity-50" />

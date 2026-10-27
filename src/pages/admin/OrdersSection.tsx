@@ -2,12 +2,12 @@ import React from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import {
-  Bell, Check, Eye, MapPin, Maximize2, Minimize2, Package, Plus, Utensils
+  Bell, Bike, Check, ChefHat, Clock, Eye, MapPin, Maximize2, Minimize2, Package, Pencil, Phone, Plus, Utensils
 } from 'lucide-react';
 
 import { Order, OrderItem, Staff, useStore } from '../../store/almacenAplicacion';
 import { CustomZoomControl, RoutePolyline, DriverMockInfo } from '../AdminDashboard';
-import { vehicleWithModel } from '../../lib/format';
+import { formatCOP, orderCode, vehicleWithModel } from '../../lib/format';
 
 interface OrdersSectionProps {
   orders: Order[];
@@ -133,129 +133,163 @@ export default function OrdersSection({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {orders.map(order => {
-              let color = 'bg-gray-400 dark:bg-stone-600';
-              let statusText = order.status.toUpperCase();
-              if (order.status === 'Esperando Pago') { color = 'bg-amber-400'; statusText = 'ESPERANDO PAGO'; }
-              if (order.status === 'Cancelado') { color = 'bg-red-400'; statusText = 'CANCELADO'; }
-              if (order.status === 'Pendiente' || order.status === 'Pagado') { color = 'bg-brand-orange'; statusText = 'PENDIENTE'; }
-              if (order.status === 'En Preparación') { color = 'bg-blue-500'; statusText = 'PREPARANDO'; }
-              if (order.status === 'Listos') { color = 'bg-emerald-500'; statusText = 'LISTOS'; }
-              if (order.status === 'En Camino') { color = 'bg-gray-500 dark:bg-stone-600'; statusText = 'EN CAMINO'; }
+              // Colores del estado: chip suave con un puntito y un brillo de fondo arriba de la tarjeta
+              let tone = { chip: 'bg-gray-100 text-gray-600 dark:bg-stone-800 dark:text-stone-300', dot: 'bg-gray-400', glow: 'from-gray-100/80 dark:from-stone-800/40' };
+              let statusText: string = order.status;
+              if (order.status === 'Esperando Pago') { tone = { chip: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400', dot: 'bg-amber-500', glow: 'from-amber-50 dark:from-amber-500/10' }; statusText = 'Esperando pago'; }
+              if (order.status === 'Cancelado') { tone = { chip: 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400', dot: 'bg-red-500', glow: 'from-red-50 dark:from-red-500/10' }; statusText = 'Cancelado'; }
+              if (order.status === 'Pendiente' || order.status === 'Pagado') { tone = { chip: 'bg-orange-50 text-brand-orange dark:bg-brand-orange/10', dot: 'bg-brand-orange', glow: 'from-orange-50 dark:from-brand-orange/10' }; statusText = 'Pendiente'; }
+              if (order.status === 'En Preparación') { tone = { chip: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400', dot: 'bg-blue-500', glow: 'from-blue-50 dark:from-blue-500/10' }; statusText = 'Preparando'; }
+              if (order.status === 'Listos') { tone = { chip: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400', dot: 'bg-emerald-500', glow: 'from-emerald-50 dark:from-emerald-500/10' }; statusText = 'Listo'; }
+              if (order.status === 'En Camino') { tone = { chip: 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400', dot: 'bg-violet-500', glow: 'from-violet-50 dark:from-violet-500/10' }; statusText = 'En camino'; }
               const isHighlighted = highlightedOrderId === order.id;
-              
+              const isDelivered = order.status === 'Entregado';
+              const totalUnidades = (order.items || []).reduce((acc, it) => acc + (it.quantity || 1), 0);
+
               return (
-                <div 
-                  key={order.id} 
+                <div
+                  key={order.id}
                   id={`order-card-${order.id}`}
-                  className={`bg-white dark:bg-[#151515] rounded-[24px] border shadow-sm relative overflow-hidden flex flex-col justify-between group transition-all duration-300 ${
-                    isHighlighted 
-                      ? 'border-brand-orange ring-4 ring-brand-orange/30 shadow-xl shadow-brand-orange/20 scale-[1.02] z-10' 
-                      : 'border-gray-100 dark:border-stone-800 hover:border-gray-200 dark:hover:border-stone-700'
+                  className={`bg-white dark:bg-[#151515] rounded-[28px] border relative overflow-hidden flex flex-col group transition-all duration-300 ${
+                    isHighlighted
+                      ? 'border-brand-orange ring-4 ring-brand-orange/30 shadow-xl shadow-brand-orange/20 scale-[1.02] z-10'
+                      : 'border-gray-100 dark:border-stone-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-xl hover:shadow-gray-200/60 dark:hover:shadow-black/40 hover:-translate-y-1'
                   }`}
                 >
-                  <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${color}`}></div>
-                  <div className="p-5 sm:p-6 pl-6 sm:pl-7 flex-1 flex flex-col justify-between">
-                    <div className="space-y-3.5">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-[11px] font-bold text-gray-500 dark:text-stone-400">Orden ID</p>
-                          <h3 className="font-black text-lg text-brand-orange">{String(order.id).replace(/^#/, '')}</h3>
-                        </div>
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider text-white ${color}`}>{statusText}</span>
-                      </div>
-                      
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-gray-50 dark:bg-stone-800 flex items-center justify-center shrink-0 mt-0.5">
-                          <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-gray-900 dark:text-white text-xs">{order.clientPhone || 'Cliente Local'}</p>
-                          <p className="text-xs text-gray-500 dark:text-stone-400 flex items-center gap-1.5 truncate">
-                            <span className="truncate">{order.address}</span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setEditingAddressOrder(order); setNewAddress(order.address); }}
-                              disabled={order.status === 'Entregado'}
-                              className={`p-0.5 rounded transition-colors shrink-0 ${order.status === 'Entregado' ? 'text-gray-300 dark:text-stone-700 cursor-not-allowed' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-stone-800 hover:text-brand-orange'}`}
-                              title="Editar dirección"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                            </button>
-                          </p>
-                        </div>
-                      </div>
+                  {/* Brillo suave del color del estado */}
+                  <div className={`absolute inset-x-0 top-0 h-28 bg-gradient-to-b ${tone.glow} to-transparent pointer-events-none`}></div>
 
-                      {order.items && order.items.length > 0 && (
-                        <div className="bg-gray-50 dark:bg-stone-900 rounded-xl p-3 border border-gray-100 dark:border-stone-800">
-                          <p className="text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Detalle del Pedido</p>
-                          <ul className="space-y-2">
-                            {order.items.map((item: OrderItem, idx: number) => {
-                              const foto = products.find(p => p.id === item.productId)?.image;
-                              return (
-                                <li key={idx} className="flex items-center gap-2.5 text-xs">
-                                  {foto ? (
-                                    <img src={foto} alt={item.name} className="w-10 h-10 rounded-lg object-cover shrink-0 border border-gray-100 dark:border-stone-700" />
-                                  ) : (
-                                    <div className="w-10 h-10 rounded-lg bg-white dark:bg-stone-800 text-gray-400 flex items-center justify-center shrink-0 border border-gray-100 dark:border-stone-700">
-                                      <Utensils className="w-4 h-4" />
-                                    </div>
-                                  )}
-                                  <div className="font-bold text-gray-800 dark:text-stone-200 flex items-start gap-1.5 min-w-0">
-                                    <span className="text-brand-orange font-black">{item.quantity}x</span>
-                                    <span>{item.name}</span>
-                                  </div>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      )}
-
-                      {order.preparedBy && (
-                        <p className="text-[11px] font-semibold text-gray-500 dark:text-stone-400 flex items-center gap-1.5">
-                          <Utensils className="w-3 h-3" /> Preparó: <span className="text-gray-800 dark:text-stone-200">{order.preparedBy}</span>
+                  <div className="relative p-5 sm:p-6 flex-1 flex flex-col gap-4">
+                    {/* Encabezado: código, hora y estado */}
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <h3 className="font-black text-2xl tracking-tight text-gray-900 dark:text-white leading-none">
+                          <span className="text-brand-orange">#</span>{orderCode(order.id)}
+                        </h3>
+                        <p className="mt-1.5 text-xs font-medium text-gray-500 dark:text-stone-400 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          {order.time ? order.time : 'Turno actual'}
+                          {order.channel && <><span className="text-gray-300 dark:text-stone-600">•</span><span className="capitalize">{order.channel}</span></>}
                         </p>
-                      )}
-
-                      {/* Domiciliario Asignado */}
-                      {(order.driverName || order.status === 'En Camino') && (
-                        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-orange-50/70 dark:bg-brand-orange/10 border border-brand-orange/20">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-brand-orange text-white flex items-center justify-center text-xs font-bold shrink-0">
-                              🛵
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-black text-gray-900 dark:text-white truncate">
-                                {order.driverName || 'Domiciliario Asignado'}
-                              </p>
-                              <p className="text-[10px] text-brand-orange font-bold truncate">
-                                {order.driverPlate ? `Placa: ${order.driverPlate}` : 'En ruta de entrega'}
-                              </p>
-                            </div>
-                          </div>
-                          <span className="text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-brand-orange/20 text-brand-orange shrink-0">
-                            {order.status === 'Entregado' ? 'Completado' : 'En Camino'}
-                          </span>
-                        </div>
-                      )}
+                      </div>
+                      <span className={`inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-[11px] font-bold shrink-0 ${tone.chip}`}>
+                        <span className="relative flex w-2 h-2">
+                          {!isDelivered && order.status !== 'Cancelado' && <span className={`absolute inline-flex w-full h-full rounded-full opacity-60 animate-ping ${tone.dot}`}></span>}
+                          <span className={`relative inline-flex w-2 h-2 rounded-full ${tone.dot}`}></span>
+                        </span>
+                        {statusText}
+                      </span>
                     </div>
 
-                    <div className="pt-3.5 mt-4 border-t border-gray-100 dark:border-stone-800 flex items-center justify-between">
-                      <div className="text-xs font-medium text-gray-500 dark:text-stone-400 flex items-center gap-2">
-                        <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-300 dark:border-stone-600 flex items-center justify-center">
-                          <div className="w-1 h-1 bg-gray-300 dark:bg-stone-600 rounded-full"></div>
-                        </div> 
-                        <span>{order.time ? `Hora: ${order.time}` : 'Turno actual'}</span>
+                    {/* Cliente y dirección */}
+                    <div className="rounded-2xl border border-gray-100 dark:border-stone-800 bg-white/70 dark:bg-stone-900/50 backdrop-blur-sm divide-y divide-gray-100 dark:divide-stone-800">
+                      <div className="flex items-center gap-3 px-3.5 py-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-stone-800 text-gray-500 dark:text-stone-400 flex items-center justify-center shrink-0">
+                          <Phone className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold text-gray-400 dark:text-stone-500 uppercase tracking-wider">Cliente</p>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{order.clientPhone || order.client || 'Cliente Local'}</p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => handleViewOrder(order.id)} 
-                          className="w-9 h-9 rounded-full border border-gray-200 dark:border-stone-700 flex items-center justify-center text-gray-600 dark:text-stone-300 hover:bg-orange-50 dark:hover:bg-stone-800 hover:text-brand-orange hover:border-brand-orange/30 transition-all cursor-pointer shadow-xs" 
-                          title="Ver detalles y domiciliario"
+                      <div className="flex items-center gap-3 px-3.5 py-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-stone-800 text-gray-500 dark:text-stone-400 flex items-center justify-center shrink-0">
+                          <MapPin className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-semibold text-gray-400 dark:text-stone-500 uppercase tracking-wider">Entregar en</p>
+                          <p className="text-sm font-semibold text-gray-700 dark:text-stone-200 truncate" title={order.address}>{order.address}</p>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setEditingAddressOrder(order); setNewAddress(order.address); }}
+                          disabled={isDelivered}
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors shrink-0 ${isDelivered ? 'text-gray-300 dark:text-stone-700 cursor-not-allowed' : 'text-gray-400 hover:bg-orange-50 dark:hover:bg-stone-800 hover:text-brand-orange cursor-pointer'}`}
+                          title="Editar dirección"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Pencil className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
+
+                    {/* Productos */}
+                    {order.items && order.items.length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[11px] font-bold text-gray-500 dark:text-stone-400 uppercase tracking-wider">Pedido</p>
+                          <span className="text-[11px] font-semibold text-gray-400 dark:text-stone-500">{totalUnidades} {totalUnidades === 1 ? 'producto' : 'productos'}</span>
+                        </div>
+                        <ul className="space-y-2">
+                          {order.items.map((item: OrderItem, idx: number) => {
+                            const foto = products.find(p => p.id === item.productId)?.image;
+                            return (
+                              <li key={idx} className="flex items-center gap-3">
+                                <div className="relative shrink-0">
+                                  {foto ? (
+                                    <img loading="lazy" decoding="async" src={foto} alt={item.name} className="w-12 h-12 rounded-2xl object-cover ring-1 ring-black/5 dark:ring-white/10" />
+                                  ) : (
+                                    <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-stone-800 text-gray-400 flex items-center justify-center">
+                                      <Utensils className="w-5 h-5" />
+                                    </div>
+                                  )}
+                                  <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-brand-orange text-white text-[10px] font-black flex items-center justify-center ring-2 ring-white dark:ring-[#151515]">
+                                    {item.quantity}
+                                  </span>
+                                </div>
+                                <p className="text-sm font-bold text-gray-800 dark:text-stone-100 leading-snug line-clamp-2">{item.name}</p>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Equipo: quién cocinó y quién lo lleva */}
+                    {(order.preparedBy || order.driverName || order.status === 'En Camino') && (
+                      <div className="flex flex-col gap-2 mt-auto">
+                        {order.preparedBy && (
+                          <div className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-blue-50/60 dark:bg-blue-500/10">
+                            <div className="w-8 h-8 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0">
+                              <ChefHat className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-wider">Preparó</p>
+                              <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{order.preparedBy}</p>
+                            </div>
+                          </div>
+                        )}
+                        {(order.driverName || order.status === 'En Camino') && (
+                          <div className="flex items-center gap-3 px-3 py-2 rounded-2xl bg-orange-50/70 dark:bg-brand-orange/10">
+                            <div className="w-8 h-8 rounded-xl bg-brand-orange text-white flex items-center justify-center shrink-0">
+                              <Bike className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[10px] font-semibold text-brand-orange uppercase tracking-wider">{isDelivered ? 'Entregó' : 'Domiciliario'}</p>
+                              <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{order.driverName || 'Domiciliario Asignado'}</p>
+                            </div>
+                            {order.driverPlate && (
+                              <span className="text-[10px] font-black tracking-widest px-2 py-1 rounded-lg bg-white dark:bg-stone-900 text-gray-700 dark:text-stone-200 border border-gray-200 dark:border-stone-700 shrink-0">
+                                {order.driverPlate}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pie: total y botón de ver */}
+                  <div className="relative px-5 sm:px-6 py-4 border-t border-dashed border-gray-200 dark:border-stone-800 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold text-gray-400 dark:text-stone-500 uppercase tracking-wider">Total</p>
+                      <p className="text-lg font-black text-gray-900 dark:text-white leading-tight">{formatCOP(order.total || 0)}</p>
+                    </div>
+                    <button
+                      onClick={() => handleViewOrder(order.id)}
+                      className="inline-flex items-center gap-2 pl-3.5 pr-4 h-10 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold hover:bg-brand-orange dark:hover:bg-brand-orange dark:hover:text-white transition-colors cursor-pointer"
+                      title="Ver detalles y domiciliario"
+                    >
+                      <Eye className="w-4 h-4" /> Ver detalle
+                    </button>
                   </div>
                 </div>
               );

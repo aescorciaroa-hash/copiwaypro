@@ -1,6 +1,12 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Si el navegador acepta archivos comprimidos y existe la copia .gz
+    # (la crea "npm run build"), se entrega esa copia: pesa ~4 veces menos.
+    RewriteCond %{HTTP:Accept-Encoding} gzip
+    RewriteCond %{REQUEST_FILENAME}.gz -f
+    RewriteRule ^(.+\.(js|css))$ $1.gz [L]
+
     # Cualquier peticion que no sea un archivo/directorio real -> front controller unico
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
@@ -11,3 +17,50 @@
 <FilesMatch "\.(env|sql|log)$">
     Require all denied
 </FilesMatch>
+
+# ---------------------------------------------------------------
+# Velocidad: comprimir y dejar que el navegador guarde archivos
+# ---------------------------------------------------------------
+
+# Comprime el codigo, los estilos y las respuestas de la API antes de enviarlos
+# (main.js pasa de ~200 KB a ~60 KB). Si el modulo no esta activo, se ignora.
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript text/javascript application/json image/svg+xml
+</IfModule>
+
+# Las copias .gz se entregan con su tipo real (JavaScript o CSS) y avisando que van comprimidas
+<FilesMatch "\.js\.gz$">
+    ForceType application/javascript
+</FilesMatch>
+<FilesMatch "\.css\.gz$">
+    ForceType text/css
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.(js|css)\.gz$">
+        Header set Content-Encoding gzip
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    # Pedazos de codigo con codigo unico en el nombre: nunca cambian, se guardan 1 año
+    <FilesMatch "-[A-Za-z0-9_-]{8}\.js(\.gz)?$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    # main.css lleva ?v=fecha en la plantilla PHP: se puede guardar mucho tiempo
+    <FilesMatch "^main\.css(\.gz)?$">
+        Header set Cache-Control "public, max-age=31536000"
+    </FilesMatch>
+    # main.js va SIN ?v= (los archivos de cada pantalla lo importan con esa direccion exacta):
+    # el navegador lo guarda pero siempre pregunta si cambio. Si no cambio, el servidor
+    # responde "304 igual" sin volver a enviarlo.
+    <FilesMatch "^main\.js(\.gz)?$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+    # Iconos y fuentes
+    <FilesMatch "\.(png|ico|svg|woff2?)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+    # El Service Worker siempre se revisa, para que los cambios lleguen enseguida
+    <FilesMatch "^sw\.js$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>

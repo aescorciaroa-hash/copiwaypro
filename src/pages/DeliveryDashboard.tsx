@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { ToastNotification, ToastData } from '../components/ToastNotification';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { ArrowLeft, Map as MapIcon,  
+import { ArrowLeft, ArrowRight, User, Bike, Wallet, Package, Clock, Map as MapIcon,  
   MapPin, LogOut, Navigation, Phone, CheckCircle, CheckCircle2, MessageCircle, AlertCircle, Utensils, Plus, Minus, X, Target
 , Sun, Moon, Eye, EyeOff, Undo2 } from 'lucide-react';
 import { useStore, Order } from '../store/almacenAplicacion';
@@ -87,6 +87,18 @@ export default function DeliveryDashboard() {
   const [loginPin, setLoginPin] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
+
+  // Reloj del login (se actualiza cada 30 segundos) y saludo según la hora
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+  // Saludo del login: "santiago" o "santiago@copiway.com" → "Santiago"
+  const usuarioEscrito = username.split('@')[0].replace(/[._-]+/g, ' ').trim();
+  const saludoNombre = usuarioEscrito ? usuarioEscrito.charAt(0).toUpperCase() + usuarioEscrito.slice(1) : '';
+  const hora = time.getHours();
+  const saludoHora = hora < 12 ? 'Buenos días ☀️' : hora < 19 ? 'Buenas tardes 🌤️' : 'Buenas noches 🌙';
   const [toastData, setToastData] = useState<ToastData | null>(null);
 
   const showToast = (type: ToastData['type'] = 'info', message: string, title?: string) => {
@@ -157,7 +169,7 @@ export default function DeliveryDashboard() {
     setLoginError('');
 
     try {
-      const { user } = await api.post<{ user: { id: string; role: string } }>('/auth/login', {
+      const { user } = await api.post<{ user: { id: string; role: string; name?: string } }>('/auth/login', {
         email: username,
         pin: loginPin,
       });
@@ -168,6 +180,8 @@ export default function DeliveryDashboard() {
       }
       setLoggedInUserId(user.id);
       setIsLoggedIn(true);
+      const nombre = (user.name || '').trim().split(/\s+/)[0];
+      showToast('success', 'Que tengas un excelente turno de entregas.', nombre ? `¡Hola, ${nombre}!` : '¡Bienvenido!');
     } catch (err) {
       setLoginError(err instanceof ApiError ? err.message : 'Usuario o PIN incorrectos.');
     }
@@ -363,77 +377,185 @@ export default function DeliveryDashboard() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-stone-950 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-sm bg-white dark:bg-[#151515] rounded-[32px] p-8 border border-gray-100 dark:border-stone-800 shadow-2xl">
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-20 h-20 rounded-[24px] bg-brand-orange flex items-center justify-center shadow-lg shadow-brand-orange/30 mb-6">
-              <Navigation className="w-10 h-10 text-white" />
+      <div className="relative min-h-[100dvh] bg-[#f6f6f4] dark:bg-stone-950 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+        {/* Fondo: manchas de color suaves y una cuadrícula de puntos (igual al login de cocina) */}
+        <div className="absolute -top-40 -left-40 w-[520px] h-[520px] rounded-full bg-brand-orange/20 blur-[120px] pointer-events-none"></div>
+        <div className="absolute -bottom-40 -right-40 w-[520px] h-[520px] rounded-full bg-amber-300/25 dark:bg-amber-500/10 blur-[120px] pointer-events-none"></div>
+        <div className="absolute inset-0 opacity-[0.35] dark:opacity-[0.08] pointer-events-none [background-image:radial-gradient(#d6d3d1_1px,transparent_1px)] [background-size:22px_22px]"></div>
+
+        <div className="relative w-full max-w-[960px] bg-white dark:bg-[#151515] rounded-[36px] overflow-hidden border border-white dark:border-stone-800 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.18)] dark:shadow-black/60 grid md:grid-cols-[1.05fr_1fr] md:min-h-[600px]">
+
+          {/* Lado izquierdo (solo en pantallas grandes): foto, marca y frase */}
+          <div className="hidden md:flex relative flex-col justify-between p-10 bg-[#141414] text-white overflow-hidden">
+            {/* Foto de fondo (repartidor en moto de noche) con un degradado oscuro encima para que se lea el texto */}
+            <img loading="eager" decoding="async"
+              src="https://images.unsplash.com/photo-1617347454431-f49d7ff5c3b1?q=80&w=1000&auto=format&fit=crop"
+              alt="Domiciliario en moto entregando un pedido"
+              className="absolute inset-0 w-full h-full object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/45 to-[#141414]/10"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#141414]/50 to-transparent"></div>
+            <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-brand-orange/25 blur-[90px]"></div>
+            <div className="absolute inset-0 opacity-[0.06] [background-image:radial-gradient(#fff_1px,transparent_1px)] [background-size:18px_18px]"></div>
+
+            <div className="relative flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-brand-orange flex items-center justify-center shadow-lg shadow-brand-orange/40">
+                <Navigation className="w-5 h-5" />
+              </div>
+              <div className="leading-tight">
+                <span className="font-black text-lg block">Copiway<span className="text-brand-orange">PRO</span></span>
+                <span className="text-[11px] font-semibold text-white/50">Panel de Domiciliario</span>
+              </div>
             </div>
-            <h1 className="font-black text-2xl text-gray-900 dark:text-white mb-1">Copiway<span className="text-brand-orange">PRO</span></h1>
-            <p className="text-gray-500 dark:text-stone-400 font-medium text-sm">Panel de Domiciliario</p>
+
+            <div className="relative">
+              <h2 className="font-black text-[32px] leading-[1.05] tracking-tight">Cada pedido,<br /><span className="text-brand-orange">a tiempo.</span></h2>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {[
+                  { icon: MapIcon, text: 'Ruta en el mapa' },
+                  { icon: MapPin, text: 'Dirección exacta' },
+                  { icon: Phone, text: 'Llama al cliente' },
+                ].map(({ icon: Icon, text }) => (
+                  <span key={text} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.07] border border-white/10 text-xs font-semibold text-white/80">
+                    <Icon className="w-3.5 h-3.5 text-brand-orange" /> {text}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-          
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-stone-300 mb-2 ml-1">Usuario</label>
-              <input 
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value.trim())}
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                autoComplete="username"
-                className="w-full h-14 px-5 rounded-2xl bg-gray-50 dark:bg-stone-900 border-2 border-gray-100 dark:border-stone-800 focus:border-brand-orange dark:focus:border-brand-orange outline-none transition-colors text-gray-900 dark:text-white font-medium"
-                placeholder="Tu usuario, ej: santiago"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-stone-300 mb-2 ml-1">PIN de Acceso</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={loginPin}
-                  onChange={e => setLoginPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  className="w-full h-14 px-5 pr-14 rounded-2xl bg-gray-50 dark:bg-stone-900 border-2 border-gray-100 dark:border-stone-800 focus:border-brand-orange dark:focus:border-brand-orange outline-none transition-colors text-gray-900 dark:text-white font-medium tracking-[0.5em]"
-                  placeholder="••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  tabIndex={-1}
-                  className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-            
-            {loginError && (
-              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-xl text-sm font-bold text-center border border-red-100 dark:border-red-900/50">
-                {loginError}
-              </div>
-            )}
-            
-            <div className="flex gap-3 pt-2">
+
+          {/* Lado derecho: formulario */}
+          <div className="px-6 py-7 sm:px-10 sm:py-9 flex flex-col">
+            <div className="flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => irA('/login')}
-                className="flex-1 h-14 bg-gray-100 dark:bg-stone-800 text-gray-700 dark:text-stone-300 rounded-2xl font-bold hover:bg-gray-200 dark:hover:bg-stone-700 transition-colors flex items-center justify-center gap-2"
+                className="inline-flex items-center gap-1.5 h-9 pl-2.5 pr-3.5 rounded-full border border-gray-200 dark:border-stone-700 text-xs font-bold text-gray-600 dark:text-stone-300 hover:bg-gray-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
               >
-                <ArrowLeft className="w-5 h-5" />
-                Salir
+                <ArrowLeft className="w-3.5 h-3.5" /> Volver
               </button>
-              <button 
-                type="submit"
-                className="flex-1 h-14 bg-brand-orange text-white rounded-2xl font-black text-lg hover:bg-brand-orange/90 transition-transform active:scale-95 shadow-xl shadow-brand-orange/20"
-              >
-                Entrar
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-gray-400 dark:text-stone-500 tabular-nums">
+                  {time.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                </span>
+                {/* Cambiar entre modo claro y oscuro */}
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  title={theme === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'}
+                  className="w-9 h-9 rounded-full border border-gray-200 dark:border-stone-700 flex items-center justify-center text-gray-500 dark:text-stone-400 hover:text-brand-orange dark:hover:text-brand-orange hover:bg-gray-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+                >
+                  {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
-          </form>
+
+            {/* Saludo + formulario centrados en el alto de la tarjeta */}
+            <div className="flex-1 flex flex-col justify-center py-6">
+            {/* Saludo: usa el usuario que va escribiendo (ej. "santiago" → "Santiago") */}
+            <div className="mb-8 flex items-center gap-4">
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-xl font-black transition-all duration-300 ${
+                saludoNombre ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/30 rotate-0' : 'bg-orange-50 dark:bg-brand-orange/10 text-brand-orange -rotate-6'
+              }`}>
+                {saludoNombre ? saludoNombre.charAt(0) : <Bike className="w-7 h-7" />}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-500 dark:text-stone-400">{saludoHora}</p>
+                <h1 className="font-black text-[28px] leading-tight tracking-tight text-gray-900 dark:text-white truncate">
+                  Hola, <span className="text-brand-orange">{saludoNombre || 'equipo'}</span> 👋
+                </h1>
+              </div>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-stone-400 mb-2 uppercase tracking-wider">Usuario</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={e => setUsername(e.target.value.trim())}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoComplete="username"
+                    className="w-full h-14 pl-12 pr-4 rounded-2xl bg-gray-50 dark:bg-stone-900 border-2 border-gray-100 dark:border-stone-800 focus:bg-white dark:focus:bg-stone-900 focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 outline-none transition-all text-base text-gray-900 dark:text-white font-semibold placeholder:font-medium placeholder:text-gray-400"
+                    placeholder="Tu usuario, ej: santiago"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-gray-500 dark:text-stone-400 uppercase tracking-wider">PIN de acceso</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-brand-orange transition-colors cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {showPassword ? 'Ocultar' : 'Mostrar'}
+                  </button>
+                </div>
+                {/* 4 casillas del PIN: el input real es invisible y está encima de las casillas */}
+                <div className="relative group">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    inputMode="numeric"
+                    autoComplete="current-password"
+                    maxLength={4}
+                    value={loginPin}
+                    onChange={e => setLoginPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    className="peer absolute inset-0 w-full h-full opacity-0 cursor-text z-10"
+                    aria-label="PIN de acceso"
+                  />
+                  <div className="grid grid-cols-4 gap-3">
+                    {[0, 1, 2, 3].map(i => {
+                      const digito = loginPin[i];
+                      const esActual = i === Math.min(loginPin.length, 3);
+                      return (
+                        <div
+                          key={i}
+                          className={`h-16 rounded-2xl border-2 flex items-center justify-center text-2xl font-black transition-all ${
+                            digito
+                              ? 'bg-orange-50 dark:bg-brand-orange/10 border-brand-orange/40 text-gray-900 dark:text-white'
+                              : 'bg-gray-50 dark:bg-stone-900 border-gray-100 dark:border-stone-800 text-gray-300'
+                          } ${esActual ? 'group-focus-within:border-brand-orange group-focus-within:bg-white dark:group-focus-within:bg-stone-900 group-focus-within:ring-4 group-focus-within:ring-brand-orange/10' : ''}`}
+                        >
+                          {digito
+                            ? (showPassword ? digito : <span className="w-3.5 h-3.5 rounded-full bg-gray-900 dark:bg-white"></span>)
+                            : <span className={`w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-stone-600 ${esActual ? 'group-focus-within:w-0.5 group-focus-within:h-6 group-focus-within:rounded-sm group-focus-within:bg-brand-orange group-focus-within:animate-pulse' : ''}`}></span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {loginError && (
+                <div className="flex items-center gap-2.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-2xl text-sm font-bold border border-red-100 dark:border-red-900/50">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {loginError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={!username || loginPin.length < 4}
+                className="group/btn relative !mt-7 w-full h-14 rounded-2xl overflow-hidden font-black text-base text-white inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-brand-orange to-[#ff8a1f] shadow-[0_12px_30px_-8px_rgba(255,107,0,0.6)] hover:shadow-[0_16px_36px_-8px_rgba(255,107,0,0.75)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all cursor-pointer disabled:from-orange-100 disabled:to-orange-100 disabled:text-orange-300 dark:disabled:from-brand-orange/10 dark:disabled:to-brand-orange/10 dark:disabled:text-brand-orange/40 disabled:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed"
+              >
+                {/* Brillo que cruza el botón al pasar el mouse */}
+                <span className="absolute inset-y-0 -left-1/2 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-[-20deg] translate-x-0 group-hover/btn:translate-x-[300%] group-disabled/btn:hidden transition-transform duration-700"></span>
+                <Bike className="w-5 h-5" />
+                Empezar a repartir
+                <ArrowRight className="w-5 h-5 transition-transform group-hover/btn:translate-x-1" />
+              </button>
+              <p className="text-center text-[11px] text-gray-400 dark:text-stone-500 font-medium">¿Olvidaste tu PIN? Pídele al administrador que te asigne uno nuevo.</p>
+            </form>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -442,16 +564,23 @@ export default function DeliveryDashboard() {
   const renderMap = () => {
     if (!activeRoute) {
       return (
-        <div className="w-full h-full bg-black/5 dark:bg-white/5 rounded-[24px] flex flex-col items-center justify-center p-6 text-center border border-black/5 dark:border-white/10">
-          <MapPin className="w-16 h-16 text-gray-300 dark:text-stone-600 mb-4" />
-          <h3 className="font-bold text-gray-500 dark:text-stone-400 text-lg">Sin ruta activa</h3>
-          <p className="text-sm text-gray-400 mt-2 max-w-xs">Selecciona un pedido para ver su ruta.</p>
+        <div className="relative w-full h-full rounded-[28px] overflow-hidden bg-white dark:bg-[#151515] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] flex flex-col items-center justify-center p-6 text-center">
+          {/* Fondo suave: luz naranja borrosa y cuadrícula de puntos que se desvanece */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] rounded-full bg-brand-orange/10 blur-[100px] pointer-events-none"></div>
+          <div className="absolute inset-0 opacity-[0.45] dark:opacity-[0.08] pointer-events-none [background-image:radial-gradient(#d6d3d1_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_70%)]"></div>
+          <div className="relative">
+            <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-5">
+              <MapPin className="w-9 h-9 text-brand-orange" />
+            </div>
+            <h3 className="font-black text-gray-900 dark:text-white text-xl">Sin ruta activa</h3>
+            <p className="text-sm text-gray-500 dark:text-stone-400 mt-2 max-w-xs mx-auto">Toca <span className="font-bold text-gray-700 dark:text-stone-200">Mapa</span> en un pedido para ver su ruta aquí.</p>
+          </div>
         </div>
       );
     }
 
     return (
-      <div className="w-full h-full bg-[#f1f5f9] dark:bg-[#0f172a] rounded-[32px] overflow-hidden relative border border-gray-200 dark:border-stone-800 shadow-inner">
+      <div className="w-full h-full bg-[#f1f5f9] dark:bg-[#0f172a] rounded-[28px] overflow-hidden relative shadow-[0_20px_50px_-24px_rgba(0,0,0,0.25)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)]">
         <div className={`absolute inset-0 z-0 [&_.leaflet-container]:bg-transparent [&_.leaflet-control-container]:z-[500] ${theme === 'dark' ? 'leaflet-dark-tiles' : ''}`}>
           <MapContainer
             center={mapCenter}
@@ -511,57 +640,61 @@ export default function DeliveryDashboard() {
             </MapContainer>
         </div>
         
-                <div className="absolute inset-0 p-6 flex flex-col justify-between pointer-events-none">
-          <div className="bg-white/90 dark:bg-stone-900/90 backdrop-blur rounded-[24px] p-4 shadow-lg border border-gray-100 dark:border-stone-700 pointer-events-auto">
-            <div className="flex items-start gap-4">
-              <div className="bg-brand-orange/20 p-2 rounded-[16px] mt-1">
-                <MapPin className="w-5 h-5 text-brand-orange" />
+        <div className="absolute inset-0 p-4 md:p-5 flex flex-col justify-between pointer-events-none">
+          {/* Tarjeta de destino (vidrio) */}
+          <div className="self-start w-full max-w-md bg-white/90 dark:bg-stone-900/90 backdrop-blur-md rounded-[22px] p-4 shadow-xl shadow-black/10 pointer-events-auto">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-brand-orange text-white flex items-center justify-center shrink-0 shadow-lg shadow-brand-orange/30">
+                <MapPin className="w-5 h-5" />
               </div>
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase">Destino</p>
-                <p className="font-black text-lg">{activeRoute.address}</p>
-                <p className="text-sm text-gray-500 font-medium">Llegada est: 12 mins</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold text-gray-400 dark:text-stone-500 uppercase tracking-wider">Destino · <span className="text-brand-orange">#{orderCode(activeRoute.id)}</span></p>
+                <p className="font-black text-base text-gray-900 dark:text-white truncate">{activeRoute.address}</p>
               </div>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-stone-800 text-gray-600 dark:text-stone-300 text-xs font-bold shrink-0">
+                <Clock className="w-3.5 h-3.5" /> 12 min
+              </span>
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 pointer-events-auto">
-            {activeRoute.status === 'En Camino' && (
-              <div className="flex gap-3">
-                <button 
+          {activeRoute.status === 'En Camino' && (
+            <div className="flex flex-col sm:flex-row gap-2 pointer-events-auto">
+              <div className="flex gap-2">
+                <button
                   onClick={() => {
                     showToast('info', 'Abriendo ruta en el mapa...', 'Navegación');
                     window.open(`https://waze.com/ul?q=${encodeURIComponent(activeRoute.address + ', Neiva, Huila')}`, '_blank');
                   }}
-                  className="flex-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors border border-blue-200 dark:border-blue-800/50"
+                  className="h-12 px-4 rounded-2xl bg-white/90 dark:bg-stone-900/90 backdrop-blur-md text-sky-600 dark:text-sky-400 font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-black/10 hover:bg-white dark:hover:bg-stone-900 transition-colors cursor-pointer"
                 >
-                  <MapIcon className="w-5 h-5" /> Waze
+                  <MapIcon className="w-4.5 h-4.5" /> Waze
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     showToast('info', 'Abriendo ruta en el mapa...', 'Navegación');
                     window.open(`https://maps.google.com/?q=${encodeURIComponent(activeRoute.address + ', Neiva, Huila')}`, '_blank');
                   }}
-                  className="flex-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors border border-green-200 dark:border-green-800/50"
+                  className="h-12 px-4 rounded-2xl bg-white/90 dark:bg-stone-900/90 backdrop-blur-md text-emerald-600 dark:text-emerald-400 font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-black/10 hover:bg-white dark:hover:bg-stone-900 transition-colors cursor-pointer"
                 >
-                  <Navigation className="w-5 h-5" /> Maps
+                  <Navigation className="w-4.5 h-4.5" /> Maps
                 </button>
               </div>
-            )}
-            
-            {activeRoute.status === 'En Camino' && (
-              <button 
+              <button
                 onClick={() => markDelivered(activeRoute.id)}
-                className="w-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 shadow-md py-4 rounded-[24px] font-black text-lg flex items-center justify-center gap-2 shadow-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+                className="flex-1 h-12 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-[0_12px_30px_-10px_rgba(16,185,129,0.8)] hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer"
               >
-                <CheckCircle2 className="w-6 h-6" /> Marcar Entregado
+                <CheckCircle2 className="w-5 h-5" /> Marcar entregado
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     );
   };
+
+  // Cuántos pedidos tiene el domiciliario en cada paso (para la cabecera)
+  const enCaminoCount = deliveries.filter(o => o.status === 'En Camino').length;
+  const porRecogerCount = deliveries.filter(o => o.status === 'Listos').length;
 
   return (
     <div className="h-[100dvh] w-full bg-gray-50/50 dark:bg-stone-950 text-gray-900 dark:text-gray-100 font-sans flex flex-col transition-colors duration-300 overflow-hidden relative">
@@ -620,176 +753,217 @@ export default function DeliveryDashboard() {
 
       <div className="flex-1 flex flex-col-reverse md:flex-row overflow-hidden relative">
 
-      <aside className="w-full md:w-[400px] flex-1 md:flex-none border-r border-gray-100 dark:border-stone-800 bg-white dark:bg-[#151515] flex flex-col shrink-0 overflow-hidden min-w-0">
+      <aside className="w-full md:w-[400px] flex-1 md:flex-none bg-white dark:bg-[#151515] md:shadow-[8px_0_30px_-20px_rgba(0,0,0,0.15)] z-10 flex flex-col shrink-0 overflow-hidden min-w-0">
         
         {/* Cabecera Desktop - Solo visible en laptops */}
-        <header className="hidden md:flex px-8 py-5 border-b border-gray-50 dark:border-stone-800/50 flex-col shrink-0 sticky top-0 bg-white dark:bg-[#151515] z-10">
-          <div className="flex justify-between items-center mb-4">
+        <header className="hidden md:flex px-6 pt-6 pb-4 flex-col gap-4 shrink-0 bg-white dark:bg-[#151515] z-10">
+          <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-brand-orange flex items-center justify-center shadow-lg shadow-brand-orange/20 shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-brand-orange flex items-center justify-center shadow-lg shadow-brand-orange/25 shrink-0">
                 <Navigation className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <h1 className="font-black text-[22px] tracking-tight text-gray-900 dark:text-white leading-none">Copiway<span className="text-brand-orange">PRO</span></h1>
+              <div className="leading-tight">
+                <h1 className="font-black text-xl tracking-tight text-gray-900 dark:text-white">Copiway<span className="text-brand-orange">PRO</span></h1>
+                <p className="text-[11px] font-semibold text-gray-400 dark:text-stone-500">Panel de Domiciliario</p>
               </div>
             </div>
-            
-            <div className="flex items-center gap-3">
-              <button 
+
+            <div className="flex items-center gap-2">
+              <button
                 onClick={toggleTheme}
-                className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-stone-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
+                title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+                className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-stone-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer"
               >
-                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
               </button>
-              <button 
+              <button
                 onClick={handleLogout}
-                className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/30 flex items-center justify-center text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/30 flex items-center justify-center text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer"
                 title="Cerrar Sesión"
               >
-                <LogOut size={20} />
+                <LogOut size={19} />
               </button>
             </div>
           </div>
-          
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-gray-600 dark:text-stone-400">Estado</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" checked={isAvailable} onChange={() => setIsAvailable(!isAvailable)} />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
-              <span className={`ml-3 text-sm font-bold ${isAvailable ? 'text-brand-orange' : 'text-gray-500'}`}>
-                {isAvailable ? 'Disponible' : 'Desconectado'}
+
+          {/* Estado: tarjeta con interruptor */}
+          <label className={`flex items-center justify-between gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-colors ${isAvailable ? 'bg-gradient-to-r from-orange-50 to-amber-50/40 dark:from-brand-orange/10 dark:to-transparent' : 'bg-gray-50 dark:bg-stone-900'}`}>
+            <div className="flex items-center gap-3">
+              <span className="relative flex w-2.5 h-2.5">
+                {isAvailable && <span className="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-60 animate-ping"></span>}
+                <span className={`relative inline-flex w-2.5 h-2.5 rounded-full ${isAvailable ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
               </span>
-            </label>
+              <div className="leading-tight">
+                <p className="text-[10px] font-bold text-gray-400 dark:text-stone-500 uppercase tracking-wider">Estado</p>
+                <p className={`text-sm font-black ${isAvailable ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-stone-400'}`}>{isAvailable ? 'Disponible para entregas' : 'Desconectado'}</p>
+              </div>
+            </div>
+            <span className="relative inline-flex items-center">
+              <input type="checkbox" className="sr-only peer" checked={isAvailable} onChange={() => setIsAvailable(!isAvailable)} />
+              <span className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow after:transition-all peer-checked:bg-brand-orange"></span>
+            </span>
+          </label>
+
+          {/* Contadores */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl bg-gray-50 dark:bg-stone-900">
+              <div className="w-8 h-8 rounded-xl bg-orange-50 dark:bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0"><Bike className="w-4 h-4" /></div>
+              <div className="leading-tight"><p className="text-lg font-black text-gray-900 dark:text-white">{enCaminoCount}</p><p className="text-[10px] font-bold text-gray-400 dark:text-stone-500">En camino</p></div>
+            </div>
+            <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl bg-gray-50 dark:bg-stone-900">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0"><Package className="w-4 h-4" /></div>
+              <div className="leading-tight"><p className="text-lg font-black text-gray-900 dark:text-white">{porRecogerCount}</p><p className="text-[10px] font-bold text-gray-400 dark:text-stone-500">Por recoger</p></div>
+            </div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-w-0 custom-scrollbar">
-          <h2 className="font-black text-gray-800 dark:text-stone-200 px-2 pb-2">Pedidos Disponibles</h2>
+        <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-3 min-w-0 custom-scrollbar bg-gray-50/70 dark:bg-stone-950/40 md:bg-transparent md:dark:bg-transparent">
+          <div className="flex items-center justify-between px-2 pt-2 pb-1">
+            <h2 className="font-black text-gray-900 dark:text-white">Mis entregas</h2>
+            <span className="min-w-[26px] h-6 px-2 rounded-lg bg-brand-orange text-white text-xs font-black flex items-center justify-center">{deliveries.length}</span>
+          </div>
           {deliveries.length === 0 ? (
-            <div className="text-center py-10">
-              <AlertCircle className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium">No hay entregas asignadas en este momento.</p>
+            <div className="text-center py-12 px-6">
+              <div className="w-16 h-16 mx-auto rounded-3xl bg-gray-50 dark:bg-stone-900 border border-dashed border-gray-200 dark:border-stone-700 flex items-center justify-center mb-3">
+                <Package className="w-7 h-7 text-gray-300 dark:text-stone-600" />
+              </div>
+              <p className="text-sm font-bold text-gray-400 dark:text-stone-500">No hay entregas asignadas en este momento.</p>
             </div>
           ) : (
             deliveries.map(order => {
               const isAccepted = acceptedOrders.includes(order.id) || (order.status === 'Listos' && !!order.driverName);
               const isActive = activeRoute?.id === order.id;
               const isOnlinePayment = order.paymentMethod === 'online' || order.paymentStatus === 'Pagado' || order.status === 'Pagado'; // Fallback logic
-              
+              const statusText = order.status === 'Listos' ? (isAccepted ? 'Recepcionado' : 'Listo para recoger') : order.status;
+              // Color de la etiqueta del estado
+              const statusChip = order.status === 'En Camino'
+                ? 'bg-orange-50 text-brand-orange dark:bg-brand-orange/10'
+                : order.status === 'Listos'
+                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
+                  : 'bg-gray-100 text-gray-600 dark:bg-stone-800 dark:text-stone-300';
+
               return (
-                <div 
-                  key={order.id} 
-                  className={`p-5 rounded-[24px] border transition-all overflow-hidden ${
-                    isActive 
-                      ? 'bg-brand-orange/5 border-brand-orange shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none' 
-                      : 'bg-white dark:bg-[#151515] border-gray-100 dark:border-stone-800 hover:border-brand-orange/50'
+                <div
+                  key={order.id}
+                  className={`p-4 rounded-[22px] bg-white dark:bg-[#1b1b1b] transition-all overflow-hidden ${
+                    isActive
+                      ? 'ring-2 ring-brand-orange shadow-lg shadow-brand-orange/15'
+                      : 'shadow-[0_8px_24px_-14px_rgba(0,0,0,0.18)] dark:shadow-[0_10px_30px_-14px_rgba(0,0,0,0.8)] hover:shadow-[0_14px_30px_-14px_rgba(0,0,0,0.25)]'
                   }`}
                 >
-                  {!isOnlinePayment && (
-                    <div className="bg-brand-orange text-white text-center py-2 -mx-5 -mt-5 mb-4 font-black uppercase tracking-wide text-sm shadow-md animate-pulse whitespace-nowrap">
-                      ¡Cobrar en Efectivo: {formatCOP(order.total)}!
-                    </div>
-                  )}
-                  <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
+                  {/* Encabezado: código, estado y total */}
+                  <div className="flex justify-between items-start gap-3">
                     <div className="min-w-0">
-                      <h3 className="font-black text-lg whitespace-nowrap">{orderCode(order.id)}</h3>
-                      <p className="text-xs font-bold bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded text-gray-600 dark:text-stone-300 mt-1 inline-block truncate max-w-full whitespace-nowrap">
-                        {order.status === 'Listos' ? (isAccepted ? 'Recepcionado' : 'Listo para recoger') : order.status}
-                      </p>
+                      <h3 className="font-black text-lg leading-none tracking-tight whitespace-nowrap text-gray-900 dark:text-white"><span className="text-brand-orange">#</span>{orderCode(order.id)}</h3>
+                      <span className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${statusChip}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-current"></span> {statusText}
+                      </span>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className="font-bold text-[clamp(16px,4vw,18px)] block leading-none whitespace-nowrap">{formatCOP(order.total)}</span>
+                      <span className="font-black text-lg block leading-none whitespace-nowrap text-gray-900 dark:text-white">{formatCOP(order.total)}</span>
                       {isOnlinePayment ? (
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide whitespace-nowrap">Pagado (Digital)</span>
+                        <span className="mt-1.5 inline-block text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide whitespace-nowrap">Pagado (Digital)</span>
                       ) : (
-                        <span className="text-[10px] font-bold text-brand-orange uppercase tracking-wide whitespace-nowrap">Efectivo</span>
+                        <span className="mt-1.5 inline-block text-[10px] font-bold text-brand-orange uppercase tracking-wide whitespace-nowrap">Efectivo</span>
                       )}
                     </div>
                   </div>
-                  
-                  
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="text-sm font-medium text-gray-600 dark:text-stone-300 line-clamp-2">
-                      <MapPin className="w-4 h-4 inline-block mr-1 text-gray-400" /> {order.address}
-                    </p>
+
+                  {/* Cobro en efectivo: recuadro ámbar (antes era una barra naranja que parpadeaba entera) */}
+                  {!isOnlinePayment && (
+                    <div className="mt-3 flex items-center gap-2.5 px-3 py-2.5 rounded-2xl bg-orange-50 dark:bg-brand-orange/10 text-orange-900 dark:text-orange-200">
+                      <div className="relative w-8 h-8 rounded-xl bg-gradient-to-br from-brand-orange to-[#ff8a1f] text-white shadow-md shadow-brand-orange/30 flex items-center justify-center shrink-0">
+                        <Wallet className="w-4 h-4" />
+                        <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-orange-50 dark:ring-[#2a1a0e] animate-pulse"></span>
+                      </div>
+                      <p className="text-xs font-bold leading-tight">Cobrar en efectivo<br /><span className="text-base font-black">{formatCOP(order.total)}</span></p>
+                    </div>
+                  )}
+
+                  {/* Dirección */}
+                  <div className="mt-3 flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-stone-800 text-gray-500 dark:text-stone-400 flex items-center justify-center shrink-0">
+                      <MapPin className="w-4 h-4" />
+                    </div>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-stone-200 line-clamp-2 pt-1.5">{order.address}</p>
                   </div>
 
-                  {/* Order items preview */}
+                  {/* Productos */}
                   {order.items && order.items.length > 0 && (
-                    <div className="mb-3.5 p-2.5 rounded-xl bg-gray-50 dark:bg-stone-800/60 border border-gray-100 dark:border-stone-800 text-xs text-gray-600 dark:text-stone-300 space-y-1">
+                    <div className="mt-3 pt-3 border-t border-dashed border-gray-200 dark:border-stone-800 space-y-1.5">
                       {order.items.map((it: { quantity?: number; name?: string; finalPrice?: number; price?: number }, iIdx: number) => (
-                        <div key={iIdx} className="flex justify-between items-center">
-                          <span className="font-semibold">{it.quantity}x {it.name}</span>
-                          <span className="text-[11px] text-gray-400">{formatCOP(it.finalPrice || it.price || 0)}</span>
+                        <div key={iIdx} className="flex justify-between items-center gap-2 text-xs">
+                          <span className="font-semibold text-gray-700 dark:text-stone-300 truncate"><span className="text-brand-orange font-black">{it.quantity}×</span> {it.name}</span>
+                          <span className="text-[11px] font-semibold text-gray-400 shrink-0">{formatCOP(it.finalPrice || it.price || 0)}</span>
                         </div>
                       ))}
                     </div>
                   )}
 
+                  {/* Contactar y navegar: 3 botones compactos en una fila */}
                   {order.status === 'En Camino' && (
-                    <div className="mb-4 flex flex-col gap-2">
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
                           const phone = (order.clientPhone || '').replace(/\D/g, '');
                           const firstName = (order.client || '').trim().split(/\s+/)[0];
                           const greeting = firstName ? `¡Hola, ${firstName}! 👋` : '¡Hola! 👋';
                           const message = encodeURIComponent(`${greeting} Te escribo de Copiway PRO, soy tu domiciliario y ya voy en camino con tu pedido ${orderCode(order.id)}. 🛵\n\nPara llegar más rápido, ¿me confirmas la dirección exacta o alguna referencia? Y por favor avísame si estarás disponible para recibirlo. ¡Gracias!`);
-                          window.open(`https://wa.me/${phone}?text=${message}`, '_blank'); 
+                          window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
                         }}
-                        className="w-full border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 py-2.5 rounded-[12px] text-sm font-bold flex items-center justify-center gap-2 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                        title="Escribirle al cliente por WhatsApp"
+                        className="h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors cursor-pointer"
                       >
-                        <MessageCircle className="w-4 h-4" /> Contactar Cliente
+                        <MessageCircle className="w-4.5 h-4.5" /> Cliente
                       </button>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            showToast('info', 'Abriendo ruta en el mapa...', 'Navegación');
-                            window.open(`https://waze.com/ul?q=${encodeURIComponent(order.address + ', Neiva, Huila')}`, '_blank'); 
-                          }}
-                          className="flex-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 py-2.5 rounded-[12px] text-sm font-bold flex items-center justify-center gap-2 transition-colors border border-blue-200 dark:border-blue-800/50"
-                        >
-                          <MapIcon className="w-4 h-4" /> Waze
-                        </button>
-                        <button 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            showToast('info', 'Abriendo ruta en el mapa...', 'Navegación');
-                            window.open(`https://maps.google.com/?q=${encodeURIComponent(order.address + ', Neiva, Huila')}`, '_blank'); 
-                          }}
-                          className="flex-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 py-2.5 rounded-[12px] text-sm font-bold flex items-center justify-center gap-2 transition-colors border border-green-200 dark:border-green-800/50"
-                        >
-                          <Navigation className="w-4 h-4" /> Maps
-                        </button>
-                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          showToast('info', 'Abriendo ruta en el mapa...', 'Navegación');
+                          window.open(`https://waze.com/ul?q=${encodeURIComponent(order.address + ', Neiva, Huila')}`, '_blank');
+                        }}
+                        className="h-14 rounded-2xl bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors cursor-pointer"
+                      >
+                        <MapIcon className="w-4.5 h-4.5" /> Waze
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          showToast('info', 'Abriendo ruta en el mapa...', 'Navegación');
+                          window.open(`https://maps.google.com/?q=${encodeURIComponent(order.address + ', Neiva, Huila')}`, '_blank');
+                        }}
+                        className="h-14 rounded-2xl bg-gray-100 dark:bg-stone-800 text-gray-700 dark:text-stone-300 flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold hover:bg-gray-200 dark:hover:bg-stone-700 transition-colors cursor-pointer"
+                      >
+                        <Navigation className="w-4.5 h-4.5" /> Maps
+                      </button>
                     </div>
                   )}
 
-                  {/* Action Buttons */}
+                  {/* Botones de acción */}
                   {order.status === 'Listos' && !isAccepted && (
-                    <button 
+                    <button
                       onClick={() => takeOrder(order.id)}
-                      className="w-full bg-brand-orange/10 text-brand-orange hover:bg-brand-orange hover:text-white py-3 rounded-[16px] font-bold transition-colors"
+                      className="mt-3 w-full h-12 rounded-2xl font-black text-white flex items-center justify-center gap-2 bg-gradient-to-r from-brand-orange to-[#ff8a1f] shadow-[0_10px_24px_-10px_rgba(255,107,0,0.7)] hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer"
                     >
-                      Tomar Pedido
+                      <Package className="w-4.5 h-4.5" /> Tomar pedido
                     </button>
                   )}
-                  
+
                   {order.status === 'Listos' && isAccepted && (
-                    <div className="flex gap-2">
-                      <button 
+                    <div className="mt-3 flex gap-2">
+                      <button
                         onClick={() => setActiveRoute(order)}
                         disabled={isActive}
-                        className="flex-1 bg-gray-100 dark:bg-stone-800 text-gray-700 dark:text-stone-300 hover:bg-gray-200 dark:hover:bg-stone-700 py-3 rounded-[16px] font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors min-w-0"
+                        className="h-12 px-4 rounded-2xl bg-gray-100 dark:bg-stone-800 text-gray-700 dark:text-stone-300 hover:bg-gray-200 dark:hover:bg-stone-700 font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 transition-colors cursor-pointer"
                       >
                         <Target className="w-4 h-4" /> Mapa
                       </button>
-                      <button 
+                      <button
                         onClick={() => startTrip(order.id)}
-                        className="flex-[2] bg-stone-900 dark:bg-white text-white dark:text-stone-900 py-3 rounded-[16px] font-bold transition-colors shadow-lg"
+                        className="flex-1 h-12 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black text-sm flex items-center justify-center gap-2 hover:bg-brand-orange dark:hover:bg-brand-orange dark:hover:text-white transition-colors shadow-lg cursor-pointer"
                       >
-                        Iniciar Ruta (En Camino)
+                        <Bike className="w-4.5 h-4.5" /> Iniciar ruta
                       </button>
                     </div>
                   )}
@@ -797,26 +971,26 @@ export default function DeliveryDashboard() {
                   {order.status === 'Listos' && isAccepted && (
                     <button
                       onClick={() => releaseOrder(order.id)}
-                      className="w-full mt-3 py-3 rounded-[16px] text-sm font-bold flex items-center justify-center gap-2 border-2 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 hover:bg-red-600 hover:border-red-600 hover:text-white transition-colors"
+                      className="mt-2 w-full h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
                     >
-                      <Undo2 className="w-4 h-4" /> Soltar pedido
+                      <Undo2 className="w-3.5 h-3.5" /> Soltar pedido
                     </button>
                   )}
 
                   {order.status === 'En Camino' && (
-                    <div className="flex gap-2">
-                      <button 
+                    <div className="mt-2 flex gap-2">
+                      <button
                         onClick={() => setActiveRoute(order)}
                         disabled={isActive}
-                        className="flex-1 bg-gray-100 dark:bg-stone-800 text-gray-700 dark:text-stone-300 hover:bg-gray-200 dark:hover:bg-stone-700 py-3 rounded-[16px] font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors min-w-0"
+                        className="h-12 px-4 rounded-2xl bg-gray-100 dark:bg-stone-800 text-gray-700 dark:text-stone-300 hover:bg-gray-200 dark:hover:bg-stone-700 font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 transition-colors cursor-pointer"
                       >
                         <Target className="w-4 h-4" /> Mapa
                       </button>
-                      <button 
+                      <button
                         onClick={() => markDelivered(order.id)}
-                        className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-[16px] font-bold transition-colors shadow-md flex items-center justify-center gap-2"
+                        className="flex-1 h-12 rounded-2xl font-black text-sm text-white flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-[0_10px_24px_-10px_rgba(16,185,129,0.7)] hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer"
                       >
-                        <CheckCircle className="w-4 h-4" /> Marcar Entregado
+                        <CheckCircle className="w-4.5 h-4.5" /> Marcar entregado
                       </button>
                     </div>
                   )}
@@ -827,58 +1001,102 @@ export default function DeliveryDashboard() {
         </div>
       </aside>
 
-      <main className="w-full h-[45vh] shrink-0 md:flex-1 md:h-full md:p-6 bg-gray-50/50 dark:bg-stone-950 relative min-w-0">
+      <main className="w-full h-[45vh] shrink-0 md:flex-1 md:h-full p-3 md:p-6 bg-[#f6f6f4] dark:bg-stone-950 relative min-w-0">
         {renderMap()}
       </main>
 
       {/* Modal de PIN de Entrega */}
       {showPinModal && pinTargetOrder && (
-        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                Validar Entrega
-              </h3>
-              <button 
+        <div className="fixed inset-0 z-[9999] bg-gray-900/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowPinModal(false)}>
+          <div className="relative bg-white dark:bg-[#151515] rounded-[32px] max-w-sm w-full overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.35)]" onClick={e => e.stopPropagation()}>
+            {/* Encabezado con brillo verde suave */}
+            <div className="relative px-6 pt-7 pb-5 text-center bg-gradient-to-b from-emerald-50 to-transparent dark:from-emerald-500/10">
+              <button
                 onClick={() => setShowPinModal(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-stone-800 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
+                title="Cerrar"
+                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/80 dark:bg-stone-800 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
+              </button>
+              <div className="relative w-16 h-16 mx-auto mb-4">
+                <div className="absolute inset-0 rounded-2xl bg-emerald-400/30 blur-xl"></div>
+                <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-400 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+              </div>
+              <h3 className="text-xl font-black text-gray-900 dark:text-white">Validar entrega</h3>
+              <p className="text-sm text-gray-500 dark:text-stone-400 mt-1.5">
+                Pídele al cliente su <strong className="text-brand-orange">PIN de 4 dígitos</strong>.
+              </p>
+              <span className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white dark:bg-stone-900 shadow-sm text-xs font-bold text-gray-700 dark:text-stone-300">
+                <Package className="w-3.5 h-3.5 text-brand-orange" /> Pedido <span className="text-brand-orange">#{orderCode(pinTargetOrder)}</span>
+              </span>
+            </div>
+
+            <div className="px-6 pb-6">
+              {/* 4 casillas del PIN: el input real es invisible y está encima de las casillas */}
+              <div className="relative group">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoFocus
+                  maxLength={4}
+                  value={pinInput}
+                  onChange={(e) => { setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinError(''); }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-text z-10"
+                  aria-label="PIN de entrega"
+                />
+                <div className="grid grid-cols-4 gap-3">
+                  {[0, 1, 2, 3].map(i => {
+                    const digito = pinInput[i];
+                    const esActual = i === Math.min(pinInput.length, 3);
+                    return (
+                      <div
+                        key={i}
+                        className={`h-16 rounded-2xl border-2 flex items-center justify-center text-3xl font-black transition-all ${
+                          pinError
+                            ? 'border-red-300 bg-red-50 dark:border-red-500/40 dark:bg-red-500/10 text-red-600'
+                            : digito
+                              ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-400/50 text-gray-900 dark:text-white'
+                              : 'bg-gray-50 dark:bg-stone-900 border-gray-100 dark:border-stone-800'
+                        } ${esActual && !pinError ? 'group-focus-within:border-emerald-500 group-focus-within:bg-white dark:group-focus-within:bg-stone-900 group-focus-within:ring-4 group-focus-within:ring-emerald-500/10' : ''}`}
+                      >
+                        {digito
+                          ? digito
+                          : <span className={`w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-stone-600 ${esActual ? 'group-focus-within:w-0.5 group-focus-within:h-7 group-focus-within:rounded-sm group-focus-within:bg-emerald-500 group-focus-within:animate-pulse' : ''}`}></span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {pinError && (
+                <div className="mt-4 flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-bold">
+                  <AlertCircle className="w-4 h-4 shrink-0" /> {pinError}
+                </div>
+              )}
+
+              <button
+                onClick={async () => {
+                  const ok = await executeDelivery(pinTargetOrder, pinInput);
+                  if (ok) {
+                    setShowPinModal(false);
+                  } else {
+                    setPinInput('');
+                  }
+                }}
+                disabled={pinInput.length !== 4}
+                className="mt-5 w-full h-14 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-[0_12px_30px_-10px_rgba(16,185,129,0.8)] hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer disabled:from-gray-100 disabled:to-gray-100 disabled:text-gray-400 dark:disabled:from-stone-800 dark:disabled:to-stone-800 dark:disabled:text-stone-500 disabled:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed"
+              >
+                <CheckCircle2 className="w-5 h-5" /> Confirmar entrega
+              </button>
+              <button
+                onClick={() => setShowPinModal(false)}
+                className="mt-2 w-full h-10 rounded-xl text-sm font-bold text-gray-500 dark:text-stone-400 hover:bg-gray-50 dark:hover:bg-stone-900 transition-colors cursor-pointer"
+              >
+                Cancelar
               </button>
             </div>
-            
-            <p className="text-sm text-gray-500 dark:text-stone-400 mb-6 text-center">
-              Pídele al cliente el <strong className="text-brand-orange">PIN de 4 dígitos</strong> para confirmar la entrega del pedido <span className="whitespace-nowrap">{pinTargetOrder}</span>.
-            </p>
-
-            <input
-              type="text"
-              maxLength={4}
-              value={pinInput}
-              onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
-              placeholder="0 0 0 0"
-              className="w-full text-center text-3xl font-black tracking-[0.5em] pl-[0.5em] py-4 rounded-2xl bg-gray-50 dark:bg-stone-950 border-2 border-gray-200 dark:border-stone-800 focus:border-brand-orange dark:focus:border-brand-orange outline-none mb-4 text-gray-900 dark:text-white"
-            />
-            
-            {pinError && (
-              <p className="text-sm text-red-500 font-bold mb-4 text-center">{pinError}</p>
-            )}
-
-            <button
-              onClick={async () => {
-                const ok = await executeDelivery(pinTargetOrder, pinInput);
-                if (ok) {
-                  setShowPinModal(false);
-                } else {
-                  setPinInput('');
-                }
-              }}
-              disabled={pinInput.length !== 4}
-              className="w-full bg-brand-orange text-white font-bold py-4 rounded-2xl hover:bg-[#e66500] transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              Confirmar Entrega
-            </button>
           </div>
         </div>
       )}

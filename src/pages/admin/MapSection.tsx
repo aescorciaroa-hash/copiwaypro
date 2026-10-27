@@ -285,28 +285,48 @@ export default function MapSection({
 
                       {/* Marcador de Destino del Cliente */}
                       <Marker position={destCoords} icon={clientIcon}>
-                        <Popup>
-                          <div className="p-1 space-y-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-black text-gray-900 text-xs">{String(ord.id).replace(/^#/, '')}</span>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                isEnCamino ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                        <Popup className="copi-popup" closeButton={false}>
+                          <div className="w-[240px] font-sans">
+                            {/* Encabezado: código y estado */}
+                            <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-3">
+                              <span className="font-black text-lg tracking-tight text-gray-900 leading-none">
+                                <span className="text-brand-orange">#</span>{String(ord.id).replace(/^#/, '')}
+                              </span>
+                              <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold pl-1.5 pr-2.5 py-1 rounded-full ${
+                                isEnCamino ? 'bg-violet-50 text-violet-600' : 'bg-emerald-50 text-emerald-600'
                               }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${isEnCamino ? 'bg-violet-500' : 'bg-emerald-500'}`}></span>
                                 {ord.status}
                               </span>
                             </div>
-                            <p className="font-bold text-xs text-gray-800">{ord.client || 'Cliente Copiway'}</p>
-                            <p className="text-[11px] text-gray-600 flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-brand-orange" /> {ord.address}
-                            </p>
-                            <p className="text-[11px] font-black text-brand-orange">
-                              Total: {formatCOP(ord.total || 0)}
-                            </p>
+
+                            {/* Cliente y dirección */}
+                            <div className="px-4 pb-3 space-y-1.5">
+                              <p className="text-sm font-bold text-gray-900 truncate">{ord.client || 'Cliente Copiway'}</p>
+                              <div className="flex items-start gap-1.5 text-xs text-gray-500">
+                                <MapPin className="w-3.5 h-3.5 text-brand-orange shrink-0 mt-px" />
+                                <span className="leading-snug">{ord.address}</span>
+                              </div>
+                            </div>
+
+                            {/* Domiciliario */}
                             {ord.driverName && (
-                              <p className="text-[10px] text-gray-500 pt-1 border-t border-gray-100">
-                                🛵 Domiciliario: <strong>{ord.driverName}</strong>
-                              </p>
+                              <div className="mx-3 mb-3 flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-orange-50">
+                                <div className="w-7 h-7 rounded-lg bg-brand-orange text-white flex items-center justify-center shrink-0">
+                                  <Truck className="w-3.5 h-3.5" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-[9px] font-semibold text-brand-orange uppercase tracking-wider leading-none">Domiciliario</p>
+                                  <p className="text-xs font-bold text-gray-900 truncate mt-0.5">{ord.driverName}</p>
+                                </div>
+                              </div>
                             )}
+
+                            {/* Total */}
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-dashed border-gray-200 bg-gray-50/70">
+                              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Total</span>
+                              <span className="text-base font-black text-gray-900">{formatCOP(ord.total || 0)}</span>
+                            </div>
                           </div>
                         </Popup>
                       </Marker>

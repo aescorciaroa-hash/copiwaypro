@@ -807,7 +807,7 @@ export default function ClientDashboard() {
             return (
               <div key={idx} className="rounded-2xl bg-gray-50 dark:bg-stone-900/60 border border-gray-100 dark:border-stone-800 overflow-hidden">
                 {image ? (
-                  <img src={image} alt={item.name} className="w-full h-36 object-cover" />
+                  <img loading="lazy" decoding="async" src={image} alt={item.name} className="w-full h-36 object-cover" />
                 ) : esArmadaDesdeCero && layers.length > 0 ? (
                   <div className="w-full h-36 flex items-center justify-center bg-white dark:bg-stone-950/40">
                     <CustomBurgerThumb ingredientNames={layers} size={96} className="!rounded-2xl" />
@@ -1193,7 +1193,7 @@ export default function ClientDashboard() {
                         <div key={item.id || idx} className="bg-white dark:bg-stone-900 p-3.5 rounded-2xl border border-gray-100 dark:border-stone-800 shadow-sm flex items-center gap-3">
                           <div className="w-11 h-11 rounded-xl bg-gray-100 dark:bg-stone-800 overflow-hidden shrink-0 relative">
                             {itemImage ? (
-                              <img src={itemImage} alt={item.name} className="w-full h-full object-cover" />
+                              <img loading="lazy" decoding="async" src={itemImage} alt={item.name} className="w-full h-full object-cover" />
                             ) : extras.length > 0 ? (
                               <CustomBurgerThumb ingredientNames={extras} size={44} className="!rounded-none border-0" />
                             ) : (
@@ -1375,89 +1375,128 @@ export default function ClientDashboard() {
               </span>
             </button>
 
+            {/* Acciones agrupadas (mismo estilo que el panel del admin) */}
+            <div className="flex items-center gap-1 p-1 rounded-2xl bg-gray-100/80 dark:bg-stone-900/80 border border-gray-200/60 dark:border-stone-800">
             <div className="relative">
-              <button onClick={() => setShowNotifications(!showNotifications)} title="Notificaciones" className={`w-10 h-10 md:w-11 md:h-11 relative flex items-center justify-center rounded-full border transition-colors cursor-pointer ${showNotifications ? 'border-brand-orange bg-orange-50 dark:bg-brand-orange/10 text-brand-orange' : 'border-gray-200 dark:border-stone-800 bg-white dark:bg-[#151515] text-gray-600 dark:text-stone-300 hover:border-brand-orange/40 hover:text-brand-orange'}`}>
+              <button onClick={() => setShowNotifications(!showNotifications)} title="Notificaciones" className={`w-9 h-9 md:w-10 md:h-10 relative flex items-center justify-center rounded-xl transition-all cursor-pointer ${showNotifications ? 'bg-white dark:bg-stone-800 text-brand-orange shadow-sm' : 'text-gray-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800 hover:text-brand-orange hover:shadow-sm'}`}>
                 <Bell className="w-5 h-5" />
                 {userProfile.notifications?.some(n => !n.read) && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-brand-orange text-white text-[10px] font-black rounded-full border-2 border-white dark:border-[#0c0a09] flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-brand-orange text-white text-[10px] font-black rounded-full border-2 border-gray-100 dark:border-stone-900 shadow-sm shadow-brand-orange/40 flex items-center justify-center">
                     {userProfile.notifications.filter(n => !n.read).length}
                   </span>
                 )}
               </button>
-              
-              <AnimatePresence>
-                {showNotifications && (
-                  <>
-                    <motion.div 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      onClick={() => setShowNotifications(false)}
-                      className="fixed inset-0 z-40"
-                    />
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-2 w-[320px] sm:w-[380px] bg-white dark:bg-[#151515] rounded-[24px] shadow-2xl border border-gray-100 dark:border-stone-800 z-50 overflow-hidden"
-                    >
-                      <div className="p-4 border-b border-gray-100 dark:border-stone-800 flex justify-between items-center bg-gray-50/50 dark:bg-stone-900/50">
-                        <h3 className="font-bold text-gray-900 dark:text-white">Notificaciones</h3>
-                        {userProfile.notifications?.some(n => !n.read) && (
-                          <button 
-                            onClick={() => {
-                              const updated = userProfile.notifications?.map(n => ({ ...n, read: true })) || [];
-                              setUserProfile({ ...userProfile, notifications: updated });
-                            }}
-                            className="text-[11px] font-bold text-brand-orange hover:text-brand-orange/80 uppercase tracking-wide"
-                          >
-                            Marcar todo leído
-                          </button>
-                        )}
-                      </div>
-                      <div className="max-h-[400px] overflow-y-auto p-2">
-                        {(!userProfile.notifications || userProfile.notifications.length === 0) ? (
-                          <div className="p-8 text-center flex flex-col items-center justify-center">
-                            <Bell className="w-8 h-8 text-gray-300 dark:text-stone-700 mb-3" />
-                            <p className="text-sm text-gray-500 dark:text-stone-400 font-medium">No tienes notificaciones</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-1">
-                            {userProfile.notifications.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(notif => (
-                              <div 
-                                key={notif.id} 
-                                onClick={() => {
-                                  if (!notif.read) {
-                                    const updated = userProfile.notifications?.map(n => n.id === notif.id ? { ...n, read: true } : n) || [];
-                                    setUserProfile({ ...userProfile, notifications: updated });
-                                  }
-                                }}
-                                className={`p-3 rounded-2xl cursor-pointer transition-colors flex gap-3 ${notif.read ? 'hover:bg-gray-50 dark:hover:bg-stone-900/50' : 'bg-brand-orange/5 dark:bg-brand-orange/10 hover:bg-brand-orange/10 dark:hover:bg-brand-orange/20'}`}
-                              >
-                                <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center ${notif.read ? 'bg-gray-100 dark:bg-stone-800 text-gray-500' : 'bg-brand-orange/20 text-brand-orange'}`}>
-                                  {notif.type === 'promo' ? <Gift className="w-5 h-5" /> : notif.type === 'order' ? <Truck className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
-                                </div>
-                                <div>
-                                  <p className={`text-sm ${notif.read ? 'text-gray-700 dark:text-stone-300' : 'font-bold text-gray-900 dark:text-white'}`}>{notif.title}</p>
-                                  <p className="text-xs text-gray-500 dark:text-stone-400 mt-0.5 leading-snug">{notif.message}</p>
-                                  <p className="text-[10px] text-gray-400 mt-1.5">{new Date(notif.date).toLocaleDateString()} {new Date(notif.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
             </div>
 
-            <button onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'} className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-full border border-gray-200 dark:border-stone-800 bg-white dark:bg-[#151515] text-gray-600 dark:text-stone-300 hover:border-brand-orange/40 hover:text-brand-orange transition-colors cursor-pointer">
-              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            <button onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'} className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-xl text-gray-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800 hover:text-brand-orange hover:shadow-sm transition-all cursor-pointer">
+              <motion.span key={theme} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.3 }} className="flex">
+                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </motion.span>
             </button>
+            </div>
           </div>
         </header>
+
+        {/* Panel lateral de notificaciones (igual que en el admin): sale por la derecha y oscurece el fondo.
+            Va fuera del header porque el difuminado del header no deja que "fixed" ocupe toda la pantalla. */}
+        <AnimatePresence>
+          {showNotifications && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowNotifications(false)}
+                className="fixed inset-0 z-[60] bg-gray-900/30 dark:bg-black/60 backdrop-blur-[2px]"
+              />
+              <motion.aside
+                initial={{ x: '110%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '110%' }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                className="fixed top-0 right-0 bottom-0 sm:top-3 sm:right-3 sm:bottom-3 z-[61] w-full sm:w-[420px] bg-white dark:bg-[#151515] sm:border border-gray-100 dark:border-stone-800 sm:rounded-[28px] overflow-hidden shadow-2xl flex flex-col"
+              >
+                <div className="h-[70px] md:h-24 px-5 md:px-6 flex items-center justify-between gap-3 border-b border-gray-100 dark:border-stone-800 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-brand-orange/10 text-brand-orange flex items-center justify-center ring-1 ring-inset ring-brand-orange/20">
+                      <Bell className="w-5 h-5" />
+                    </div>
+                    <div className="leading-tight">
+                      <h3 className="font-black text-lg text-gray-900 dark:text-white">Notificaciones</h3>
+                      <p className="text-xs font-semibold text-gray-400 dark:text-stone-500">
+                        {(() => {
+                          const sinLeer = userProfile.notifications?.filter(n => !n.read).length || 0;
+                          return sinLeer === 0 ? 'Todo al día' : `${sinLeer} sin leer`;
+                        })()}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowNotifications(false)} title="Cerrar" className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-stone-800 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {(!userProfile.notifications || userProfile.notifications.length === 0) ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center px-8">
+                      <div className="w-16 h-16 rounded-3xl bg-gray-100 dark:bg-stone-900 flex items-center justify-center mb-4">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                      </div>
+                      <p className="font-black text-gray-900 dark:text-white">No tienes notificaciones</p>
+                      <p className="text-sm text-gray-500 dark:text-stone-400 mt-1">Cuando llegue una, aparecerá aquí.</p>
+                    </div>
+                  ) : (
+                    userProfile.notifications.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((notif, i) => (
+                      <motion.button
+                        key={notif.id}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.05 * i }}
+                        onClick={() => {
+                          if (!notif.read) {
+                            const updated = userProfile.notifications?.map(n => n.id === notif.id ? { ...n, read: true } : n) || [];
+                            setUserProfile({ ...userProfile, notifications: updated });
+                          }
+                        }}
+                        className={`w-full text-left p-4 rounded-2xl border transition-all group ${notif.read ? 'border-gray-100 dark:border-stone-800 bg-white dark:bg-stone-900/40' : 'border-brand-orange/30 bg-brand-orange/5 dark:bg-brand-orange/10'} hover:border-brand-orange/40 hover:shadow-lg hover:shadow-brand-orange/5`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${notif.read ? 'bg-gray-100 dark:bg-stone-800 text-gray-500' : 'bg-brand-orange/10 text-brand-orange'}`}>
+                            {notif.type === 'promo' ? <Gift className="w-5 h-5" /> : notif.type === 'order' ? <Truck className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className={`text-sm truncate group-hover:text-brand-orange transition-colors ${notif.read ? 'font-bold text-gray-700 dark:text-stone-300' : 'font-black text-gray-900 dark:text-white'}`}>{notif.title}</p>
+                              <span className="text-[10px] font-semibold text-gray-400 dark:text-stone-500 shrink-0">
+                                {new Date(notif.date).toLocaleDateString()} {new Date(notif.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-stone-400 mt-1 leading-snug">{notif.message}</p>
+                          </div>
+                        </div>
+                      </motion.button>
+                    ))
+                  )}
+                </div>
+
+                {/* "Marcar todo leído" pasa al pie, como el botón grande del admin */}
+                {userProfile.notifications?.some(n => !n.read) && (
+                  <div className="p-4 border-t border-gray-100 dark:border-stone-800 shrink-0">
+                    <button
+                      onClick={() => {
+                        const updated = userProfile.notifications?.map(n => ({ ...n, read: true })) || [];
+                        setUserProfile({ ...userProfile, notifications: updated });
+                      }}
+                      className="w-full h-12 rounded-2xl bg-brand-orange text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-brand-orange/20 hover:brightness-110 active:scale-[0.98] transition-all"
+                    >
+                      Marcar todo leído <Check className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
         
         <div className={`flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 min-w-0 ${activeTab === 'builder' ? 'lg:overflow-hidden lg:py-6' : ''}`}>
           <div className={`max-w-[1600px] mx-auto w-full ${activeTab === 'builder' ? 'lg:h-full' : ''}`}>
@@ -1635,7 +1674,7 @@ export default function ClientDashboard() {
               <div className="p-6 border-b border-gray-100 dark:border-stone-800 flex items-center justify-between gap-4 bg-gray-50/50 dark:bg-stone-800/20 shrink-0">
                 <div className="flex items-center gap-3.5 min-w-0">
                   {selectedProduct.image ? (
-                    <img src={selectedProduct.image} alt={selectedProduct.name} className="w-14 h-14 rounded-2xl object-cover shrink-0 border border-gray-200 dark:border-stone-700" />
+                    <img loading="lazy" decoding="async" src={selectedProduct.image} alt={selectedProduct.name} className="w-14 h-14 rounded-2xl object-cover shrink-0 border border-gray-200 dark:border-stone-700" />
                   ) : (
                     <div className="w-14 h-14 rounded-2xl bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0">
                       <ShoppingBag className="w-6 h-6" />

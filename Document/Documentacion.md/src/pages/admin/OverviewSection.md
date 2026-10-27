@@ -30,7 +30,7 @@ gráfica de ventas, torta de productos más vendidos, pedidos recientes y un mon
 ## Partes de la pantalla
 | Parte | Qué muestra |
 |---|---|
-| Saludo de bienvenida | Recuadro oscuro con **"¡Hola, (primer nombre)! 👋"** (el nombre sale de `window.__DATOS__.usuario.nombre`), una frase con cuántos pedidos activos hay, los botones **Nuevo pedido**, **Comandas activas** y **Cierre de caja**, las **ventas de hoy** y si la tienda está abierta. A la derecha (desde tablet) la foto del **producto más vendido** (está guardada en el propio servidor; si no carga, queda un fondo oscuro) con la marca **"En vivo"** con 4 cuadritos: Pendientes, En cocina, Listos y En camino; al tocarlos lleva a la pestaña correspondiente. Reemplaza el antiguo título "Tablero General". |
+| Saludo de bienvenida | Recuadro oscuro con **"¡Hola, (primer nombre)! 👋"** (el nombre sale de `window.__DATOS__.usuario.nombre`), una frase con cuántos pedidos activos hay, los botones **Nuevo pedido**, **Comandas activas** y **Cierre de caja**, las **ventas de hoy** y si la tienda está abierta. A la derecha (desde tablet) la foto del **producto más vendido** (está guardada en el propio servidor; si no carga, queda un fondo oscuro) con 4 cuadritos: Pendientes, En cocina, Listos y En camino; al tocarlos lleva a la pestaña correspondiente. Reemplaza el antiguo título "Tablero General". |
 | Tarjetas de indicadores | Ventas del período (`salesData.reduce(...)` suma los montos), pedidos de hoy, etc. Se arman dentro de una función que se ejecuta en el momento: `{(() => { ... return [...] })().map(...)}`. |
 | Gráfica de ventas | Barras con las ventas del período elegido. |
 | Torta de productos | Los más vendidos, con una leyenda que se puede tocar. |

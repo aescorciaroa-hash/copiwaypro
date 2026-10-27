@@ -300,7 +300,7 @@ export default function BuilderSection({
     // Con foto real del insumo, la capa se muestra como la foto; los panes conservan su silueta (una sola foto no se puede partir en tapa y base).
     const layer = image && variant === 'standard' ? (
       <div key={`img-${index}`} style={{ zIndex: 15 + index }} className="relative w-[240px] h-[38px] rounded-2xl overflow-hidden drop-shadow-lg border-2 border-white/70 dark:border-stone-700 transition-all select-none my-[-4px]">
-        <img src={image} alt={name} className="w-full h-full object-cover" />
+        <img loading="lazy" decoding="async" src={image} alt={name} className="w-full h-full object-cover" />
         <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-[10px] font-black uppercase tracking-wider text-white">{name}</span>
       </div>
     ) : (node ?? getIngredientVisual(name, index, variant));

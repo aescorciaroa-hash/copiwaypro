@@ -39,12 +39,12 @@ Si un producto no tiene categoría, se adivina por el nombre (`'hamburguesa'` �
 ## Secciones de la página
 | # | Sección | `id` (para los enlaces del Navbar) |
 |---|---|---|
-| 1 | Hero principal (título grande y botones) | — |
-| 2 | Barra de valores (calidad, rapidez...) | — |
+| 1 | Hero principal (título grande y botones). Abajo tiene un **desvanecido final** (`bg-gradient-to-t from-gray-50`, en oscuro `from-stone-950`) que termina en el color exacto de la página, para que no se vea una raya al pasar a la barra de valores. | — |
+| 2 | Barra de valores (4 tarjetas: Entrega Rápida, Ingredientes Frescos, Hecho al Momento, Pago 100% Seguro). Sin franja de color: luces naranja y ámbar borrosas y una cuadrícula de puntos que se desvanece en los bordes (`mask-image`). Las tarjetas no tienen borde; al pasar el mouse suben un poco y les aparece un halo naranja detrás. Se dibujan con un `.map()` sobre una lista de 4 objetos. | — |
 | 3 | Nuestro menú: pestañas de categorías + tarjetas de productos con botón para pedir | `menu` |
-| 4 | Nuestra historia | `nosotros` |
-| 5 | Testimonios | `testimonios` |
-| 6 | Contáctanos: formulario + mapa | `contacto` |
+| 4 | Nuestra historia. Sin franja de color ni líneas arriba y abajo: luces borrosas y cuadrícula de puntos que se desvanece (igual al login). | `nosotros` |
+| 5 | Testimonios. Tarjetas sin borde con sombra suave; al pasar el mouse suben un poco y les aparece un halo naranja. | `testimonios` |
+| 6 | Contáctanos: 4 tarjetas de datos, formulario y mapa, todos sin borde y con sombra suave. Sin franja de color: luces borrosas de fondo. | `contacto` |
 
 - El **formulario de contacto** solo muestra un `alert(...)`: no envía nada al servidor.
 - El **mapa** está centrado en `[2.9273, -75.2818]` (Neiva) con mapas de OpenStreetMap. En modo oscuro usa la clase `leaflet-dark-tiles` de `index.css`.

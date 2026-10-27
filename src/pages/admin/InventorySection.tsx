@@ -190,7 +190,7 @@ export default function InventorySection({
     const colorStock = (stock: number) => stock <= 10 ? 'bg-red-500' : (stock <= 30 ? 'bg-orange-500' : 'bg-emerald-500');
 
     const fotoInsumo = (item: InventoryItem) => item.image ? (
-      <img src={item.image} alt={item.name} className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-stone-700" />
+      <img loading="lazy" decoding="async" src={item.image} alt={item.name} className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-stone-700" />
     ) : (
       <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-stone-800 text-gray-400 flex items-center justify-center shrink-0" title="Sin foto: agrégala al editar">
         <ImagePlus className="w-5 h-5" />
@@ -574,7 +574,7 @@ export default function InventorySection({
                     <label className="block text-sm font-bold text-gray-700 dark:text-stone-300 mb-2">Foto del Insumo</label>
                     <label className="flex items-center gap-4 p-3 rounded-2xl border border-dashed border-gray-300 dark:border-stone-700 bg-gray-50 dark:bg-stone-900 cursor-pointer hover:border-brand-orange transition-colors">
                       {newItem.image ? (
-                        <img src={newItem.image} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                        <img loading="lazy" decoding="async" src={newItem.image} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
                       ) : (
                         <div className="w-16 h-16 rounded-xl bg-white dark:bg-stone-800 text-gray-400 flex items-center justify-center shrink-0">
                           <ImagePlus className="w-6 h-6" />

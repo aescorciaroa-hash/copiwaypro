@@ -25,7 +25,7 @@ export default function Footer() {
       </div>
 
       {/* Main Footer */}
-      <div className="bg-zinc-950 text-gray-400 pt-[180px] pb-12 px-6 border-t border-zinc-900">
+      <div className="bg-zinc-950 text-gray-400 pt-[180px] pb-12 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8">
           {/* Brand Col */}
           <div className="flex flex-col gap-6 md:col-span-4 lg:col-span-3">

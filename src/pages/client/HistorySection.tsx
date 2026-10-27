@@ -591,7 +591,7 @@ export default function HistorySection({
                           <div className="flex items-start gap-3">
                             <div className="w-11 h-11 rounded-xl bg-gray-100 dark:bg-stone-800 overflow-hidden shrink-0 relative">
                               {itemImage ? (
-                                <img src={itemImage} alt={it.name} className="w-full h-full object-cover" />
+                                <img loading="lazy" decoding="async" src={itemImage} alt={it.name} className="w-full h-full object-cover" />
                               ) : it.extras && it.extras.length > 0 ? (
                                 <CustomBurgerThumb ingredientNames={it.extras.map(e => e.name)} size={44} className="!rounded-none border-0" />
                               ) : (

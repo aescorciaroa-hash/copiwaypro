@@ -54,7 +54,7 @@ Si falla: `err instanceof ApiError ? err.message : '...'` → muestra el mensaje
 (ej: "Correo o contraseña incorrectos.") o uno genérico si fue un error de red.
 
 ## Diseño
-- Fondo decorativo con cuadrícula y círculos de color.
+- Fondo difuminado (igual al login de cocina): dos manchas de color muy borrosas (`blur-[120px]`), naranja arriba a la izquierda y ámbar abajo a la derecha, y una cuadrícula de puntos suave. La tarjeta **no tiene borde**: detrás lleva un halo naranja muy borroso (lur-[80px]) y una sombra amplia, para que la orilla se funda con el fondo; y el lado del formulario usa el mismo color de la tarjeta para que no se note la unión.
 - Botón de tema en la esquina.
 - En pantallas grandes, una columna lateral con la marca; a la derecha, el formulario.
 

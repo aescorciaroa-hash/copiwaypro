@@ -268,7 +268,7 @@ El panel tiene un menú lateral con ocho secciones, además de una campana de **
 *   **Indicadores**: Ventas Totales, Órdenes Hoy, Ticket Promedio (valor promedio por pedido) y Empleados Activos.
 *   **Comparativos**: esta semana frente a la semana pasada, y este mes frente al mes anterior.
 *   **Productos más vendidos**, **Órdenes recientes** y un resumen de **Despacho y Logística**.
-*   **Alerta Preventiva de Stock Crítico**: lista los insumos que tienen entre 1 y 10 unidades, antes de que se agoten.
+*   **Alerta Preventiva de Stock Crítico**: lista los insumos que tienen entre 1 y 10 unidades, antes de que se agoten. No está fija: aparece sola cuando un insumo **nuevo** llega a stock crítico y se esconde sola a los 15 segundos. No vuelve a salir por los mismos insumos, salvo que se repongan y vuelvan a bajar. Solo se ve en el **Tablero Analítico** y en **Inventario Express**, y los 15 segundos empiezan a contar cuando entras a una de esas dos secciones. Aunque el banner se esconda, mientras haya insumos en stock crítico aparece un **triángulo rojo de advertencia** junto a la campana. Al tocarlo se vuelve a ver la alerta, en cualquier sección.
 
 ### 8.2 Comandas Activas
 *   **Órdenes en tiempo real**: todos los pedidos del día con su estado, cliente, dirección y domiciliario.

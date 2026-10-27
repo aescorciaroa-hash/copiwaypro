@@ -256,7 +256,7 @@ export default function PagarPedido() {
                   <div className="divide-y divide-gray-100 dark:divide-stone-800">
                     {pedido.items.map((item, i) => (
                       <div key={i} className="flex gap-3 sm:gap-4 py-3 first:pt-0">
-                        <img src={item.image || FOTO_POR_DEFECTO} alt="" className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover shrink-0 bg-gray-100 dark:bg-stone-800" />
+                        <img loading="lazy" decoding="async" src={item.image || FOTO_POR_DEFECTO} alt="" className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover shrink-0 bg-gray-100 dark:bg-stone-800" />
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between gap-3">
                             <p className="font-bold text-sm sm:text-base leading-tight">{item.name}</p>

@@ -18,7 +18,8 @@ import { useStore, DEFAULT_MENU_CATEGORIES, Product, ProductComponent, Order, Or
 import { api, ApiError, irA } from '../servicios/api';
 import { CustomSelect } from '../components/CustomSelect';
 import { TimePickerModal } from '../components/TimePickerModal';
-import { generateCierrePDF } from '../utils/generarCierrePdf';
+// El PDF del cierre (jsPDF, muy pesado) se descarga solo cuando se genera, no al abrir el admin
+const cargarGeneradorPDF = () => import('../utils/generarCierrePdf').then(m => m.generateCierrePDF);
 import { CustomBurgerThumb } from './client/ingredientArt';
 import { ToastNotification, ToastData } from '../components/ToastNotification';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -275,7 +276,57 @@ export default function AdminDashboard() {
     addCategory, removeCategory
   } = useStore();
 
-  
+  // Alerta de stock crítico: aparece sola cuando un insumo NUEVO entra a stock crítico
+  // y se oculta sola a los 15 segundos. Los insumos ya avisados se guardan en el navegador.
+  const STOCK_ALERT_MS = 15000;
+  const criticalItems = useMemo(() => inventory.filter(i => i.stock > 0 && i.stock <= 10), [inventory]);
+  const [showStockAlert, setShowStockAlert] = useState(false);
+
+  useEffect(() => {
+    // Mientras el inventario no ha cargado no hacemos nada (si no, se borraría la lista de avisados)
+    if (inventory.length === 0) return;
+
+    let avisados: string[] = [];
+    try { avisados = JSON.parse(localStorage.getItem('stockAlertSeen') || '[]'); } catch {}
+
+    const idsCriticos = criticalItems.map(i => String(i.id));
+    const hayNuevo = idsCriticos.some(id => !avisados.includes(id));
+
+    // Guardamos solo los que siguen críticos: si uno se repone y vuelve a bajar, avisa otra vez
+    try { localStorage.setItem('stockAlertSeen', JSON.stringify(idsCriticos)); } catch {}
+
+    if (hayNuevo) setShowStockAlert(true);
+  }, [criticalItems, inventory.length]);
+
+  // Solo, el banner sale en el Tablero Analítico y en Inventario Express.
+  // Si lo abres con el ícono de advertencia (stockAlertManual), sale en cualquier sección.
+  const [stockAlertManual, setStockAlertManual] = useState(false);
+  const stockAlertTab = activeTab === 'overview' || activeTab === 'inventory';
+  const stockAlertVisible = showStockAlert && criticalItems.length > 0 && (stockAlertTab || stockAlertManual);
+
+  // El temporizador va aparte: así las recargas del inventario no lo cancelan.
+  // Solo cuenta mientras el banner se ve; si sales antes, vuelve a empezar al regresar.
+  useEffect(() => {
+    if (!stockAlertVisible) return;
+    const timer = setTimeout(() => { setShowStockAlert(false); setStockAlertManual(false); }, STOCK_ALERT_MS);
+    return () => clearTimeout(timer);
+  }, [stockAlertVisible]);
+
+  // Al cambiar de sección se olvida la apertura manual
+  useEffect(() => { setStockAlertManual(false); }, [activeTab]);
+
+  // Ícono de advertencia: abre el banner (o lo cierra si ya está abierto) y sube al inicio para verlo
+  const toggleStockAlert = () => {
+    if (stockAlertVisible) {
+      setShowStockAlert(false);
+      setStockAlertManual(false);
+      return;
+    }
+    setShowStockAlert(true);
+    setStockAlertManual(true);
+    mainContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const [salesFilter, setSalesFilter] = useState('Esta semana');
 
   // Lunes de la semana que contiene `d` (semana inicia en lunes).
@@ -621,10 +672,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const descargarPDF = () => {
+  const descargarPDF = async () => {
     if (!cierreData) return;
     try {
       setIsGeneratingPDF(true);
+      const generateCierrePDF = await cargarGeneradorPDF();
       const { download, blobUrl } = generateCierrePDF(cierreData, orders);
       setPdfPreviewUrl(blobUrl);
       download();
@@ -637,9 +689,10 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleVerReporte = () => {
+  const handleVerReporte = async () => {
     if (!cierreData) return;
     try {
+      const generateCierrePDF = await cargarGeneradorPDF();
       const { blobUrl } = generateCierrePDF(cierreData, orders);
       setPdfPreviewUrl(blobUrl);
       setShowPdfPreview(true);
@@ -1042,6 +1095,28 @@ export default function AdminDashboard() {
                   </span>
                 )}
               </button>
+              {/* Ícono de advertencia: aparece solo cuando hay insumos en stock crítico; al tocarlo muestra la alerta */}
+              <AnimatePresence>
+                {criticalItems.length > 0 && (
+                  <motion.button
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    onClick={toggleStockAlert}
+                    title="Stock crítico"
+                    className={`w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-xl transition-all relative ${
+                      stockAlertVisible
+                        ? 'bg-white dark:bg-stone-800 text-red-500 shadow-sm'
+                        : 'text-red-500 hover:bg-white dark:hover:bg-stone-800 hover:shadow-sm'
+                    }`}
+                  >
+                    <TriangleAlert className="w-5 h-5" />
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-gray-100 dark:border-stone-900 shadow-sm shadow-red-500/40">
+                      {criticalItems.length}
+                    </span>
+                  </motion.button>
+                )}
+              </AnimatePresence>
               <button onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'} className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-xl text-gray-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800 hover:text-brand-orange hover:shadow-sm transition-all">
                 <motion.span key={theme} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.3 }} className="flex">
                   {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -1077,11 +1152,11 @@ export default function AdminDashboard() {
                 className="fixed inset-0 z-[60] bg-gray-900/30 dark:bg-black/60 backdrop-blur-[2px]"
               />
               <motion.aside
-                initial={{ x: '100%' }}
+                initial={{ x: '110%' }}
                 animate={{ x: 0 }}
-                exit={{ x: '100%' }}
+                exit={{ x: '110%' }}
                 transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                className="fixed top-0 right-0 bottom-0 z-[61] w-full sm:w-[420px] bg-white dark:bg-[#151515] sm:border-l border-gray-100 dark:border-stone-800 shadow-2xl flex flex-col"
+                className="fixed top-0 right-0 bottom-0 sm:top-3 sm:right-3 sm:bottom-3 z-[61] w-full sm:w-[420px] bg-white dark:bg-[#151515] sm:border border-gray-100 dark:border-stone-800 sm:rounded-[28px] overflow-hidden shadow-2xl flex flex-col"
               >
                 <div className="h-[70px] md:h-24 px-5 md:px-6 flex items-center justify-between gap-3 border-b border-gray-100 dark:border-stone-800 shrink-0">
                   <div className="flex items-center gap-3">
@@ -1165,8 +1240,15 @@ export default function AdminDashboard() {
         
         <div ref={mainContentRef} className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-10 w-full min-w-0">
           {/* Alerta de Stock Crítico */}
-          {inventory.filter(i => i.stock > 0 && i.stock <= 10).length > 0 && (
-            <div className="mb-6 relative overflow-hidden bg-gradient-to-br from-red-50 via-red-50 to-orange-50 dark:from-red-950/30 dark:via-red-950/20 dark:to-orange-950/10 border border-red-200/80 dark:border-red-900/40 rounded-[24px] p-5 shadow-sm">
+          <AnimatePresence>
+          {/* Solo se muestra en el Tablero Analítico y en Inventario Express */}
+          {stockAlertVisible && (
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3 }}
+              className="mb-6 relative overflow-hidden bg-gradient-to-br from-red-50 via-red-50 to-orange-50 dark:from-red-950/30 dark:via-red-950/20 dark:to-orange-950/10 border border-red-200/80 dark:border-red-900/40 rounded-[24px] p-5 shadow-sm">
               <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-red-200/30 dark:bg-red-900/20 blur-2xl pointer-events-none" />
               <div className="relative flex items-start gap-4">
                 <div className="relative shrink-0 mt-0.5">
@@ -1180,7 +1262,7 @@ export default function AdminDashboard() {
                     <div className="flex items-center gap-2">
                       <h4 className="text-red-800 dark:text-red-300 font-black text-sm tracking-tight">Alerta Preventiva: Stock Crítico</h4>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-500 text-white">
-                        {inventory.filter(i => i.stock > 0 && i.stock <= 10).length}
+                        {criticalItems.length}
                       </span>
                     </div>
                     <button
@@ -1194,7 +1276,7 @@ export default function AdminDashboard() {
                     Los siguientes insumos están a punto de agotarse. Reabastece pronto para evitar bloqueos en las ventas.
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {inventory.filter(i => i.stock > 0 && i.stock <= 10).map(item => (
+                    {criticalItems.map(item => (
                       <span key={item.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 dark:bg-stone-900/60 text-red-700 dark:text-red-300 text-xs font-bold rounded-xl border border-red-200/80 dark:border-red-800/40 shadow-xs">
                         {item.name} <span className="text-red-500 dark:text-red-400 font-black">{item.stock} uds</span>
                       </span>
@@ -1202,8 +1284,9 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
 
           <div className="w-full">
             {activeTab === 'overview' && (
@@ -1774,7 +1857,7 @@ export default function AdminDashboard() {
                                 <div key={item.id || i} className="flex gap-3 items-start">
                                   <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-gray-100 dark:bg-stone-800 shrink-0 ring-1 ring-black/5">
                                     {img ? (
-                                      <img src={img} alt={name} className="w-full h-full object-cover" />
+                                      <img loading="lazy" decoding="async" src={img} alt={name} className="w-full h-full object-cover" />
                                     ) : item.extras && item.extras.length > 0 ? (
                                       <CustomBurgerThumb ingredientNames={item.extras.map(e => e.name)} size={56} className="!rounded-none border-0" />
                                     ) : (
@@ -1856,49 +1939,71 @@ export default function AdminDashboard() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 10 }}
               onClick={e => e.stopPropagation()}
-              className="bg-white dark:bg-[#151515] rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl border border-gray-100 dark:border-stone-800 flex flex-col p-6 sm:p-8"
+              className="bg-white dark:bg-[#151515] rounded-[28px] w-full max-w-md overflow-hidden shadow-2xl border border-gray-100 dark:border-stone-800 flex flex-col"
             >
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="font-bold text-xl text-gray-900 dark:text-white">Editar Dirección del Pedido {editingAddressOrder.id}</h3>
-                  <p className="text-xs text-gray-500 dark:text-stone-400 mt-0.5">Actualiza el punto de entrega en tiempo real para el domiciliario</p>
-                </div>
-                <button 
-                  type="button"
-                  onClick={() => { setEditingAddressOrder(null); setNewAddress(''); }} 
-                  className="w-9 h-9 rounded-full bg-gray-100 dark:bg-stone-800 flex items-center justify-center text-gray-500 hover:bg-gray-200 dark:hover:bg-stone-700 transition-colors shrink-0 cursor-pointer"
-                  title="Cerrar ventana"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-700 dark:text-stone-300 mb-2">Dirección de Entrega</label>
-                <input 
-                  type="text"
-                  value={newAddress}
-                  onChange={e => setNewAddress(e.target.value)}
-                  placeholder="Ej. Calle 84 # 46-20, Apto 301"
-                  autoFocus
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-stone-800 bg-gray-50 dark:bg-stone-900 text-sm text-gray-900 dark:text-white outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20"
-                />
-              </div>
-              <div className="flex gap-3">
-                <button 
+              {/* Encabezado con ícono y código del pedido */}
+              <div className="relative px-6 sm:px-7 pt-6 sm:pt-7 pb-5 bg-gradient-to-b from-orange-50 to-transparent dark:from-brand-orange/10">
+                <button
                   type="button"
                   onClick={() => { setEditingAddressOrder(null); setNewAddress(''); }}
-                  className="flex-1 bg-gray-100 dark:bg-stone-800 text-gray-700 dark:text-stone-300 py-3.5 rounded-2xl font-bold hover:bg-gray-200 dark:hover:bg-stone-700 transition-colors cursor-pointer"
+                  className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/80 dark:bg-stone-800 border border-gray-200/70 dark:border-stone-700 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-stone-700 transition-colors cursor-pointer"
+                  title="Cerrar ventana"
                 >
-                  Cancelar
+                  <X className="w-4 h-4" />
                 </button>
-                <button 
-                  type="button"
-                  onClick={handleUpdateAddress}
-                  disabled={!newAddress.trim() || newAddress === editingAddressOrder.address}
-                  className="flex-1 bg-brand-orange text-white py-3.5 rounded-2xl font-bold hover:bg-[#e66500] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-brand-orange/20 cursor-pointer"
-                >
-                  Guardar Cambios
-                </button>
+                <div className="w-12 h-12 rounded-2xl bg-brand-orange text-white flex items-center justify-center shadow-lg shadow-brand-orange/30 mb-4">
+                  <MapPin className="w-6 h-6" />
+                </div>
+                <h3 className="font-black text-xl tracking-tight text-gray-900 dark:text-white pr-10">Editar dirección</h3>
+                <p className="text-sm text-gray-500 dark:text-stone-400 mt-1">
+                  Pedido <span className="font-bold text-brand-orange">#{String(editingAddressOrder.id).replace(/^#/, '')}</span> · el domiciliario verá el cambio al instante.
+                </p>
+              </div>
+
+              <div className="px-6 sm:px-7 pb-6 sm:pb-7 space-y-5">
+                {/* Dirección actual */}
+                <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-gray-50 dark:bg-stone-900 border border-gray-100 dark:border-stone-800">
+                  <Clock className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold text-gray-400 dark:text-stone-500 uppercase tracking-wider">Dirección actual</p>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-stone-300 truncate">{editingAddressOrder.address || 'Sin dirección'}</p>
+                  </div>
+                </div>
+
+                {/* Nueva dirección */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-stone-300 mb-2 uppercase tracking-wider">Nueva dirección</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-orange pointer-events-none" />
+                    <input
+                      type="text"
+                      value={newAddress}
+                      onChange={e => setNewAddress(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && newAddress.trim() && newAddress !== editingAddressOrder.address) handleUpdateAddress(); }}
+                      placeholder="Ej. Calle 84 # 46-20, Apto 301"
+                      autoFocus
+                      className="w-full pl-11 pr-4 py-3.5 rounded-2xl border-2 border-gray-100 dark:border-stone-800 bg-white dark:bg-stone-900 text-sm font-semibold text-gray-900 dark:text-white outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setEditingAddressOrder(null); setNewAddress(''); }}
+                    className="flex-1 h-12 rounded-full border border-gray-200 dark:border-stone-700 text-gray-700 dark:text-stone-300 text-sm font-bold hover:bg-gray-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUpdateAddress}
+                    disabled={!newAddress.trim() || newAddress === editingAddressOrder.address}
+                    className="flex-[1.4] h-12 rounded-full bg-brand-orange text-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-[#e66500] disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-stone-800 dark:disabled:text-stone-500 disabled:shadow-none disabled:cursor-not-allowed transition-colors shadow-lg shadow-brand-orange/25 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4" /> Guardar cambios
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -2052,7 +2157,7 @@ export default function AdminDashboard() {
                         <div className="flex-1 space-y-2 overflow-y-auto max-h-[250px] pr-1 -mr-1">
                           {manualOrderItems.map((item, idx) => (
                             <div key={item.id} className="flex items-center gap-3 bg-white dark:bg-stone-800 p-2.5 rounded-xl border border-gray-100 dark:border-stone-700">
-                              <img src={item.product?.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-11 h-11 rounded-lg object-cover shrink-0" />
+                              <img loading="lazy" decoding="async" src={item.product?.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-11 h-11 rounded-lg object-cover shrink-0" />
                               <div className="min-w-0 flex-1">
                                 <p className="font-bold text-sm text-gray-900 dark:text-white truncate">
                                   <span className="text-brand-orange">{item.quantity}x</span> {item.name}
@@ -2121,7 +2226,7 @@ export default function AdminDashboard() {
                             onClick={() => { setManualSelectedProduct(seleccionado ? null : p); setManualCustomRemoved([]); setManualCustomExtras([]); setManualQuantity(1); }}
                             className={`relative flex items-center gap-3 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${seleccionado ? 'border-brand-orange bg-brand-orange/5 ring-2 ring-brand-orange/20' : 'border-gray-100 dark:border-stone-800 hover:border-gray-300 dark:hover:border-stone-600 bg-white dark:bg-stone-900/40'}`}
                           >
-                            <img src={p.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                            <img loading="lazy" decoding="async" src={p.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
                             <div className="min-w-0 flex-1">
                               <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{p.name}</p>
                               <p className="text-[11px] text-gray-400 dark:text-stone-500 truncate">{p.category || 'Otros'}</p>
@@ -2145,7 +2250,7 @@ export default function AdminDashboard() {
                         {/* Parte fija: producto, cantidad y título de ingredientes */}
                         <div className="shrink-0 p-5 pb-3 space-y-4">
                           <div className="flex items-center gap-3">
-                            <img src={manualSelectedProduct.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                            <img loading="lazy" decoding="async" src={manualSelectedProduct.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
                             <div className="min-w-0 flex-1">
                               <p className="font-black text-gray-900 dark:text-white leading-tight">{manualSelectedProduct.name}</p>
                               <p className="text-sm font-bold text-brand-orange mt-0.5">{formatCOP(manualSelectedProduct.price)}</p>
@@ -2645,7 +2750,7 @@ export default function AdminDashboard() {
                        return (
                         <li key={idx} className="flex items-center gap-4 text-gray-800 dark:text-stone-200 bg-gray-50 dark:bg-stone-900 p-3 rounded-2xl border border-gray-100 dark:border-stone-800">
                           {itemImage ? (
-                            <img src={itemImage} alt={item.name} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-gray-200 dark:border-stone-700" />
+                            <img loading="lazy" decoding="async" src={itemImage} alt={item.name} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-gray-200 dark:border-stone-700" />
                           ) : item.extras && item.extras.length > 0 ? (
                             <CustomBurgerThumb ingredientNames={item.extras.map(e => e.name)} size={64} className="!rounded-xl" />
                           ) : (

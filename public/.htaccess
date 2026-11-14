@@ -3,9 +3,11 @@
 
     # Si el navegador acepta archivos comprimidos y existe la copia .gz
     # (la crea "npm run build"), se entrega esa copia: pesa ~4 veces menos.
-    RewriteCond %{HTTP:Accept-Encoding} gzip
-    RewriteCond %{REQUEST_FILENAME}.gz -f
-    RewriteRule ^(.+\.(js|css))$ $1.gz [L]
+    # DESACTIVADO en Hostinger (LiteSpeed): el servidor ya comprime solo y
+    # entregar las copias .gz dejaba la pagina en blanco.
+    # RewriteCond %{HTTP:Accept-Encoding} gzip
+    # RewriteCond %{REQUEST_FILENAME}.gz -f
+    # RewriteRule ^(.+\.(js|css))$ $1.gz [L]
 
     # Cualquier peticion que no sea un archivo/directorio real -> front controller unico
     RewriteCond %{REQUEST_FILENAME} !-f

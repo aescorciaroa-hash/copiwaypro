@@ -84,7 +84,6 @@ detalle queda solo en el log de PHP. Nunca se muestran datos de la conexión.
 ## Antes de ponerlo en un servidor real
 - [ ] En `config/app.php`: `'debug' => false` y `'entorno' => 'production'`.
 - [ ] Una `CLAVE_FIRMA` propia y larga en `models/PagoService.php`.
-- [ ] No cargar `seed.sql` (o cambiar todas sus contraseñas).
 - [ ] Usuario de MySQL con contraseña (no `root` sin clave).
 - [ ] HTTPS.
 - [ ] Revisar las observaciones de la sección 4 de [el índice principal](../../README.md).

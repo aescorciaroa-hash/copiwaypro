@@ -1,207 +1,207 @@
+<div align="center">
+
+<img src="public/favicon.svg" alt="CopiwayPRO" width="96" height="96">
+
 # CopiwayPRO
 
-Sistema para un restaurante de hamburguesas a domicilio con cinco roles: Cliente, Administrador, Ayudante de Cocina, Domiciliario y Programador.
+**Sistema de gestión para una dark kitchen de hamburguesas a domicilio**
 
-- **Backend:** PHP sin framework, con estructura **MVC** (modelos, vistas y controladores) y MySQL (MySQLi con consultas preparadas).
-- **Frontend:** React (compilado con Vite). PHP entrega la página y React dibuja las pantallas.
+Menú y pedidos en línea · Tablero de cocina · Reparto con mapa · Inventario · Cierre de caja
 
-Corre en local con Laragon en **`http://localhost/copiwaypro/`**.
+<br>
 
-> 📘 **Guías generales** (instalar, arrancar, cómo funciona, roles, pedidos, seguridad, problemas comunes...): [Documentacion.md/GuiasDelProyecto/General/README.md](Document/Documentacion.md/GuiasDelProyecto/General/README.md).
->
-> 🌳 **Estructura completa en forma de árbol:** [Documentacion.md/GuiasDelProyecto/Estructura&Glosario/ESTRUCTURA.md](Document/Documentacion.md/GuiasDelProyecto/Estructura&Glosario/ESTRUCTURA.md).
->
-> 📚 **Documentación archivo por archivo:** [Documentacion.md/README.md](Document/Documentacion.md/README.md). Explica qué hace cada archivo, con qué se conecta y para qué sirve cada variable.
+![PHP](https://img.shields.io/badge/PHP-8-777BB4?style=for-the-badge&logo=php&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 
-## Estructura
+[Características](#-características) ·
+[Tecnologías](#-tecnologías) ·
+[Instalación](#-instalación) ·
+[Arquitectura](#-arquitectura) ·
+[Documentación](#-documentación)
 
-```
-/config          database.php (conexion $conn), app.php (ajustes generales), rutas.php (API), paginas.php (paginas),
-                 helpers.php (funciones de ayuda y el router), Session.php (clase Session)
-/controllers     Un controlador por recurso (ProductController, OrderController...) + PaginaController (paginas)
-/models          Un modelo por tabla (Usuario, Cliente, Producto, Pedido...), la clase Auth y los servicios
-                 con las reglas grandes (PedidoService, CajaService, PagoService, CorreoService, PushNotificationService)
-/views
-  /layouts       cabecera.php / pie.php (el HTML que carga React)
-  /paginas       Una vista por pantalla (landing, login, admin, cliente, cocina, domiciliario...)
-  /json          Funciones que convierten filas de MySQL al JSON que espera React
-/public          index.php (punto de entrada unico) + el frontend compilado (assets/main.js, assets/main.css)
-/sql             schema.sql (crea la base), seed.sql (datos de ejemplo), create-admin.php (crear el primer admin)
-/src             Frontend en React
-/Documentacion.md Documentacion de cada archivo, con la misma estructura de carpetas
-```
+</div>
 
-## Cómo está escrito el PHP
+---
 
-**Conexión** (`config/database.php`):
-```php
-<?php
-$host = "127.0.0.1";
-$user = "root";
-$password = "";
-$bd = "hamburguer_copiway";
-$port = 3306;
+## 📋 Acerca del proyecto
 
-try {
-    $conn = new mysqli($host, $user, $password, $bd, $port);
-    $conn->set_charset("utf8mb4");
-    $conn->query("SET time_zone = '-05:00'");
-} catch (mysqli_sql_exception $e) {
-    die("Error de Conexion: " . $e->getMessage());
-}
-?>
-```
+**CopiwayPRO** administra de punta a punta el negocio de **Hamburguer Copiway**, una cocina que solo vende a domicilio. Cada persona entra con su rol y ve únicamente las pantallas que necesita:
 
-**Modelos** (`private $conn` + `global $conn`, consultas preparadas):
-```php
-<?php
-class Cliente
-{
-    private $conn;
+| Rol | Qué hace |
+|---|---|
+| 🧑 **Cliente** | Ve el menú, arma su hamburguesa, paga y sigue su pedido en tiempo real. |
+| 👨‍🍳 **Ayudante de Cocina** | Recibe los pedidos en un tablero y los marca como preparados. |
+| 🛵 **Domiciliario** | Toma pedidos, ve la ruta en el mapa y confirma la entrega con un PIN. |
+| 🧑‍💼 **Administrador** | Controla menú, inventario, personal, ajustes del negocio y cierre de caja. |
+| 💻 **Programador** | Acceso técnico completo para soporte y mantenimiento. |
 
-    public function __construct()
-    {
-        global $conn;
-        $this->conn = $conn;
-    }
+## ✨ Características
 
-    public function buscarCrudo($id)
-    {
-        $stmt = $this->conn->prepare("SELECT * FROM CLIENTE WHERE id_cliente = ? LIMIT 1");
-        $stmt->bind_param("s", $id);
-        $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        return $row ?: null;
-    }
-}
-?>
+- **Pedidos en línea** — carrito, personalización de ingredientes, creador interactivo de hamburguesas y recompra en un clic.
+- **Pedido manual** — el administrador registra pedidos por llamada o WhatsApp, incluso para personas sin cuenta.
+- **Pagos** — efectivo o digital (Nequi, Daviplata, Bancolombia) con transacciones firmadas.
+- **Tablero de cocina** — columnas *Pendientes → En preparación → Listos*, alerta sonora e impresión de comanda.
+- **Reparto** — mapa con la ruta (Leaflet), contacto por WhatsApp y entrega validada con **PIN de 4 dígitos**.
+- **Inventario** — descuento automático de insumos por venta e historial de movimientos.
+- **Fidelización** — puntos canjeables al pagar y 15 % de descuento el día del cumpleaños.
+- **Panel administrativo** — gráficas de ventas, horario, tarifa de domicilio, margen de ganancia y pausa de emergencia.
+- **Cierre de caja** — ventas en efectivo vs. digital, liquidación por domiciliario, consumo de insumos y reporte en PDF.
+- **Notificaciones push y correo** — implementadas en PHP puro, sin librerías externas.
+- **Seguridad** — consultas preparadas, token CSRF, control de acceso por rol y límite de intentos de inicio de sesión.
+
+## 🛠 Tecnologías
+
+| Capa | Tecnología |
+|---|---|
+| **Frontend** | React 19, TypeScript, Tailwind CSS 4, Vite 6, Zustand, Leaflet, Recharts, jsPDF |
+| **Backend** | PHP 8 sin framework, patrón **MVC**, API REST con respuestas JSON |
+| **Base de datos** | MySQL 8 (MySQLi con consultas preparadas) |
+| **Entorno local** | Laragon (Apache + PHP + MySQL) |
+
+## 🚀 Instalación
+
+### Requisitos
+
+- [Laragon](https://laragon.org/) con PHP 8 y MySQL 8
+- [Node.js](https://nodejs.org/) 18 o superior
+
+### Pasos
+
+**1. Clonar el repositorio** dentro de la carpeta `www` de Laragon:
+
+```bash
+cd C:\laragon\www
+git clone https://github.com/aescorciaroa-hash/copiwaypro.git
+cd copiwaypro
 ```
 
-**Controladores** (una clase con un método por acción y, al final, el despachador por `$_GET['accion']`):
-```php
-<?php
-require_once __DIR__ . '/../models/Producto.php';
+**2. Crear la base de datos** (desde HeidiSQL, phpMyAdmin o la consola):
 
-class ProductController
-{
-    private $productoModel;
-    private $datos;
-
-    public function __construct()
-    {
-        $this->productoModel = new Producto();
-        $this->datos = entrada();
-    }
-
-    public function index()
-    {
-        responderJson($this->productoModel->listar());
-    }
-
-    public function update()
-    {
-        $id = $_GET['id'];
-        ...
-    }
-}
-
-$controller = new ProductController();
-
-$accion = $_GET['accion'] ?? '';
-
-if ($accion === 'index') {
-    $controller->index();
-} elseif ($accion === 'update') {
-    $controller->update();
-} else {
-    responderError('Ruta no encontrada.', 404);
-}
-?>
+```powershell
+mysql -u root --default-character-set=utf8mb4 < sql\schema.sql
 ```
-**Cada archivo se carga en un solo lugar:** `public/index.php` carga la conexión, `app.php`, `helpers.php`, `Session.php` y `Auth.php`; cada controlador carga solo sus modelos. No hay rutas ni métodos que la pantalla no use. Si se borra algo, esa parte deja de funcionar y el error dice qué falta.
 
-El router (`despacharRuta()` en `config/helpers.php`) busca la ruta en `config/rutas.php`, deja en `$_GET` la acción (`$_GET['accion']`) y los datos de la ruta (`{id}` → `$_GET['id']`) y carga el archivo del controlador.
+> [!WARNING]
+> `schema.sql` elimina la base de datos si ya existe.
 
-Los controladores responden **JSON** (con `responderJson()`) en vez de redirigir, porque la pantalla está hecha en React.
+**3. Crear el primer administrador:**
 
-**Modelos y servicios**: casi todos los recursos son simples y su modelo hace todo. Los dos procesos grandes tienen su propio servicio dentro de `models/`: el pedido (`PedidoService`: horario, precios, pago, inventario) y el cierre de caja (`CajaService`).
+```bash
+php sql\create-admin.php
+```
 
-**Recorrido de una petición a la API**: `.htaccess` → `public/index.php` → `despacharRuta()` (revisa CSRF y el rol) → controlador → modelo → `responderJson()`.
+**4. Compilar el frontend:**
 
-**Recorrido de una página**: `.htaccess` → `public/index.php` → `despacharPagina()` (lee `config/paginas.php`) → `PaginaController` → `mostrarVista()` muestra `views/layouts/cabecera.php` + la vista + `pie.php`. La cabecera deja en `window.__DATOS__` el usuario, el token CSRF y los ajustes de la tienda, y React abre la pantalla que indica `data-pagina`. Cambiar de pantalla es una recarga normal de página.
+```bash
+npm install
+npm run build
+```
 
-## Instalación
+**5. Abrir el sitio** con Apache y MySQL encendidos en Laragon:
 
-1. **Crea la base de datos**. Importa `sql/schema.sql` desde HeidiSQL o phpMyAdmin de Laragon, o por consola:
-   ```powershell
-   cd C:\laragon\www\copiwaypro
-   "C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe" -u root --default-character-set=utf8mb4 < sql\schema.sql
-   ```
-   (Ajusta la ruta de `mysql.exe` a tu versión. `--default-character-set=utf8mb4` evita que las tildes y la ñ se dañen.) ⚠️ `schema.sql` borra la base si ya existía.
+```
+http://localhost/copiwaypro/
+```
 
-   **(Opcional)** Datos de ejemplo, **nunca en producción**:
-   ```powershell
-   "C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe" -u root --default-character-set=utf8mb4 hamburguer_copiway < sql\seed.sql
-   ```
-   | Rol | Correo | Contraseña |
-   |---|---|---|
-   | Programador | programador@copiway.com | Copiway2024! |
-   | Administrador | admin@copiway.com | Copiway2024! |
-   | Ayudante de Cocina | carlos.mendoza@copiway.com | Copiway2024! |
-   | Domiciliario | valentina.rojas@copiway.com | Copiway2024! |
-   | Cliente | juan.perez@email.com | Cliente2024! |
+> [!TIP]
+> La conexión se configura en `config/database.php`. Con Laragon por defecto (usuario `root` sin contraseña) no hay que cambiar nada.
 
-2. **Conexión**: revisa `config/database.php`. Con Laragon (MySQL sin contraseña) no hay que cambiar nada.
+### Modo desarrollo
 
-3. **Frontend**: `npm install` y luego `npm run build` (crea `public/assets/main.js` y `public/assets/main.css`).
+```bash
+npm run dev
+```
 
-4. **Primer Administrador** (si no cargaste `seed.sql`): `php sql\create-admin.php`
+Abre Vite en `http://localhost:3000` con recarga automática y reenvía `/api/*` al Apache de Laragon. Para elegir la pantalla usa `?pagina=admin` en la dirección.
 
-## Cómo abrir el sitio
+## 🏗 Arquitectura
 
-Con Laragon encendido (Apache y MySQL), abre **`http://localhost/copiwaypro/`**.
+React dibuja las pantallas y le pide los datos a PHP; PHP los consulta en MySQL y responde en JSON.
 
-> ⚠️ `http://localhost/` a secas es la página de bienvenida de Laragon, no el sitio. Si ves un 404 en `/login`, revisa que la dirección tenga `/copiwaypro/`.
+```mermaid
+flowchart LR
+    A[Navegador<br/>React] -->|/api/...| B[.htaccess]
+    B --> C[public/index.php]
+    C --> D[Router<br/>CSRF + rol]
+    D --> E[Controlador]
+    E --> F[Modelo / Servicio]
+    F --> G[(MySQL)]
+    E -->|JSON| A
+```
 
-**Desarrollo con recarga automática:** `npm run dev` abre Vite en `http://localhost:3000` y reenvía `/api/*` al Apache de Laragon (`http://localhost/copiwaypro`). Elige la pantalla con `?pagina=admin` en la dirección.
+### Estructura de carpetas
 
-## Dónde se configura cada cosa
+```
+copiwaypro/
+├── config/        Conexión, ajustes, rutas de la API y de páginas, sesión y router
+├── controllers/   Un controlador por recurso (productos, pedidos, personal...)
+├── models/        Un modelo por tabla y los servicios de negocio (pedidos, caja, pagos, correo, push)
+├── views/         Plantillas PHP que cargan React y conversores a JSON
+├── public/        Punto de entrada único (index.php) y frontend compilado
+├── sql/           Esquema de la base de datos y creación del primer administrador
+├── src/           Código fuente del frontend en React + TypeScript
+└── Document/      Documentación completa del proyecto
+```
+
+<details>
+<summary><b>🔌 Endpoints principales de la API</b></summary>
+
+<br>
+
+Las rutas que modifican datos exigen el token CSRF (`X-CSRF-Token`); las rutas protegidas exigen sesión y rol.
+
+| Recurso | Endpoints |
+|---|---|
+| Autenticación | `POST /api/auth/login` · `register` · `logout` · `forgot-password/*` · `GET /api/auth/csrf` |
+| Productos | `POST` `PUT` `DELETE /api/products` · `POST /api/uploads/product-image` |
+| Inventario | `POST` `PUT` `DELETE /api/inventory` · `PATCH /api/inventory/{id}/stock` |
+| Pedidos | `GET` `POST /api/orders` · `POST /api/orders/manual` · `PATCH /api/orders/{id}/{estado}` |
+| Pagos | `POST /api/payments/prepare` · `POST` `GET /api/payments/transactions` |
+| Personal y clientes | `/api/staff` · `/api/clients/{id}` |
+| Ajustes | `PUT /api/settings` · `/api/settings/categories` |
+| Cierre de caja | `GET /api/cash-closing/preview` · `POST /api/cash-closing` |
+| Notificaciones | `GET /api/push/public-key` · `POST /api/push/subscribe` |
+| Sincronización | `GET /api/sync` — todos los datos de la pantalla (responde `304` si nada cambió) |
+
+La lista completa con controladores y roles está en [`config/rutas.php`](config/rutas.php).
+
+</details>
+
+## ⚙️ Configuración
 
 | Qué | Dónde |
 |---|---|
-| Conexión a MySQL | `config/database.php` (`$host`, `$user`, `$password`, `$bd`, `$port`) |
-| Entorno, modo debug, zona horaria, carpeta del proyecto | `config/app.php` (`'entorno'`, `'debug'`, `'zona_horaria'`, `'ruta_base'`) |
-| Nombre y duración de la sesión | Constantes de `config/Session.php` |
-| Intentos de login permitidos | Constantes de `models/IntentoLogin.php` |
-| Clave para firmar los pagos | Constante `CLAVE_FIRMA` de `models/PagoService.php` |
-| Claves de las notificaciones push | Constantes `VAPID_*` de `models/PushNotificationService.php` |
-| Servidor de correo (SMTP) | Constantes de `models/CorreoService.php` |
-| Horario, tarifa, puntos, datos del negocio | El panel del administrador (tabla `CONFIGURACION_SISTEMA`) |
+| Conexión a MySQL | `config/database.php` |
+| Entorno, modo debug, zona horaria y carpeta base | `config/app.php` |
+| Nombre y duración de la sesión | `config/Session.php` |
+| Intentos de inicio de sesión | `models/IntentoLogin.php` |
+| Clave de firma de pagos | `CLAVE_FIRMA` en `models/PagoService.php` |
+| Claves de notificaciones push | `VAPID_*` en `models/PushNotificationService.php` |
+| Servidor de correo (SMTP) | `models/CorreoService.php` |
+| Horario, tarifa, puntos y datos del negocio | Panel del administrador |
 
-## Rutas de la API
+## 🔒 Antes de publicar en producción
 
-Las rutas que cambian datos (`POST`, `PUT`, `PATCH`, `DELETE`) exigen el token CSRF (cabecera `X-CSRF-Token`). Las que tienen roles en `config/rutas.php` exigen sesión y rol. Las del catálogo (`products`, `ingredients`, `settings` en lectura) son públicas.
+- [ ] En `config/app.php`: `'debug' => false` y `'entorno' => 'production'`.
+- [ ] Reemplazar `CLAVE_FIRMA` por un texto largo y aleatorio.
+- [ ] Servir el sitio por **HTTPS** (las cookies de sesión se marcan `secure` automáticamente).
 
-- `POST /api/auth/login|register|logout`, `GET /api/auth/csrf`
-- `POST /api/auth/forgot-password/request|reset`
-- `POST/PUT/DELETE /api/products` y `/api/inventory`; `PATCH /api/inventory/{id}/stock`
-- `POST /api/uploads/product-image`
-- `POST/PUT /api/staff` (la baja es `PUT` con `active: false`), `DELETE /api/staff/{id}?role=...`, `PATCH /api/staff/{id}/location`
-- `PUT /api/clients/{id}`, `PUT /api/clients/{id}/password`
-- `GET/POST /api/orders`, `POST /api/orders/manual`, `PATCH /api/orders/{id}/preparing|ready|take|release|accept|deliver|review|address|destination`
-- `POST /api/payments/prepare`, `POST /api/payments/transactions`, `GET /api/payments/transactions/{id}` (pasarela de prueba)
-- `PUT /api/settings`, `POST/DELETE /api/settings/categories`
-- `GET /api/cash-closing/preview`, `POST /api/cash-closing`
-- `GET /api/push/public-key`, `POST /api/push/subscribe`
-- `GET /api/sync`: **todos los datos que muestra la pantalla** (productos, inventario, pedidos, clientes, personal, ajustes). Responde `304` si nada cambió.
+## 📚 Documentación
 
-La lista completa, con el controlador y los roles de cada ruta, está en `config/rutas.php` y en [Documentacion.md/config/rutas.md](Document/Documentacion.md/config/rutas.md).
+| Guía | Contenido |
+|---|---|
+| [Guías generales](Document/Documentacion.md/GuiasDelProyecto/General/README.md) | Instalación, funcionamiento, roles, pedidos, seguridad y problemas comunes |
+| [Estructura y glosario](Document/Documentacion.md/GuiasDelProyecto/Estructura&Glosario/ESTRUCTURA.md) | Árbol completo del proyecto y términos técnicos |
+| [Documentación por archivo](Document/Documentacion.md/README.md) | Qué hace cada archivo, con qué se conecta y para qué sirve cada variable |
 
-## Antes de publicar en un servidor real
+---
 
-- Cambia **todas** las contraseñas de ejemplo de `seed.sql` (o no lo ejecutes).
-- En `config/app.php` pon `'debug' => false` y `'entorno' => 'production'`.
-- Cambia `CLAVE_FIRMA` en `models/PagoService.php` por un texto largo al azar.
-- Usa HTTPS (las cookies de sesión se marcan `secure` solas si la conexión es HTTPS).
-- La sección **"Observaciones encontradas al documentar"** de [Documentacion.md/README.md](Document/Documentacion.md/README.md) lista las fallas corregidas y los pendientes conocidos.
+<div align="center">
+
+Hecho para **Hamburguer Copiway** 🍔
+
+</div>

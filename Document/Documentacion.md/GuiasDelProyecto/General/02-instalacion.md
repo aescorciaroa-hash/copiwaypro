@@ -20,16 +20,13 @@ Esta guía es para instalar el proyecto **en un computador nuevo**. Si ya lo tie
 # 1. Base de datos (ajusta la versión de MySQL de tu Laragon). ⚠️ Si ya existía, la borra.
 "C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe" -u root --default-character-set=utf8mb4 < sql\schema.sql
 
-# 2. (Opcional) Datos de ejemplo
-"C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe" -u root --default-character-set=utf8mb4 hamburguer_copiway < sql\seed.sql
+# 2. Conexión: revisa config\database.php (con Laragon no hay que cambiar nada)
 
-# 3. Conexión: revisa config\database.php (con Laragon no hay que cambiar nada)
-
-# 4. Frontend
+# 3. Frontend
 npm install
 npm run build
 
-# 5. (Si no cargaste los datos de ejemplo) Primer administrador
+# 4. Primer administrador
 php sql\create-admin.php
 ```
 
@@ -37,23 +34,13 @@ php sql\create-admin.php
 
 4. Abre **http://localhost/copiwaypro/**.
 
-## Usuarios de ejemplo (solo si cargaste `seed.sql`)
-| Rol | Correo | Contraseña |
-|---|---|---|
-| Administrador | admin@copiway.com | Copiway2024! |
-| Cocina | carlos.mendoza@copiway.com | Copiway2024! |
-| Domiciliario | valentina.rojas@copiway.com | Copiway2024! |
-| Cliente | juan.perez@email.com | Cliente2024! |
-
-Cocina y domiciliario también necesitan un **PIN** para su panel. Los usuarios del `seed.sql` no
-traen PIN: el administrador se lo asigna desde **Equipo y Personal** (ver [Roles y usuarios](05-roles-y-usuarios.md)).
-
-## Crear el primer administrador sin datos de ejemplo
+## Crear el primer administrador
 ```powershell
 php sql\create-admin.php
 ```
 Te pregunta los datos del **Programador** (quien crea administradores) y después los del
-**Administrador**. Detalle en [Documentacion.md/sql/create-admin.md](../../sql/create-admin.md).
+**Administrador**. El resto del personal (cocina y domiciliarios) lo crea el administrador desde
+**Equipo y Personal**, y ahí mismo les asigna su **PIN** (ver [Roles y usuarios](05-roles-y-usuarios.md)). Detalle en [Documentacion.md/sql/create-admin.md](../../sql/create-admin.md).
 
 ## Comprobar que todo quedó bien
 | Prueba | Resultado esperado |

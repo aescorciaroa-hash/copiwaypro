@@ -249,7 +249,6 @@ views/
 ```
 sql/
 ├── schema.sql         → crea la base de datos y sus tablas
-├── seed.sql           → datos de ejemplo (usuarios y productos)
 └── create-admin.php   → crea el primer administrador
 ```
 

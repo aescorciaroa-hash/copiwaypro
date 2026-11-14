@@ -2,7 +2,7 @@
 
 - **Nombre:** `hamburguer_copiway`
 - **Motor:** MySQL 8 (InnoDB), caracteres `utf8mb4` (tildes, ñ y emojis).
-- **Estructura:** `sql/schema.sql` (23 tablas). **Datos de ejemplo:** `sql/seed.sql`.
+- **Estructura:** `sql/schema.sql` (23 tablas). **Primer administrador:** `sql/create-admin.php`.
 - **Conexión:** `config/database.php` (`$host`, `$user`, `$password`, `$bd`, `$port`).
 
 Detalle tabla por tabla en [Documentacion.md/sql/schema.md](../../sql/schema.md).

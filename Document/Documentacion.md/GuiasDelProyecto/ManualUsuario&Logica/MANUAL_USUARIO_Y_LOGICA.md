@@ -582,7 +582,7 @@ Estas funciones están planeadas para una próxima versión:
 | **Cancelar pedidos** | Solo se cancelan solos los pedidos con link de pago que vencen sin pagarse. Todavía no hay una pantalla para cancelar un pedido a mano. |
 | **Pasarela de pago** | Es de prueba: simula un pago real, pero no cobra dinero. |
 
-> **Antes de usar el sistema con clientes reales**, el administrador debe revisar en **Ajustes → Datos del Negocio** el NIT, la dirección y el teléfono: vienen con datos de ejemplo.
+> **Antes de usar el sistema con clientes reales**, el administrador debe revisar en **Ajustes → Datos del Negocio** el NIT, la dirección y el teléfono del negocio.
 
 ---
 

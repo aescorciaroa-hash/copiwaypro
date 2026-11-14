@@ -57,7 +57,7 @@ Ver [05 — Roles](05-roles-y-usuarios.md).
 - **Librerías JS (npm):** zustand (datos en memoria), leaflet (mapas), recharts (gráficas), jspdf (PDF), lucide-react (íconos), motion (animaciones).
 
 **¿Cuál es la base de datos?**
-MySQL, base `hamburguer_copiway`. El diseño está en `sql/schema.sql` y los datos de prueba en `sql/seed.sql`.
+MySQL, base `hamburguer_copiway`. El diseño está en `sql/schema.sql` y el primer administrador se crea con `sql/create-admin.php`.
 
 **¿El proyecto siempre fue así?**
 No. Antes usaba **Firebase/Firestore**. Se pasó a **PHP MVC + MySQL** por fases (se ve en git: "Fase 0",
@@ -107,7 +107,7 @@ Un solo archivo de entrada para todo: `public/index.php`. `.htaccess` manda toda
 | `views/json/` | cómo se organizan los datos para React |
 | `public/` | `index.php`, `.htaccess`, lo compilado de React (`assets/`), fotos subidas (`uploads/`) |
 | `src/` | el código de React |
-| `sql/` | crear la base de datos y datos de prueba |
+| `sql/` | crear la base de datos y el primer administrador |
 
 **¿Qué es un "Service" (PedidoService, CajaService…)?**
 Un modelo con las **reglas del negocio** que usa a otros modelos. `Pedido` solo lee; `PedidoService`
@@ -610,7 +610,7 @@ Ver [02 — Instalación](02-instalacion.md) y [14 — Comandos](14-comandos.md)
 | ¿Usa Composer? | No. Composer es el instalador de librerías de PHP, pero este proyecto no necesita ninguna. |
 | ¿Qué es npm? | El instalador de librerías de JavaScript. `npm install` crea `node_modules/`. |
 | ¿Cómo se compila React? | `npm run build` (deja todo en `public/assets/`). |
-| ¿Cómo se crea la base de datos? | Importar `sql/schema.sql` y luego `sql/seed.sql` (datos de prueba). |
+| ¿Cómo se crea la base de datos? | Importar `sql/schema.sql` y luego crear el primer administrador con `php sql/create-admin.php`. |
 | ¿Cómo se crea el primer admin? | `php sql/create-admin.php`. |
 | ¿Qué versión de PHP necesita? | 8.1 o más, con las extensiones `mysqli`, `openssl`, `curl` y `mbstring` (Laragon las trae prendidas). |
 | ¿Qué es git? | El control de versiones: guarda el historial de cambios (`git add`, `git commit`, `git push`). |

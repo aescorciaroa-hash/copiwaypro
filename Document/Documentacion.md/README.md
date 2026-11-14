@@ -102,7 +102,7 @@ nuevos se guardan en `store/almacenAplicacion.ts` y todas las pantallas se actua
 [helpers.php](config/helpers.md) (funciones de ayuda y el router) · [Session.php](config/Session.md)
 
 ### sql/
-[schema.sql](sql/schema.md) (las 23 tablas) · [seed.sql](sql/seed.md) (datos de ejemplo) ·
+[schema.sql](sql/schema.md) (las 23 tablas) ·
 [create-admin.php](sql/create-admin.md) (crear el primer administrador por consola)
 
 ### controllers/ — [cómo funciona un controlador](controllers/README.md)

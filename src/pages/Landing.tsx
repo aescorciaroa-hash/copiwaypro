@@ -1,39 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { Plus, Minus, ArrowRight, Flame, MapPin, Clock, Utensils, Star, Phone, Mail, ShieldCheck, Send } from 'lucide-react';
+import { ArrowRight, Flame, MapPin, Clock, Utensils, Star, Phone, Mail, ShieldCheck, Send } from 'lucide-react';
 import { rutaBase } from '../servicios/api';
 import { motion } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
 import { useStore, DEFAULT_MENU_CATEGORIES } from '../store/almacenAplicacion';
 import { formatCOP } from '../lib/format';
-import L from 'leaflet';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 
+// El mapa (Leaflet, ~160 KB) se descarga aparte y solo cuando el usuario se
+// acerca a la seccion de contacto: asi la pagina de inicio abre mas rapido.
+const MapaContacto = lazy(() => import('./landing/MapaContacto'));
 
-const CustomZoomControl = () => {
-  const map = useMap();
+function MapaLazy() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [mostrar, setMostrar] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || mostrar) return;
+    if (!('IntersectionObserver' in window)) { setMostrar(true); return; }
+    const obs = new IntersectionObserver((entradas) => {
+      if (entradas.some(e => e.isIntersecting)) { setMostrar(true); obs.disconnect(); }
+    }, { rootMargin: '600px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [mostrar]);
   return (
-    <div className="absolute top-8 left-6 flex flex-col gap-2 z-[400] pointer-events-auto">
-      <button 
-        type="button"
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); map.zoomIn(); }}
-        className="w-10 h-10 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm border border-gray-200 dark:border-white/10 hover:scale-110 transition-transform text-gray-700 dark:text-white"
-        title="Acercar"
-      >
-        <Plus size={20} />
-      </button>
-      <button 
-        type="button"
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); map.zoomOut(); }}
-        className="w-10 h-10 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm border border-gray-200 dark:border-white/10 hover:scale-110 transition-transform text-gray-700 dark:text-white"
-        title="Alejar"
-      >
-        <Minus size={20} />
-      </button>
+    <div ref={ref} className="w-full h-full">
+      {mostrar && (
+        <Suspense fallback={<div className="w-full h-full bg-gray-100 dark:bg-stone-900 animate-pulse" />}>
+          <MapaContacto />
+        </Suspense>
+      )}
     </div>
   );
-};
+}
+
 
 export default function Landing() {
   const { products, storeConfig } = useStore();
@@ -446,38 +448,7 @@ export default function Landing() {
               
               {/* Mapa */}
               <div className={`rounded-[32px] overflow-hidden shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] h-[400px] lg:h-full relative z-0 [&_.leaflet-container]:bg-transparent [&_.leaflet-control-container]:z-[500] ${theme === 'dark' ? 'leaflet-dark-tiles' : ''}`}>
-                <MapContainer
-                  center={[2.9273, -75.2818]}
-                  zoom={13}
-                  style={{ height: '100%', width: '100%' }}
-                  zoomControl={false}
-                  className="z-0"
-                >
-                  <CustomZoomControl />
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  />
-                  <Marker 
-                    position={[2.9273, -75.2818]}
-                    icon={L.divIcon({
-                      html: `<div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
-                               <svg viewBox="0 0 32 32" style="width: 32px; height: 32px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
-                                 <path d="M16 0c-5.5 0-10 4.5-10 10 0 7.5 10 22 10 22s10-14.5 10-22c0-5.5-4.5-10-10-10z" fill="#ff7000"/>
-                                 <circle cx="16" cy="10" r="6" fill="#fff"/>
-                                 <path d="M16 12.5c-.3 0-1.8-1.5-2.5-2.2-.8-.8-.8-2 0-2.8.8-.8 2-.8 2.8 0 .2.2.4.4.5.7.1-.3.3-.5.5-.7.8-.8 2-.8 2.8 0 .8.8.8 2 0 2.8-.7.7-2.2 2.2-2.5 2.2H16z" fill="#ff7000"/>
-                               </svg>
-                             </div>`,
-                      className: 'custom-marker',
-                      iconSize: [30, 30],
-                      iconAnchor: [15, 30]
-                    })}
-                  >
-                    <Popup>
-                      <strong>Hamburguer Copiway</strong><br/>Dark Kitchen Central
-                    </Popup>
-                  </Marker>
-                </MapContainer>
+                <MapaLazy />
               </div>
             </div>
           </div>

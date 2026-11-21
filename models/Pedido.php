@@ -46,9 +46,10 @@ class Pedido
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
+        $itemsPorPedido = $this->itemsDeVarios(array_column($rows, 'id_pedido'));
         $pedidos = [];
         foreach ($rows as $row) {
-            $pedidos[] = $this->formar($row, $rol, $usuarioId);
+            $pedidos[] = pedido_a_json($row, $itemsPorPedido[(int) $row['id_pedido']] ?? [], $rol, $usuarioId);
         }
         return $pedidos;
     }
@@ -110,23 +111,47 @@ class Pedido
 
     public function itemsDe($idPedido)
     {
-        $stmt = $this->conn->prepare("SELECT * FROM DETALLE_PEDIDO WHERE id_pedido = ?");
-        $stmt->bind_param("i", $idPedido);
+        return $this->itemsDeVarios([(int) $idPedido])[(int) $idPedido] ?? [];
+    }
+
+    /**
+     * Items de varios pedidos a la vez con solo 2 consultas (antes eran 1 por
+     * pedido + 1 por producto: con cientos de pedidos el sync del admin y la
+     * cocina hacia cientos de consultas cada pocos segundos).
+     * Devuelve [id_pedido => [items...]].
+     */
+    public function itemsDeVarios(array $idsPedido)
+    {
+        $idsPedido = array_values(array_unique(array_map('intval', $idsPedido)));
+        $resultado = [];
+        if (!$idsPedido) {
+            return $resultado;
+        }
+
+        $marcas = implode(',', array_fill(0, count($idsPedido), '?'));
+        $stmt = $this->conn->prepare("SELECT * FROM DETALLE_PEDIDO WHERE id_pedido IN ($marcas) ORDER BY id_detalle");
+        $stmt->bind_param(str_repeat('i', count($idsPedido)), ...$idsPedido);
         $stmt->execute();
         $detalles = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
-        $items = [];
-        foreach ($detalles as $detalle) {
-            $stmtP = $this->conn->prepare("SELECT * FROM PERSONALIZACION WHERE id_detalle = ?");
-            $stmtP->bind_param("i", $detalle['id_detalle']);
+        $personalizacionesPorDetalle = [];
+        $idsDetalle = array_map(fn($d) => (int) $d['id_detalle'], $detalles);
+        if ($idsDetalle) {
+            $marcasD = implode(',', array_fill(0, count($idsDetalle), '?'));
+            $stmtP = $this->conn->prepare("SELECT * FROM PERSONALIZACION WHERE id_detalle IN ($marcasD)");
+            $stmtP->bind_param(str_repeat('i', count($idsDetalle)), ...$idsDetalle);
             $stmtP->execute();
-            $personalizaciones = $stmtP->get_result()->fetch_all(MYSQLI_ASSOC);
+            foreach ($stmtP->get_result()->fetch_all(MYSQLI_ASSOC) as $p) {
+                $personalizacionesPorDetalle[(int) $p['id_detalle']][] = $p;
+            }
             $stmtP->close();
+        }
 
+        foreach ($detalles as $detalle) {
             $extras = [];
             $removidos = [];
-            foreach ($personalizaciones as $p) {
+            foreach ($personalizacionesPorDetalle[(int) $detalle['id_detalle']] ?? [] as $p) {
                 $entrada = ['id' => (string) $p['id_ingrediente'], 'name' => $p['nombre_ingrediente'], 'quantity' => (float) $p['cantidad']];
                 if ($p['accion_modificacion'] === 'agregar') {
                     $extras[] = $entrada;
@@ -135,7 +160,7 @@ class Pedido
                 }
             }
 
-            $items[] = [
+            $resultado[(int) $detalle['id_pedido']][] = [
                 'id'         => (string) $detalle['id_detalle'],
                 'productId'  => (string) $detalle['id_producto'],
                 'name'       => $detalle['nombre_producto'],
@@ -147,7 +172,7 @@ class Pedido
                 'removed'    => $removidos,
             ];
         }
-        return $items;
+        return $resultado;
     }
 
     private function formar($row, $rolQueVe, $idQueVe)

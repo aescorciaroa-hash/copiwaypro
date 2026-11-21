@@ -102,7 +102,14 @@ export default defineConfig(() => {
           // decenas de archivos diminutos, uno por icono): menos peticiones
           // y el navegador los guarda una sola vez para todas las pantallas.
           manualChunks(id) {
+            // Funcion interna de Vite para precargar pantallas (import()). Si no
+            // se le da su propio pedazo, Rollup la mete dentro de 'pdf' y el panel
+            // de admin termina descargando ~785 KB de jsPDF al abrir.
+            if (id.includes('vite/preload-helper') || id.includes('commonjsHelpers')) return 'precarga';
             if (!id.includes('node_modules')) return undefined;
+            // React va aparte: si no, Rollup lo mete dentro de 'mapas', 'iconos' o
+            // 'animaciones' y TODAS las paginas descargan esas librerias enteras.
+            if (/node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'react';
             if (id.includes('lucide-react')) return 'iconos';
             if (id.includes('leaflet')) return 'mapas';
             if (id.includes('recharts') || id.includes('d3-') || id.includes('victory-vendor')) return 'graficos';

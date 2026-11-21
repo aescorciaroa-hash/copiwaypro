@@ -44,9 +44,12 @@ class Producto
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
+        // Recetas de todos los productos en 1 consulta (antes era 1 por producto).
+        $recetas = $this->recetasDeVarios(array_column($rows, 'id_producto'));
         $productos = [];
         foreach ($rows as $row) {
-            $productos[] = $this->comoJson($row, $esAdmin);
+            $receta = $recetas[(int) $row['id_producto']] ?? ['ingredientes' => [], 'empaques' => []];
+            $productos[] = producto_a_json($row, $receta['ingredientes'], $receta['empaques'], $esAdmin);
         }
         return $productos;
     }
@@ -69,29 +72,41 @@ class Producto
 
     private function recetaDe($idProducto)
     {
+        return $this->recetasDeVarios([(int) $idProducto])[(int) $idProducto] ?? ['ingredientes' => [], 'empaques' => []];
+    }
+
+    /** Recetas de varios productos con una sola consulta: [id_producto => ['ingredientes'=>..., 'empaques'=>...]]. */
+    private function recetasDeVarios(array $idsProducto)
+    {
+        $idsProducto = array_values(array_unique(array_map('intval', $idsProducto)));
+        $resultado = [];
+        if (!$idsProducto) {
+            return $resultado;
+        }
+        $marcas = implode(',', array_fill(0, count($idsProducto), '?'));
         $stmt = $this->conn->prepare(
-            "SELECT r.cantidad_necesaria, i.id_ingrediente, i.nombre, c.ambito
+            "SELECT r.id_producto, r.cantidad_necesaria, i.id_ingrediente, i.nombre, c.ambito
              FROM RECETA r
              JOIN INGREDIENTE i ON i.id_ingrediente = r.id_ingrediente
              JOIN CATEGORIA c ON c.id_categoria = i.id_categoria
-             WHERE r.id_producto = ?"
+             WHERE r.id_producto IN ($marcas)"
         );
-        $stmt->bind_param("i", $idProducto);
+        $stmt->bind_param(str_repeat('i', count($idsProducto)), ...$idsProducto);
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
-        $ingredientes = [];
-        $empaques = [];
         foreach ($rows as $r) {
+            $id = (int) $r['id_producto'];
+            $resultado[$id] ??= ['ingredientes' => [], 'empaques' => []];
             $entrada = ['id' => (string) $r['id_ingrediente'], 'name' => $r['nombre'], 'quantityDeduct' => (float) $r['cantidad_necesaria']];
             if ($r['ambito'] === 'empaque_desechable') {
-                $empaques[] = $entrada;
+                $resultado[$id]['empaques'][] = $entrada;
             } else {
-                $ingredientes[] = $entrada;
+                $resultado[$id]['ingredientes'][] = $entrada;
             }
         }
-        return ['ingredientes' => $ingredientes, 'empaques' => $empaques];
+        return $resultado;
     }
 
     private function badgeAEnum($badge)

@@ -34,6 +34,7 @@ export default function KitchenDashboard() {
   
   // Track previous orders to detect incoming ones
   const prevOrdersCountRef = useRef<number>(orders.length);
+  const idsVistosRef = useRef<Set<string>>(new Set(orders.map(o => o.id)));
   const initialLoadRef = useRef<boolean>(true);
 
   // Login State
@@ -75,22 +76,32 @@ export default function KitchenDashboard() {
   }, [orders]);
 
 
+  // La hora del panel se actualiza cada 30 s (saludo, "entregados hoy", minutos
+  // de cada comanda). El reloj con segundos es <RelojCocina/>, que se actualiza
+  // solo: antes el panel ENTERO se redibujaba cada segundo y se trababa.
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
+    const timer = setInterval(() => setTime(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
+  // Las tarjetas llaman a las acciones a traves de esta referencia estable,
+  // para que React.memo no las redibuje cuando no cambia su pedido.
+  const accionesRef = useRef({ moveOrder: (_id: string, _st: string) => {}, printSticker: (_id: string) => {} });
 
   // Escuchar nuevos pedidos en tiempo real para disparar sonido de comanda (RF-27 / RF-36)
   useEffect(() => {
     if (initialLoadRef.current) {
       initialLoadRef.current = false;
       prevOrdersCountRef.current = orders.length;
+      orders.forEach(o => idsVistosRef.current.add(o.id));
       return;
     }
 
-    if (orders.length > prevOrdersCountRef.current) {
-      const latestOrder = orders[0];
-      const orderId = latestOrder ? latestOrder.id : 'Nuevo Pedido';
+    // Pedido nuevo = un numero que no se habia visto (no "hay mas pedidos que antes":
+    // la lista tambien pierde los pedidos viejos y el conteo podia engañar).
+    const nuevo = orders.find(o => !idsVistosRef.current.has(o.id));
+    orders.forEach(o => idsVistosRef.current.add(o.id));
+    if (nuevo) {
+      const orderId = nuevo.id;
       setNewOrderAlertText(`¡Comanda ${orderId} recibida en cocina!`);
       setShowNewOrderAlert(true);
       soundFx.playOrderBell();
@@ -412,6 +423,8 @@ export default function KitchenDashboard() {
   /** Cuántos productos caben en el resumen de la barra lateral sin que salga barra de desplazamiento. */
   const MAX_RESUMEN = 6;
   const totalActivas = flujo.reduce((acc, f) => acc + f.count, 0);
+  accionesRef.current = { moveOrder, printSticker };
+  const minutoActual = Math.floor(time.getTime() / 60000);
   const entregadosHoy = orders.filter(o =>
     (o.status === 'Entregado' || o.status === 'entregado') && new Date(o.date.replace(' ', 'T')).toDateString() === time.toDateString()
   ).length;
@@ -742,17 +755,7 @@ export default function KitchenDashboard() {
                 <Clock className="w-4 h-4 md:w-5 md:h-5" />
               </div>
               <div className="leading-none">
-                <div className="flex items-baseline gap-1 tabular-nums">
-                  <span className="font-black text-lg md:text-2xl tracking-tight text-gray-900 dark:text-white">
-                    {time.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                  </span>
-                  <span className="font-bold text-xs md:text-sm text-brand-orange w-[1.4em]">
-                    {String(time.getSeconds()).padStart(2, '0')}
-                  </span>
-                </div>
-                <p className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-stone-500 mt-1">
-                  {time.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })}
-                </p>
+                <RelojCocina />
               </div>
             </div>
           </div>
@@ -814,9 +817,10 @@ export default function KitchenDashboard() {
                   </div>
 
                   <div className="flex-1 overflow-y-auto px-4 pb-4 pt-3 space-y-3 min-w-0 custom-scrollbar">
-                    <AnimatePresence>
+                    {/* initial={false}: las comandas que ya estaban al abrir no se animan una por una */}
+                    <AnimatePresence initial={false}>
                       {lista.map(order => (
-                        <OrderCard key={order.id} order={order} products={products} onMove={() => moveOrder(order.id, col.key)} onPrint={() => printSticker(order.id)} isReady={col.key === 'Listos'} />
+                        <OrderCard key={order.id} order={order} products={products} colKey={col.key} minuto={minutoActual} acciones={accionesRef} isReady={col.key === 'Listos'} />
                       ))}
                     </AnimatePresence>
                     {lista.length === 0 && (
@@ -1024,7 +1028,36 @@ export default function KitchenDashboard() {
 }
 
 // Componente de Tarjeta de Orden
-function OrderCard({ order, products, onMove, onPrint, isReady = false }: { order: Order, products: Product[], onMove: () => void, onPrint: () => void, isReady?: boolean }) {
+/** Reloj con segundos: se actualiza solo, sin redibujar el resto del panel. */
+function RelojCocina() {
+  const [ahora, setAhora] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setAhora(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <>
+      <div className="flex items-baseline gap-1 tabular-nums">
+        <span className="font-black text-lg md:text-2xl tracking-tight text-gray-900 dark:text-white">
+          {ahora.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false })}
+        </span>
+        <span className="font-bold text-xs md:text-sm text-brand-orange w-[1.4em]">
+          {String(ahora.getSeconds()).padStart(2, '0')}
+        </span>
+      </div>
+      <p className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-stone-500 mt-1">
+        {ahora.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })}
+      </p>
+    </>
+  );
+}
+
+type AccionesComanda = React.MutableRefObject<{ moveOrder: (id: string, status: string) => void; printSticker: (id: string) => void }>;
+
+// memo: la tarjeta solo se redibuja si cambia su pedido, la columna o el minuto (para su contador).
+const OrderCard = React.memo(function OrderCard({ order, products, colKey, minuto: _minuto, acciones, isReady = false }: { order: Order, products: Product[], colKey: string, minuto: number, acciones: AccionesComanda, isReady?: boolean }) {
+  const onMove = () => acciones.current.moveOrder(order.id, colKey);
+  const onPrint = () => acciones.current.printSticker(order.id);
   const isNew = order.status === 'Pendiente' && (Date.now() - new Date(order.date).getTime()) < 60000;
 
   const diffMinutes = Math.floor((Date.now() - new Date(order.date).getTime()) / 60000);
@@ -1051,8 +1084,8 @@ function OrderCard({ order, products, onMove, onPrint, isReady = false }: { orde
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      layout
-      className={`relative rounded-[22px] bg-white dark:bg-[#1b1b1b] p-4 flex flex-col transition-shadow hover:shadow-lg hover:shadow-gray-200/60 dark:hover:shadow-black/40 ${
+      // content-visibility: las comandas fuera de pantalla no se calculan ni dibujan hasta verse.
+      className={`[content-visibility:auto] [contain-intrinsic-size:auto_260px] relative rounded-[22px] bg-white dark:bg-[#1b1b1b] p-4 flex flex-col transition-shadow hover:shadow-lg hover:shadow-gray-200/60 dark:hover:shadow-black/40 ${
         isNew
           ? 'ring-2 ring-brand-orange shadow-lg shadow-brand-orange/15'
           : isSlaBreached
@@ -1179,4 +1212,4 @@ function OrderCard({ order, products, onMove, onPrint, isReady = false }: { orde
       )}
     </motion.div>
   );
-}
+});

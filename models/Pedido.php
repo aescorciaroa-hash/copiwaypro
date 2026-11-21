@@ -39,6 +39,13 @@ class Pedido
         } elseif ($rol === 'delivery') {
             $stmt = $this->conn->prepare(self::BASE . " WHERE p.id_domiciliario = ? OR (p.estado = 'listo' AND p.id_domiciliario IS NULL) ORDER BY p.fecha_hora DESC");
             $stmt->bind_param("s", $usuarioId);
+        } elseif ($rol === 'kitchen') {
+            // Cocina: solo lo que usa (pedidos activos + los de los ultimos 2 dias para
+            // "entregados hoy" y el tiempo promedio). Antes recibia TODO el historial en
+            // cada sincronizacion y el panel se iba poniendo mas lento con el tiempo.
+            $stmt = $this->conn->prepare(self::BASE . " WHERE p.estado IN ('esperando_pago', 'pendiente', 'en_preparacion', 'listo', 'en_camino')
+                                                         OR p.fecha_hora >= NOW() - INTERVAL 2 DAY
+                                                       ORDER BY p.fecha_hora DESC");
         } else {
             $stmt = $this->conn->prepare(self::BASE . " ORDER BY p.fecha_hora DESC");
         }

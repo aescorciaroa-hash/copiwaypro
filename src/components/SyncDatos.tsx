@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useStore, Product, InventoryItem, Ingredient, InventoryLog, Staff, Order, Client, StoreConfig } from '../store/almacenAplicacion';
 import { api, fetchSync, setCsrfToken } from '../servicios/api';
+import { reconciliarLista, reconciliarObjeto } from '../lib/reconciliar';
 
 interface SyncData {
   products?: Product[];
@@ -27,10 +28,15 @@ const IDLE_AFTER_UNCHANGED = 6;
  * exactamente igual que antes — solo cambia el origen de los datos.
  */
 export default function SyncDatos() {
-  const {
-    setProducts, setInventory, setStaff, setOrders,
-    setIngredients, setInventoryLogs, setClients, setStoreConfig
-  } = useStore();
+  // Solo las funciones (no el estado): asi este componente no se redibuja con cada cambio del store.
+  const setProducts = useStore(st => st.setProducts);
+  const setInventory = useStore(st => st.setInventory);
+  const setStaff = useStore(st => st.setStaff);
+  const setOrders = useStore(st => st.setOrders);
+  const setIngredients = useStore(st => st.setIngredients);
+  const setInventoryLogs = useStore(st => st.setInventoryLogs);
+  const setClients = useStore(st => st.setClients);
+  const setStoreConfig = useStore(st => st.setStoreConfig);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stoppedRef = useRef(false);
@@ -61,14 +67,18 @@ export default function SyncDatos() {
         const data = await fetchSync<SyncData>();
         unchangedRef.current = data ? 0 : unchangedRef.current + 1;
         if (data) {
-          if (data.products) setProducts(data.products);
-          if (data.settings) setStoreConfig(data.settings);
-          if (data.inventory) setInventory(data.inventory);
-          if (data.ingredients) setIngredients(data.ingredients);
-          if (data.inventoryLogs) setInventoryLogs(data.inventoryLogs);
-          if (data.staff) setStaff(data.staff);
-          if (data.orders) setOrders(data.orders);
-          if (data.clients) setClients(data.clients);
+          // Solo se guarda lo que cambio, reutilizando los elementos iguales:
+          // si nada cambio no hay redibujo; si cambio un pedido, solo ese se redibuja.
+          const st = useStore.getState();
+          const actualizar = <T,>(nuevo: T, previo: T, guardar: (v: T) => void) => { if (nuevo !== previo) guardar(nuevo); };
+          if (data.products) actualizar(reconciliarLista(st.products, data.products), st.products, setProducts);
+          if (data.settings) actualizar(reconciliarObjeto(st.storeConfig, data.settings), st.storeConfig, setStoreConfig);
+          if (data.inventory) actualizar(reconciliarLista(st.inventory, data.inventory), st.inventory, setInventory);
+          if (data.ingredients) actualizar(reconciliarLista(st.ingredients, data.ingredients), st.ingredients, setIngredients);
+          if (data.inventoryLogs) actualizar(reconciliarLista(st.inventoryLogs, data.inventoryLogs), st.inventoryLogs, setInventoryLogs);
+          if (data.staff) actualizar(reconciliarLista(st.staff, data.staff), st.staff, setStaff);
+          if (data.orders) actualizar(reconciliarLista(st.orders, data.orders), st.orders, setOrders);
+          if (data.clients) actualizar(reconciliarLista(st.clients, data.clients), st.clients, setClients);
         }
       } catch {
         // Error de red pasajero: se reintenta en el siguiente ciclo, sin romper la UI.

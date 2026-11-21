@@ -41,6 +41,17 @@ export default function OrdersSection({
 }: OrdersSectionProps) {
   const products = useStore(state => state.products);
 
+  // Se dibujan las comandas de a POR_PAGINA (las mas recientes primero). Antes se
+  // dibujaba todo el historial de una vez y abrir esta seccion tardaba casi 2 s.
+  const POR_PAGINA = 24;
+  const [visibles, setVisibles] = React.useState(POR_PAGINA);
+  // Si se pide resaltar un pedido que esta mas abajo, se amplia la lista hasta incluirlo.
+  React.useEffect(() => {
+    if (!highlightedOrderId) return;
+    const pos = orders.findIndex(o => o.id === highlightedOrderId);
+    if (pos >= visibles) setVisibles(pos + 1);
+  }, [highlightedOrderId, orders, visibles]);
+
     const pendientes = orders.filter(o => o.status === 'Pendiente' || o.status === 'Pagado').length;
     const enCocina = orders.filter(o => o.status === 'En Preparación').length;
     const listos = orders.filter(o => o.status === 'Listos').length;
@@ -133,7 +144,7 @@ export default function OrdersSection({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-            {orders.map(order => {
+            {orders.slice(0, visibles).map(order => {
               // Colores del estado: chip suave con un puntito y un brillo de fondo arriba de la tarjeta
               let tone = { chip: 'bg-gray-100 text-gray-600 dark:bg-stone-800 dark:text-stone-300', dot: 'bg-gray-400', glow: 'from-gray-100/80 dark:from-stone-800/40' };
               let statusText: string = order.status;
@@ -151,7 +162,7 @@ export default function OrdersSection({
                 <div
                   key={order.id}
                   id={`order-card-${order.id}`}
-                  className={`bg-white dark:bg-[#151515] rounded-[28px] border relative overflow-hidden flex flex-col group transition-all duration-300 ${
+                  className={`[content-visibility:auto] [contain-intrinsic-size:auto_420px] bg-white dark:bg-[#151515] rounded-[28px] border relative overflow-hidden flex flex-col group transition-all duration-300 ${
                     isHighlighted
                       ? 'border-brand-orange ring-4 ring-brand-orange/30 shadow-xl shadow-brand-orange/20 scale-[1.02] z-10'
                       : 'border-gray-100 dark:border-stone-800 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-xl hover:shadow-gray-200/60 dark:hover:shadow-black/40 hover:-translate-y-1'
@@ -296,6 +307,17 @@ export default function OrdersSection({
               );
           })}
         </div>
+        )}
+        {orders.length > visibles && (
+          <div className="flex justify-center mt-6">
+            <button
+              type="button"
+              onClick={() => setVisibles(v => v + POR_PAGINA)}
+              className="px-6 py-3 rounded-full bg-white dark:bg-[#151515] border border-gray-200 dark:border-stone-800 text-sm font-bold text-gray-700 dark:text-stone-200 hover:border-brand-orange hover:text-brand-orange shadow-sm transition-colors cursor-pointer"
+            >
+              Mostrar más comandas ({orders.length - visibles} restantes)
+            </button>
+          </div>
         )}
         
         <div className="mt-8 mb-4">

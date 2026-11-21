@@ -404,7 +404,9 @@ export default function AdminDashboard() {
     }
   };
 
-  const salesData = getSalesData();
+  // Se recalcula solo si cambian los pedidos o el filtro (antes en cada redibujo del panel).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const salesData = useMemo(() => getSalesData(), [orders, salesFilter]);
   const periodOrdersCount = salesData.reduce((sum, d) => sum + (d.orderCount || 0), 0);
 
 
@@ -1549,7 +1551,7 @@ export default function AdminDashboard() {
                         <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
                         <YAxis width={80} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} tickFormatter={(value) => value >= 1000 ? `${value / 1000}k` : value} />
                         <Tooltip cursor={false} content={<CustomTooltip />} />
-                        <Bar dataKey="amount" fill="#f97316" activeBar={{ fill: "#ea580c" }} radius={[4, 4, 0, 0]} />
+                        <Bar isAnimationActive={false} dataKey="amount" fill="#f97316" activeBar={{ fill: "#ea580c" }} radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

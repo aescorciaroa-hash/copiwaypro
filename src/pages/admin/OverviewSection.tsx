@@ -219,7 +219,7 @@ export default function OverviewSection({
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} dy={10} />
                   <YAxis width={80} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} tickFormatter={(value) => value >= 1000 ? `${value / 1000}k` : value} />
                   <Tooltip cursor={false} content={<CustomTooltip />} />
-                  <Bar dataKey="amount" fill="#f97316" activeBar={{ fill: "#ea580c" }} radius={[4, 4, 0, 0]} />
+                  <Bar isAnimationActive={false} dataKey="amount" fill="#f97316" activeBar={{ fill: "#ea580c" }} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -241,6 +241,7 @@ export default function OverviewSection({
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
+                  isAnimationActive={false}
                   data={topProductsData}
                   cx="50%"
                   cy="50%"

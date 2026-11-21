@@ -200,14 +200,21 @@ export default function DeliveryDashboard() {
       let currentMockLoc: [number, number] = [...UBICACION_NEGOCIO];
       // El GPS puede reportar varias veces por segundo: al servidor se envía como máximo cada 10 s.
       let lastSentAt = 0;
+      let ultimaPos: [number, number] | null = null;
 
       if (navigator.geolocation) {
         watchId = navigator.geolocation.watchPosition(
           (position) => {
             isUsingMock = false;
             const { latitude, longitude } = position.coords;
-            setMapCenter([latitude, longitude]);
-            setDriverPos([latitude, longitude]);
+            // El GPS reporta varias veces por segundo: solo se redibuja si se movio
+            // ~10 m o mas (antes cada lectura redibujaba todo el panel y se trababa).
+            const movio = !ultimaPos || Math.abs(ultimaPos[0] - latitude) > 0.0001 || Math.abs(ultimaPos[1] - longitude) > 0.0001;
+            if (movio) {
+              ultimaPos = [latitude, longitude];
+              setMapCenter([latitude, longitude]);
+              setDriverPos([latitude, longitude]);
+            }
             const now = Date.now();
             if (now - lastSentAt >= 10000) {
               lastSentAt = now;
@@ -843,7 +850,8 @@ export default function DeliveryDashboard() {
               return (
                 <div
                   key={order.id}
-                  className={`p-4 rounded-[22px] bg-white dark:bg-[#1b1b1b] transition-all overflow-hidden ${
+                  // content-visibility: las tarjetas fuera de pantalla no se calculan ni dibujan hasta verse.
+                  className={`[content-visibility:auto] [contain-intrinsic-size:auto_320px] p-4 rounded-[22px] bg-white dark:bg-[#1b1b1b] transition-all overflow-hidden ${
                     isActive
                       ? 'ring-2 ring-brand-orange shadow-lg shadow-brand-orange/15'
                       : 'shadow-[0_8px_24px_-14px_rgba(0,0,0,0.18)] dark:shadow-[0_10px_30px_-14px_rgba(0,0,0,0.8)] hover:shadow-[0_14px_30px_-14px_rgba(0,0,0,0.25)]'

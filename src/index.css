@@ -47,12 +47,9 @@ html.dark {
   animation-delay: 0s !important;
 }
 
-/* Snappy transitions for theme changes across the system without layout stutter */
-html, body, header, footer, section, nav, h1, h2, h3, h4, h5, h6, p, span, a, button, input, label, select, option, div {
-  transition-property: background-color, color, border-color, text-decoration-color, fill, stroke;
-  transition-duration: 80ms !important;
-  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
+/* (Se quito una regla que ponia transicion a TODOS los elementos de la pagina:
+   hacia mas lento el calculo de estilos con cientos de tarjetas y forzaba todas
+   las animaciones a 80 ms. Al cambiar de tema ya se apagan con .no-transitions.) */
 
 html.dark body {
   background-color: #0c0a09;
@@ -74,7 +71,6 @@ input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 textarea:-webkit-autofill,
 select:-webkit-autofill {
-  /* !important: la regla global de transiciones (80ms !important) la anularia. */
   transition-property: background-color, color !important;
   transition-duration: 600000s !important;
   transition-delay: 0s !important;

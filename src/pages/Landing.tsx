@@ -7,6 +7,7 @@ import { motion } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
 import { useStore, DEFAULT_MENU_CATEGORIES } from '../store/almacenAplicacion';
 import { formatCOP } from '../lib/format';
+import { UBICACION_NEGOCIO } from '../lib/ubicacionNegocio';
 
 // El mapa (Leaflet, ~160 KB) se descarga aparte y solo cuando el usuario se
 // acerca a la seccion de contacto: asi la pagina de inicio abre mas rapido.
@@ -392,13 +393,21 @@ export default function Landing() {
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-16">
-              <div className="bg-white dark:bg-[#151515] p-4 sm:p-6 rounded-[22px] sm:rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center min-w-0">
+              {/* Al tocarla abre Google Maps en la ubicacion exacta del negocio */}
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${UBICACION_NEGOCIO[0]},${UBICACION_NEGOCIO[1]}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Abrir en Google Maps"
+                className="group bg-white dark:bg-[#151515] p-4 sm:p-6 rounded-[22px] sm:rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center min-w-0 hover:-translate-y-1 transition-transform duration-300"
+              >
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-4">
                   <MapPin className="w-5 h-5 text-brand-orange" />
                 </div>
                 <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white mb-1.5 sm:mb-2">Dirección</h4>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-stone-400">Cocina Oculta - Centro<br/>Neiva, Huila</p>
-              </div>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-stone-400">Calle 18 Sur #36-52<br/>Neiva, Huila</p>
+                <span className="mt-2 text-[11px] sm:text-xs font-semibold text-brand-orange group-hover:underline">Ver en Google Maps</span>
+              </a>
               
               <div className="bg-white dark:bg-[#151515] p-4 sm:p-6 rounded-[22px] sm:rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center min-w-0">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-4">

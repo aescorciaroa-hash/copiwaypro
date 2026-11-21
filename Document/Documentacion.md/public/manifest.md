@@ -17,8 +17,8 @@ pantalla de inicio** (nombre, ícono, colores). Así funciona casi como una app 
 | `short_name` | `Copiway` | Nombre corto (debajo del ícono). |
 | `start_url` / `scope` | `.` | Abre en la carpeta del proyecto. |
 | `display` | `standalone` | Se abre sin la barra del navegador, como una app. |
-| `background_color` | `#ffffff` | Color de fondo al abrir. |
-| `theme_color` | `#f97316` | Color naranja de la barra superior (el mismo de `<meta name="theme-color">`). |
+| `background_color` | `#0a0a0a` | Color de fondo de la pantalla de carga al abrir la app (oscuro, casi negro). |
+| `theme_color` | `#0a0a0a` | Color oscuro (casi negro) de la barra superior (el mismo de `<meta name="theme-color">`). |
 | `icons` | `favicon.svg` | Ícono de la app. |
 
 ## ¿Qué pasa si se borra?

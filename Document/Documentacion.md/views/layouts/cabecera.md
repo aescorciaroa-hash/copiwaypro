@@ -39,7 +39,7 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 22 | `<link rel="icon" type="image/svg+xml" href="<?= rutaBase() ?>/favicon.svg?v=3">` | Ícono en SVG. |
 | 23 | `<link rel="apple-touch-icon" href="<?= rutaBase() ?>/apple-touch-icon.png?v=3">` | Ícono para iPhone. |
 | 24 | `<link rel="manifest" href="<?= rutaBase() ?>/manifest.json">` | Enlaza `manifest.json` (para instalar la app en el celular). |
-| 25 | `<meta name="theme-color" content="#f97316">` | Color de la barra del celular (naranja). |
+| 25 | `<meta name="theme-color" content="#0a0a0a">` | Color de la barra del celular y de la ventana de la app instalada (oscuro, casi negro). |
 | 26 | `<!-- Abre la conexion con Google Fonts y Unsplash ... -->` | Comentario de HTML: no se ve, solo explica. |
 | 27 | `<link rel="preconnect" href="https://fonts.googleapis.com">` | **Abre la conexión** con Google Fonts desde el principio (`preconnect`), así cuando se pida la letra ya está lista. |
 | 28 | `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>` | Lo mismo con el servidor donde están los archivos de la letra. `crossorigin` = es de otro sitio. |

@@ -22,7 +22,7 @@ header('Content-Type: text/html; charset=utf-8');
     <link rel="icon" type="image/svg+xml" href="<?= rutaBase() ?>/favicon.svg?v=3">
     <link rel="apple-touch-icon" href="<?= rutaBase() ?>/apple-touch-icon.png?v=3">
     <link rel="manifest" href="<?= rutaBase() ?>/manifest.json">
-    <meta name="theme-color" content="#f97316">
+    <meta name="theme-color" content="#0a0a0a">
     <!-- Abre la conexion con Google Fonts y Unsplash desde el principio (ahorra tiempo al pedir la letra y las fotos) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

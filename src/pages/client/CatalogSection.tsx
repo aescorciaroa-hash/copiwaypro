@@ -160,7 +160,7 @@ export default function CatalogSection({
               </span>
               <div className="absolute inset-x-0 bottom-0 p-4 flex items-end justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-black text-lg leading-tight truncate">{catalog[0].name}</p>
+                  <p className="font-black text-lg leading-tight break-words">{catalog[0].name}</p>
                   <p className="text-sm font-bold text-brand-orange">$ {catalog[0].price.toLocaleString('es-CO')}</p>
                 </div>
                 <span className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white text-gray-900 text-xs font-black group-hover:bg-brand-orange group-hover:text-white transition-colors">
@@ -245,8 +245,8 @@ export default function CatalogSection({
                 )}
                 <div className="flex flex-col flex-1 p-3 sm:p-5 justify-between min-w-0">
                   <div>
-                    <h3 className="font-bold text-gray-900 dark:text-white text-[14px] sm:text-[18px] leading-tight mb-1 sm:mb-2 line-clamp-2">{prod.name}</h3>
-                    <p className="text-[11px] sm:text-[13px] text-gray-500 dark:text-stone-400 leading-snug sm:leading-relaxed line-clamp-2 mb-2 sm:mb-3">{prod.description}</p>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-[14px] sm:text-[18px] leading-tight mb-1 sm:mb-2 break-words">{prod.name}</h3>
+                    <p className="text-[11px] sm:text-[13px] text-gray-500 dark:text-stone-400 leading-snug sm:leading-relaxed mb-2 sm:mb-3">{prod.description}</p>
                   </div>
                   <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-50 dark:border-stone-800/60">
                     <span className="bg-orange-50 dark:bg-stone-900/80 text-brand-orange px-2.5 sm:px-3 py-1 rounded-lg font-black text-xs sm:text-sm">

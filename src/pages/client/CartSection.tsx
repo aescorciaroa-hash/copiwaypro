@@ -90,8 +90,8 @@ export default function CartSection({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8 space-y-6">
             {cart.map((item, idx) => (
-              <div key={item.id} className="bg-white dark:bg-[#151515] p-6 rounded-[24px] border border-gray-100 dark:border-stone-800 flex gap-6 shadow-sm">
-                <div className="w-24 h-24 rounded-2xl bg-black/5 dark:bg-white/5 overflow-hidden shrink-0 relative">
+              <div key={item.id} className="bg-white dark:bg-[#151515] p-4 sm:p-6 rounded-[24px] border border-gray-100 dark:border-stone-800 flex gap-3 sm:gap-6 shadow-sm">
+                <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl bg-black/5 dark:bg-white/5 overflow-hidden shrink-0 relative">
      {(item.image || item.product?.image) ? (
        <img loading="lazy" decoding="async" src={item.image || item.product?.image} alt={item.name} className="w-full h-full object-cover" />
      ) : (
@@ -103,8 +103,18 @@ export default function CartSection({
                 <div className="flex-1 flex flex-col min-w-0">
                   <div className="flex flex-wrap justify-between items-start gap-2">
                     <div className="min-w-0 flex-1 pr-2">
-                      <h4 className="font-bold text-[18px] text-gray-900 dark:text-white truncate">{item.name}</h4>
-                      <p className="text-gray-500 text-[13px] mt-1 line-clamp-2">{item.isCustom ? "Armada a tu gusto" : (item.product?.description || "Preparación clásica")}</p>
+                      <h4 className="font-bold text-[16px] sm:text-[18px] leading-tight text-gray-900 dark:text-white break-words">{item.name}</h4>
+                      <p className="text-gray-500 text-[13px] mt-1 break-words">
+                        {item.isCustom
+                          ? `Armada a tu gusto${(item.stack || item.extras || []).length ? ': ' + (item.stack || item.extras || []).map(i => i.name).join(', ') : ''}`
+                          : (item.product?.description || "Preparación clásica")}
+                      </p>
+                      {!item.isCustom && ((item.extras || []).length > 0 || (item.removed || []).length > 0) && (
+                        <p className="text-[12px] mt-1 break-words">
+                          {(item.removed || []).map(r => <span key={'r' + r.id} className="text-red-500 mr-2">- Sin {r.name}</span>)}
+                          {(item.extras || []).map(e => <span key={'e' + e.id} className="text-emerald-600 mr-2">+ {e.name}</span>)}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right shrink-0">
                       <div className="font-bold text-lg text-gray-900 dark:text-white">{formatCOP(item.finalPrice)}</div>

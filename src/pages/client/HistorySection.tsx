@@ -202,7 +202,7 @@ export default function HistorySection({
                       {order.address && (
                         <>
                           <span>•</span>
-                          <span className="flex items-center gap-1 truncate max-w-xs">
+                          <span className="flex items-center gap-1 break-words min-w-0">
                             <MapPin className="w-3.5 h-3.5 text-brand-orange shrink-0" /> {order.address}
                           </span>
                         </>
@@ -553,7 +553,7 @@ export default function HistorySection({
                           {viewingReceiptOrder.driverName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-bold text-gray-900 dark:text-white text-sm truncate">{viewingReceiptOrder.driverName}</p>
+                          <p className="font-bold text-gray-900 dark:text-white text-sm break-words">{viewingReceiptOrder.driverName}</p>
                           <p className="text-xs text-gray-500 dark:text-stone-400 mt-0.5">
                             {vehicleWithModel(viewingReceiptOrder.driverVehicle) || 'En camino con tu pedido'}
                           </p>

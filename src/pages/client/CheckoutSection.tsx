@@ -214,7 +214,7 @@ export default function CheckoutSection({
                       {item.quantity || 1}
                     </span>
                   </div>
-                  <p className="flex-1 min-w-0 text-sm font-bold text-gray-900 dark:text-white truncate">{item.name}</p>
+                  <p className="flex-1 min-w-0 text-sm font-bold text-gray-900 dark:text-white break-words">{item.name}</p>
                   <span className="text-sm font-bold text-gray-700 dark:text-stone-300 shrink-0">{formatCOP(item.finalPrice)}</span>
                 </div>
               ))}

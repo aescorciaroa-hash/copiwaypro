@@ -39,8 +39,8 @@ export default function ProfileSection({
             </div>
             <div className="min-w-0">
               <p className="text-white/80 text-xs font-bold uppercase tracking-wider mb-1">Mi Perfil</p>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight truncate">{userProfile.name || 'Cliente'}</h2>
-              {userProfile.email && <p className="text-white/80 text-sm truncate">{userProfile.email}</p>}
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight break-words">{userProfile.name || 'Cliente'}</h2>
+              {userProfile.email && <p className="text-white/80 text-sm break-all">{userProfile.email}</p>}
             </div>
           </div>
 

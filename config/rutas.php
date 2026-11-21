@@ -55,7 +55,7 @@ return [
     // Pedido por llamada/WhatsApp que registra el admin (va antes de las rutas con {id}).
     'POST /api/orders/manual' => ['OrderController', 'storeManual', ['admin']],
     'PATCH /api/orders/{id}/address' => ['OrderController', 'updateAddress', ['admin']],
-    'PATCH /api/orders/{id}/destination' => ['OrderController', 'updateDestination', ['delivery']],
+    'PATCH /api/orders/{id}/destination' => ['OrderController', 'updateDestination', ['delivery', 'admin']],
     'PATCH /api/orders/{id}/preparing' => ['OrderController', 'markPreparing', ['admin', 'kitchen']],
     'PATCH /api/orders/{id}/ready' => ['OrderController', 'markReady', ['admin', 'kitchen']],
     'PATCH /api/orders/{id}/take' => ['OrderController', 'take', ['delivery']],

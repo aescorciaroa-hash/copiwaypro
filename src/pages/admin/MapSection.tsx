@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -10,6 +10,8 @@ import { formatCOP, vehicleWithModel } from '../../lib/format';
 import { Order, Staff } from '../../store/almacenAplicacion';
 import { RoutePolyline, CustomZoomControl } from '../AdminDashboard';
 import { UBICACION_NEGOCIO } from '../../lib/ubicacionNegocio';
+import { geocodificar } from '../../lib/geocodificar';
+import { useStore } from '../../store/almacenAplicacion';
 
 interface MapSectionProps {
   orders: Order[];
@@ -42,18 +44,32 @@ export default function MapSection({
     const listosOrders = orders.filter(o => o.status === 'Listos');
     const activeDrivers = staff.filter(s => s.role === 'Domiciliario' && s.active);
 
-    const getOrderCoords = (order: Order, idx: number): [number, number] => {
-      if (order.lat && order.lng) return [order.lat, order.lng];
-      const points: [number, number][] = [
-        [2.9345, -75.2890],
-        [2.9215, -75.2750],
-        [2.9410, -75.2920],
-        [2.9180, -75.2900],
-        [2.9310, -75.2720],
-        [2.9480, -75.2830],
-      ];
-      return points[idx % points.length];
+    // Coordenadas reales de cada pedido: las guardadas en el pedido o, si no
+    // tiene, las que se encuentran buscando su direccion (y se guardan en el
+    // pedido para no volver a buscarlas).
+    const saveOrderDestination = useStore(st => st.saveOrderDestination);
+    const [ubicados, setUbicados] = useState<Record<string, [number, number] | null>>({});
+
+    useEffect(() => {
+      let cancelado = false;
+      for (const ord of activeDeliveryOrders) {
+        if (ord.lat != null && ord.lng != null) continue;
+        const clave = `${ord.id}|${ord.address}`;
+        if (clave in ubicados) continue;
+        geocodificar(ord.address).then(coords => {
+          if (cancelado) return;
+          setUbicados(prev => ({ ...prev, [clave]: coords }));
+          if (coords) saveOrderDestination(ord.id, coords).catch(() => {});
+        });
+      }
+      return () => { cancelado = true; };
+    }, [activeDeliveryOrders.map(o => `${o.id}|${o.address}|${o.lat ?? ''}`).join(',')]);
+
+    const getOrderCoords = (order: Order): [number, number] | null => {
+      if (order.lat != null && order.lng != null) return [order.lat, order.lng];
+      return ubicados[`${order.id}|${order.address}`] ?? null;
     };
+    const sinUbicar = activeDeliveryOrders.filter(o => !getOrderCoords(o));
 
     // Iconos personalizados con diseño limpio de Copiway
     const kitchenIcon = L.divIcon({
@@ -268,8 +284,10 @@ export default function MapSection({
                 ))}
 
                 {/* Marcadores y Rutas para Órdenes Activas */}
-                {activeDeliveryOrders.map((ord, idx) => {
-                  const destCoords = getOrderCoords(ord, idx);
+                {activeDeliveryOrders.map((ord) => {
+                  const destCoords = getOrderCoords(ord);
+                  // Sin coordenadas reales todavia (buscando o direccion no encontrada): no se dibuja.
+                  if (!destCoords) return null;
                   const isEnCamino = ord.status === 'En Camino';
 
                   return (
@@ -345,6 +363,18 @@ export default function MapSection({
                   </span>
                 </div>
               </div>
+
+              {/* Pedidos que aun no salen en el mapa: buscando su direccion o no encontrada */}
+              {sinUbicar.length > 0 && (
+                <div className="absolute top-4 right-4 max-w-[70%] bg-white/95 dark:bg-stone-900/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-lg border border-amber-200 dark:border-amber-900/50 text-xs z-[400] pointer-events-auto">
+                  {sinUbicar.map(o => (
+                    <p key={o.id} className="text-gray-700 dark:text-stone-300 leading-snug truncate">
+                      <span className="font-bold text-brand-orange">#{String(o.id).replace(/^#/, '')}</span>{' '}
+                      {ubicados[`${o.id}|${o.address}`] === null ? 'dirección no encontrada en el mapa' : 'buscando dirección…'}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

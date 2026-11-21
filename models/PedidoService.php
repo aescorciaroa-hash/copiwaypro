@@ -877,14 +877,27 @@ class PedidoService
         }
     }
 
-    /** Coordenadas del destino que el domiciliario ubico en el mapa (solo de su pedido en curso). */
+    /**
+     * Coordenadas del destino ubicadas en el mapa a partir de la direccion.
+     * Domiciliario: solo su pedido en curso. Admin ($idDomiciliario = null):
+     * cualquier pedido activo que aun no tenga coordenadas.
+     */
     public function guardarDestino($idPedido, $idDomiciliario, $lat, $lng)
     {
-        $stmt = $this->conn->prepare(
-            "UPDATE PEDIDO SET destino_lat = ?, destino_lng = ?
-             WHERE id_pedido = ? AND id_domiciliario = ? AND estado IN ('listo', 'en_camino')"
-        );
-        $stmt->bind_param("ddis", $lat, $lng, $idPedido, $idDomiciliario);
+        if ($idDomiciliario === null) {
+            $stmt = $this->conn->prepare(
+                "UPDATE PEDIDO SET destino_lat = ?, destino_lng = ?
+                 WHERE id_pedido = ? AND destino_lat IS NULL
+                   AND estado IN ('pendiente', 'en_preparacion', 'listo', 'en_camino')"
+            );
+            $stmt->bind_param("ddi", $lat, $lng, $idPedido);
+        } else {
+            $stmt = $this->conn->prepare(
+                "UPDATE PEDIDO SET destino_lat = ?, destino_lng = ?
+                 WHERE id_pedido = ? AND id_domiciliario = ? AND estado IN ('listo', 'en_camino')"
+            );
+            $stmt->bind_param("ddis", $lat, $lng, $idPedido, $idDomiciliario);
+        }
         $stmt->execute();
         $stmt->close();
     }

@@ -108,14 +108,15 @@ class OrderController
 
     public function updateDestination()
     {
-        // Domiciliario: guarda las coordenadas del destino que ubico en su mapa.
+        // Domiciliario (su pedido en curso) o admin (cualquier pedido activo):
+        // guarda las coordenadas del destino ubicadas a partir de la direccion.
         $id = $_GET['id'];
         if (!isset($this->datos['lat'], $this->datos['lng']) || !is_numeric($this->datos['lat']) || !is_numeric($this->datos['lng'])) {
             responderError('Datos inválidos.', 422, ['lat' => ['Las coordenadas deben ser numéricas.']]);
         }
         $pedido = $this->buscarPedido($id);
         try {
-            $this->pedidoService->guardarDestino($pedido['id_pedido'], Auth::id(), (float) $this->datos['lat'], (float) $this->datos['lng']);
+            $this->pedidoService->guardarDestino($pedido['id_pedido'], Auth::rol() === 'admin' ? null : Auth::id(), (float) $this->datos['lat'], (float) $this->datos['lng']);
         } catch (Exception $e) {
             responderError($e->getMessage(), 409);
         }

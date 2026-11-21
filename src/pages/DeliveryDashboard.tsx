@@ -11,6 +11,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { formatCOP, orderCode, vehicleWithModel } from '../lib/format';
 import { api, ApiError, irA } from '../servicios/api';
+import { UBICACION_NEGOCIO } from '../lib/ubicacionNegocio';
 
 const RoutePolyline = ({ origin, destination, outerColor, innerColor, onRouteLoaded }: { origin: [number, number], destination: [number, number], outerColor: string, innerColor: string, onRouteLoaded?: (coords: [number, number][]) => void }) => {
   const [positions, setPositions] = React.useState<[number, number][]>([]);
@@ -121,7 +122,7 @@ export default function DeliveryDashboard() {
 
   const [activeRoute, setActiveRoute] = useState<Order | null>(null);
 
-  const [mapCenter, setMapCenter] = useState<[number, number]>([2.9273, -75.2818]);
+  const [mapCenter, setMapCenter] = useState<[number, number]>(UBICACION_NEGOCIO);
   const [destCoords, setDestCoords] = useState<[number, number] | null>(null);
 
   useEffect(() => {
@@ -194,7 +195,7 @@ export default function DeliveryDashboard() {
 
     if (isLoggedIn && loggedInUserId) {
       let isUsingMock = false;
-      let currentMockLoc: [number, number] = [2.9273, -75.2818];
+      let currentMockLoc: [number, number] = [...UBICACION_NEGOCIO];
       // El GPS puede reportar varias veces por segundo: al servidor se envía como máximo cada 10 s.
       let lastSentAt = 0;
 
@@ -232,7 +233,7 @@ export default function DeliveryDashboard() {
              currentMockLoc = [currentMockLoc[0] + latDiff * 0.02, currentMockLoc[1] + lonDiff * 0.02];
            } else {
              // Idle at kitchen (slightly offset so it doesn't overlap perfectly with the burger icon)
-             currentMockLoc = [2.9274, -75.2817];
+             currentMockLoc = [UBICACION_NEGOCIO[0] + 0.0001, UBICACION_NEGOCIO[1] + 0.0001];
            }
            setMapCenter(currentMockLoc);
         }
@@ -615,7 +616,7 @@ export default function DeliveryDashboard() {
             </Marker>
             
             <RoutePolyline 
-               origin={[2.9273, -75.2818]} 
+               origin={UBICACION_NEGOCIO} 
                destination={[2.9380, -75.2900]} 
                outerColor="#1e3a8a" 
                innerColor="#3b82f6" 

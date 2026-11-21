@@ -1,6 +1,7 @@
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { Plus, Minus } from 'lucide-react';
+import { UBICACION_NEGOCIO } from '../../lib/ubicacionNegocio';
 
 // Mapa de la seccion "Contactanos" de la pagina de inicio. Va en un archivo
 // aparte para que Landing lo cargue con lazy() solo cuando hace falta.
@@ -31,7 +32,7 @@ const CustomZoomControl = () => {
 export default function MapaContacto() {
   return (
     <MapContainer
-      center={[2.9273, -75.2818]}
+      center={UBICACION_NEGOCIO}
       zoom={13}
       style={{ height: '100%', width: '100%' }}
       zoomControl={false}
@@ -43,7 +44,7 @@ export default function MapaContacto() {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
       <Marker 
-        position={[2.9273, -75.2818]}
+        position={UBICACION_NEGOCIO}
         icon={L.divIcon({
           html: `<div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
                    <svg viewBox="0 0 32 32" style="width: 32px; height: 32px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">

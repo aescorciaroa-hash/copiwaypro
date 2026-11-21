@@ -8,6 +8,7 @@ import {
 import { Order, OrderItem, Staff, useStore } from '../../store/almacenAplicacion';
 import { CustomZoomControl, RoutePolyline, DriverMockInfo } from '../AdminDashboard';
 import { formatCOP, orderCode, vehicleWithModel } from '../../lib/format';
+import { UBICACION_NEGOCIO } from '../../lib/ubicacionNegocio';
 
 interface OrdersSectionProps {
   orders: Order[];
@@ -321,7 +322,7 @@ export default function OrdersSection({
           {/* Interactive Leaflet Map for Neiva */}
           <div className={`absolute inset-0 z-0 [&_.leaflet-container]:bg-transparent [&_.leaflet-control-container]:z-[500] ${theme === 'dark' ? 'leaflet-dark-tiles' : ''}`}>
             <MapContainer
-              center={[2.9273, -75.2818]}
+              center={UBICACION_NEGOCIO}
               zoom={15}
               style={{ width: '100%', height: '100%' }}
               zoomControl={false}
@@ -335,7 +336,7 @@ export default function OrdersSection({
               
               {/* Restaurant / Origin */}
               <Marker 
-                position={[2.9273, -75.2818]} 
+                position={UBICACION_NEGOCIO} 
                 icon={L.divIcon({
                   html: `<div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
                            <svg viewBox="0 0 32 32" style="width: 32px; height: 32px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">

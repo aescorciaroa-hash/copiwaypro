@@ -9,6 +9,7 @@ import {
 import { formatCOP, vehicleWithModel } from '../../lib/format';
 import { Order, Staff } from '../../store/almacenAplicacion';
 import { RoutePolyline, CustomZoomControl } from '../AdminDashboard';
+import { UBICACION_NEGOCIO } from '../../lib/ubicacionNegocio';
 
 interface MapSectionProps {
   orders: Order[];
@@ -35,7 +36,7 @@ export default function MapSection({
 }: MapSectionProps) {
     const [showDriversModal, setShowDriversModal] = useState(false);
     const drivers = staff.filter(s => s.role === 'Domiciliario');
-    const kitchenCoords: [number, number] = [2.9273, -75.2819];
+    const kitchenCoords: [number, number] = UBICACION_NEGOCIO;
     const activeDeliveryOrders = orders.filter(o => o.status === 'En Camino' || o.status === 'Listos');
     const enCaminoOrders = orders.filter(o => o.status === 'En Camino');
     const listosOrders = orders.filter(o => o.status === 'Listos');

@@ -37,6 +37,9 @@ export default function MapaContacto() {
       style={{ height: '100%', width: '100%' }}
       zoomControl={false}
       className="z-0"
+      // En el celular el mapa no se arrastra con un dedo: asi el dedo desplaza
+      // la pagina en vez de quedarse "trabado" moviendo el mapa.
+      dragging={!L.Browser.mobile}
     >
       <CustomZoomControl />
       <TileLayer

@@ -980,6 +980,9 @@ export default function AdminDashboard() {
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
+              // Deslizamiento sin rebote: con el rebote por defecto el menu se pasaba
+              // ~30 px a la derecha y dejaba un espacio a la izquierda.
+              transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
               className="fixed inset-y-0 left-0 z-50 w-[280px] bg-white dark:bg-[#151515] border-r border-gray-100 dark:border-stone-800 flex flex-col md:hidden shadow-2xl h-[100dvh]"
             >
               <div className="h-24 flex items-center justify-between px-8 mb-2 shrink-0 border-b border-gray-50 dark:border-stone-800/50">
@@ -1012,7 +1015,20 @@ export default function AdminDashboard() {
                 ))}
               </nav>
               
-              <div className="p-6 border-t border-gray-100 dark:border-stone-800 mt-auto shrink-0">
+              <div className="p-6 border-t border-gray-100 dark:border-stone-800 mt-auto shrink-0 space-y-3">
+                {/* Perfil del administrador (en el computador va en la barra superior) */}
+                <div className="flex items-center gap-3 px-2">
+                  <div className="relative shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-orange to-orange-600 text-white flex items-center justify-center shadow-md shadow-brand-orange/25">
+                      <Shield className="w-5 h-5" />
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#151515]" />
+                  </div>
+                  <div className="leading-tight min-w-0">
+                    <p className="text-sm font-black text-gray-900 dark:text-white break-words">{String(window.__DATOS__?.usuario?.nombre || 'Administrador')}</p>
+                    <p className="text-[11px] font-semibold text-gray-400 dark:text-stone-500">Administrador · en línea</p>
+                  </div>
+                </div>
                 <button onClick={handleLogout} className="flex items-center gap-4 w-full font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 px-4 py-3 rounded-[16px] transition-colors text-sm">
                   <LogOut className="w-6 h-6 shrink-0" />
                   <span className="leading-tight text-left">Cerrar Sesión</span>
@@ -1140,6 +1156,25 @@ export default function AdminDashboard() {
           </div>
         </header>
 
+        {/* En el celular: fecha, estado de la tienda y "Nuevo pedido" (en el computador estan en la barra de arriba) */}
+        <div className="md:hidden flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 dark:border-white/5 bg-white/80 dark:bg-[#0c0a09]/80 backdrop-blur-xl shrink-0">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold text-gray-400 dark:text-stone-500 leading-tight first-letter:uppercase">
+              {currentTime.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+            <p className={`text-xs font-black leading-tight flex items-center gap-1.5 mt-0.5 ${isStoreAutomaticallyOpen ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-600 dark:text-stone-400'}`}>
+              <span className={`w-2 h-2 rounded-full shrink-0 ${isStoreAutomaticallyOpen ? 'bg-emerald-500' : 'bg-gray-400 dark:bg-stone-600'}`} />
+              {isStoreAutomaticallyOpen ? `Tienda abierta · hasta las ${storeConfig.closeTime || '23:00'}` : `Tienda cerrada · abre a las ${storeConfig.openTime || '11:00'}`}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowManualForm(true)}
+            className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold shadow-sm active:scale-95 transition-all shrink-0"
+          >
+            <Plus className="w-4 h-4" /> Nuevo pedido
+          </button>
+        </div>
+
         {/* Panel lateral de notificaciones: sale por la derecha y oscurece el fondo */}
         <AnimatePresence>
           {showNotifications && (
@@ -1200,13 +1235,13 @@ export default function AdminDashboard() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-black text-gray-900 dark:text-white truncate group-hover:text-brand-orange transition-colors">
+                              <p className="text-sm font-black text-gray-900 dark:text-white break-words group-hover:text-brand-orange transition-colors">
                                 {ord.client || 'Cliente Copiway'}
                               </p>
                               <span className="text-[10px] font-semibold text-gray-400 dark:text-stone-500 shrink-0">{haceCuanto(ord.date)}</span>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-stone-400 flex items-center gap-1 mt-1 min-w-0">
-                              <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{ord.address}</span>
+                            <p className="text-xs text-gray-500 dark:text-stone-400 flex items-start gap-1 mt-1 min-w-0">
+                              <MapPin className="w-3 h-3 shrink-0 mt-0.5" /> <span className="break-words min-w-0">{ord.address}</span>
                             </p>
                             <div className="flex items-center justify-between mt-3">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
@@ -1830,7 +1865,7 @@ export default function AdminDashboard() {
                           <div className="flex items-center gap-3 bg-gray-50 dark:bg-stone-900 p-3 rounded-2xl">
                             <div className="w-9 h-9 rounded-full bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0"><User className="w-4 h-4" /></div>
                             <div className="min-w-0">
-                              <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{order.client}</p>
+                              <p className="text-sm font-bold text-gray-900 dark:text-white break-words">{order.client}</p>
                               {raw?.clientPhone ? (
                                 <a href={`tel:${raw.clientPhone}`} className="text-xs text-gray-500 dark:text-stone-400 hover:text-brand-orange">{raw.clientPhone}</a>
                               ) : (
@@ -1966,7 +2001,7 @@ export default function AdminDashboard() {
                   <Clock className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold text-gray-400 dark:text-stone-500 uppercase tracking-wider">Dirección actual</p>
-                    <p className="text-sm font-semibold text-gray-700 dark:text-stone-300 truncate">{editingAddressOrder.address || 'Sin dirección'}</p>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-stone-300 break-words">{editingAddressOrder.address || 'Sin dirección'}</p>
                   </div>
                 </div>
 
@@ -2048,7 +2083,7 @@ export default function AdminDashboard() {
                     <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white truncate">
                       {manualView === 'catalogo' ? 'Elegir Productos' : manualView === 'listo' ? 'Pedido Registrado' : 'Ingreso de Orden Manual'}
                     </h2>
-                    <p className="text-xs text-gray-500 dark:text-stone-400 truncate">
+                    <p className="text-xs text-gray-500 dark:text-stone-400 leading-snug">
                       {manualView === 'catalogo' ? 'Toca un producto, ajústalo y agrégalo a la orden.' : manualView === 'listo' ? 'Envíale al cliente la confirmación por WhatsApp.' : 'Registra un pedido tomado por llamada o WhatsApp.'}
                     </p>
                   </div>
@@ -2159,11 +2194,11 @@ export default function AdminDashboard() {
                             <div key={item.id} className="flex items-center gap-3 bg-white dark:bg-stone-800 p-2.5 rounded-xl border border-gray-100 dark:border-stone-700">
                               <img loading="lazy" decoding="async" src={item.product?.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-11 h-11 rounded-lg object-cover shrink-0" />
                               <div className="min-w-0 flex-1">
-                                <p className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                                <p className="font-bold text-sm text-gray-900 dark:text-white break-words leading-snug">
                                   <span className="text-brand-orange">{item.quantity}x</span> {item.name}
                                 </p>
                                 {(item.removed.length > 0 || item.extras.length > 0) && (
-                                  <p className="text-[11px] truncate mt-0.5">
+                                  <p className="text-[11px] break-words mt-0.5">
                                     {item.removed.map(r => <span key={r.id} className="text-red-500 mr-2">- Sin {r.name}</span>)}
                                     {agruparPorNombre(item.extras).map(e => <span key={e.name} className="text-emerald-500 mr-2">+ {e.name}{e.veces > 1 ? ` x${e.veces}` : ''}</span>)}
                                   </p>
@@ -2228,7 +2263,7 @@ export default function AdminDashboard() {
                           >
                             <img loading="lazy" decoding="async" src={p.image || "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&h=200&auto=format&fit=crop"} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
                             <div className="min-w-0 flex-1">
-                              <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{p.name}</p>
+                              <p className="font-bold text-sm text-gray-900 dark:text-white break-words leading-snug">{p.name}</p>
                               <p className="text-[11px] text-gray-400 dark:text-stone-500 truncate">{p.category || 'Otros'}</p>
                             </div>
                             <span className="text-sm font-black text-gray-900 dark:text-white shrink-0">{formatCOP(p.price)}</span>
@@ -2370,7 +2405,7 @@ export default function AdminDashboard() {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                         <div className="rounded-2xl border border-gray-100 dark:border-stone-800 bg-gray-50 dark:bg-stone-900/60 p-4 min-w-0">
                           <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-stone-500">Cliente</p>
-                          <p className="font-black text-gray-900 dark:text-white truncate mt-1">{pedido.client}</p>
+                          <p className="font-black text-gray-900 dark:text-white break-words mt-1">{pedido.client}</p>
                           <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-black ${pedido.isGuest ? 'bg-gray-200 text-gray-600 dark:bg-stone-800 dark:text-stone-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'}`}>
                             {pedido.isGuest ? 'Invitado · se le invita a registrarse' : `Registrado · suma ${pedido.pointsEarned || 0} puntos`}
                           </span>
@@ -2610,7 +2645,7 @@ export default function AdminDashboard() {
                            {(viewingOrder.client || 'Cliente General').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
                          </div>
                          <div className="min-w-0">
-                           <p className="font-black text-gray-900 dark:text-white text-base leading-tight truncate">{viewingOrder.client || 'Cliente General'}</p>
+                           <p className="font-black text-gray-900 dark:text-white text-base leading-tight break-words">{viewingOrder.client || 'Cliente General'}</p>
                            {viewingOrder.clientPhone && (
                              <p className="text-xs text-gray-500 dark:text-stone-400 mt-0.5">{viewingOrder.clientPhone}</p>
                            )}
@@ -3304,7 +3339,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-bold text-2xl text-gray-900 dark:text-white leading-tight">Historial del Cliente</h3>
-                    <p className="text-gray-500 font-medium text-sm truncate">{selectedClientInfo.name} · {selectedClientInfo.phone}</p>
+                    <p className="text-gray-500 font-medium text-sm break-words">{selectedClientInfo.name} · {selectedClientInfo.phone}</p>
                   </div>
                 </div>
                 <button onClick={() => setSelectedClientInfo(null)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-stone-800 flex items-center justify-center text-gray-500 dark:text-stone-400 hover:bg-gray-200 dark:hover:bg-stone-700 transition-colors shrink-0">

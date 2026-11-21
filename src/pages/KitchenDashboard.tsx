@@ -622,7 +622,7 @@ export default function KitchenDashboard() {
               className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm lg:hidden"
             />
             <motion.aside 
-              initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
+              initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
               className="fixed inset-y-0 left-0 z-[101] w-[280px] bg-white dark:bg-[#151515] border-r border-gray-100 dark:border-stone-800 flex flex-col lg:hidden shadow-2xl h-[100dvh]"
             >
               <div className="h-24 flex items-center justify-between px-8 mb-2 shrink-0 border-b border-gray-50 dark:border-stone-800/50">

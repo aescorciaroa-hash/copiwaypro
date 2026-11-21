@@ -190,7 +190,7 @@ export default function OrdersSection({
                         </div>
                         <div className="min-w-0">
                           <p className="text-[10px] font-semibold text-gray-400 dark:text-stone-500 uppercase tracking-wider">Cliente</p>
-                          <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{order.clientPhone || order.client || 'Cliente Local'}</p>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white break-words">{order.clientPhone || order.client || 'Cliente Local'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 px-3.5 py-2.5">
@@ -199,7 +199,7 @@ export default function OrdersSection({
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-[10px] font-semibold text-gray-400 dark:text-stone-500 uppercase tracking-wider">Entregar en</p>
-                          <p className="text-sm font-semibold text-gray-700 dark:text-stone-200 truncate" title={order.address}>{order.address}</p>
+                          <p className="text-sm font-semibold text-gray-700 dark:text-stone-200 break-words" title={order.address}>{order.address}</p>
                         </div>
                         <button
                           onClick={(e) => { e.stopPropagation(); setEditingAddressOrder(order); setNewAddress(order.address); }}
@@ -320,13 +320,14 @@ export default function OrdersSection({
           )}
 
           {/* Interactive Leaflet Map for Neiva */}
-          <div className={`absolute inset-0 z-0 [&_.leaflet-container]:bg-transparent [&_.leaflet-control-container]:z-[500] ${theme === 'dark' ? 'leaflet-dark-tiles' : ''}`}>
+          <div className={`absolute inset-0 z-0 isolate [&_.leaflet-container]:bg-transparent [&_.leaflet-control-container]:z-[500] ${theme === 'dark' ? 'leaflet-dark-tiles' : ''}`}>
             <MapContainer
               center={UBICACION_NEGOCIO}
               zoom={15}
               style={{ width: '100%', height: '100%' }}
               zoomControl={false}
               className="z-0"
+              dragging={!L.Browser.mobile}
             >
               <CustomZoomControl />
               <TileLayer

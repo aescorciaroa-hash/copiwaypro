@@ -240,12 +240,15 @@ export default function MapSection({
             </div>
 
             {/* Contenedor del Mapa */}
-            <div className={`h-[460px] sm:h-[520px] w-full rounded-[24px] overflow-hidden relative border border-gray-100 dark:border-stone-800 ${theme === 'dark' ? 'leaflet-dark-tiles' : ''}`}>
+            <div className={`h-[460px] sm:h-[520px] w-full rounded-[24px] overflow-hidden relative isolate z-0 border border-gray-100 dark:border-stone-800 ${theme === 'dark' ? 'leaflet-dark-tiles' : ''}`}>
               <MapContainer
                 center={kitchenCoords}
                 zoom={14}
                 style={{ height: '100%', width: '100%' }}
                 zoomControl={false}
+                // En el celular el mapa no se arrastra con un dedo (asi el dedo desplaza la
+                // pagina y no se "traba" sobre el mapa); se mueve con los botones + / - o pellizcando.
+                dragging={!L.Browser.mobile}
               >
                 <TileLayer
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

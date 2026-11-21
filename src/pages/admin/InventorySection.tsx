@@ -371,32 +371,33 @@ export default function InventorySection({
         </div>
 
         {/* Top Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
-          <div className="bg-white dark:bg-[#151515] rounded-[32px] border border-gray-100 dark:border-stone-800 p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center shrink-0">
-              <TriangleAlert className="w-6 h-6" />
+        {/* En el celular van de dos en dos (la tercera ocupa todo el ancho) para no bajar tanto */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-8">
+          <div className="bg-white dark:bg-[#151515] rounded-[24px] sm:rounded-[32px] border border-gray-100 dark:border-stone-800 p-4 sm:p-6 flex flex-col sm:flex-row items-center text-center sm:text-left gap-2 sm:gap-4 shadow-sm hover:shadow-md transition-shadow min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center shrink-0">
+              <TriangleAlert className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">CRÍTICOS</p>
-              <p className="font-black text-xl text-red-600 dark:text-red-400">{criticalItemsCount} {criticalItemsCount === 1 ? 'Ítem' : 'Ítems'}</p>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-[#151515] rounded-[32px] border border-gray-100 dark:border-stone-800 p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center shrink-0">
-              <Package className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">TOTAL EN EXISTENCIA</p>
-              <p className="font-black text-xl text-gray-900 dark:text-white">{totalInventoryUnits} Uni. <span className="text-xs text-gray-400 font-normal">({inventory.length} tipos)</span></p>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-0.5 leading-tight">CRÍTICOS</p>
+              <p className="font-black text-lg sm:text-xl text-red-600 dark:text-red-400">{criticalItemsCount} {criticalItemsCount === 1 ? 'Ítem' : 'Ítems'}</p>
             </div>
           </div>
-          <div className="bg-white dark:bg-[#151515] rounded-[32px] border border-gray-100 dark:border-stone-800 p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 rounded-full bg-orange-50 dark:bg-orange-900/20 text-brand-orange flex items-center justify-center shrink-0">
-              <Wallet className="w-6 h-6" />
+          <div className="bg-white dark:bg-[#151515] rounded-[24px] sm:rounded-[32px] border border-gray-100 dark:border-stone-800 p-4 sm:p-6 flex flex-col sm:flex-row items-center text-center sm:text-left gap-2 sm:gap-4 shadow-sm hover:shadow-md transition-shadow min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center shrink-0">
+              <Package className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">VALORIZACIÓN TOTAL</p>
-              <p className="font-black text-xl text-emerald-600 dark:text-emerald-400">{formatCOP(totalInventoryValuation)}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-0.5 leading-tight">TOTAL EN EXISTENCIA</p>
+              <p className="font-black text-lg sm:text-xl text-gray-900 dark:text-white">{totalInventoryUnits} Uni. <span className="text-xs text-gray-400 font-normal">({inventory.length} tipos)</span></p>
+            </div>
+          </div>
+          <div className="col-span-2 lg:col-span-1 bg-white dark:bg-[#151515] rounded-[24px] sm:rounded-[32px] border border-gray-100 dark:border-stone-800 p-4 sm:p-6 flex flex-col sm:flex-row items-center text-center sm:text-left gap-2 sm:gap-4 shadow-sm hover:shadow-md transition-shadow min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-orange-50 dark:bg-orange-900/20 text-brand-orange flex items-center justify-center shrink-0">
+              <Wallet className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-0.5 leading-tight">VALORIZACIÓN TOTAL</p>
+              <p className="font-black text-lg sm:text-xl text-emerald-600 dark:text-emerald-400">{formatCOP(totalInventoryValuation)}</p>
             </div>
           </div>
         </div>

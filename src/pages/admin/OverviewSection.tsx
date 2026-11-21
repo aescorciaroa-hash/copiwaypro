@@ -120,7 +120,7 @@ export default function OverviewSection({
               </div>
 
               {/* Cocina en vivo: foto con los pedidos de cada estado encima */}
-              <div className="relative hidden sm:block h-60 lg:h-auto lg:min-h-[270px] rounded-3xl overflow-hidden bg-gradient-to-br from-stone-800 to-[#3a1d08]">
+              <div className="relative block h-52 sm:h-60 lg:h-auto lg:min-h-[270px] rounded-3xl overflow-hidden bg-gradient-to-br from-stone-800 to-[#3a1d08]">
                 {foto && (
                   <img loading="lazy" decoding="async"
                     src={foto}
@@ -141,11 +141,11 @@ export default function OverviewSection({
                     <button
                       key={e.label}
                       onClick={() => setActiveTab(e.tab)}
-                      className="rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 p-2.5 text-left transition-colors cursor-pointer"
+                      className="rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 p-2 sm:p-2.5 text-left min-w-0 transition-colors cursor-pointer"
                     >
                       <e.icono className={`w-4 h-4 ${e.color}`} />
                       <p className="text-2xl font-black leading-none mt-1.5">{e.valor}</p>
-                      <p className="text-[10px] font-semibold text-white/70 mt-0.5 truncate">{e.label}</p>
+                      <p className="text-[9px] sm:text-[10px] font-semibold text-white/70 mt-0.5 leading-tight">{e.label}</p>
                     </button>
                   ))}
                 </div>
@@ -263,7 +263,7 @@ export default function OverviewSection({
                   <span className="text-2xl font-black text-gray-900 dark:text-white leading-none tracking-tight">
                     {topProductsData[activePieIndex].value}%
                   </span>
-                  <span className="text-[11px] font-bold text-gray-700 dark:text-stone-300 mt-1 truncate max-w-full leading-tight">
+                  <span className="text-[11px] font-bold text-gray-700 dark:text-stone-300 mt-1 break-words max-w-full leading-tight line-clamp-2">
                     {topProductsData[activePieIndex].name}
                   </span>
                   <span className="text-[10px] text-gray-400 dark:text-stone-500 font-medium">
@@ -275,7 +275,7 @@ export default function OverviewSection({
                   <span className="text-2xl font-black text-gray-900 dark:text-white leading-none tracking-tight">
                     {topProductsData[0]?.value || 0}%
                   </span>
-                  <span className="text-[11px] font-bold text-gray-600 dark:text-stone-300 mt-1 truncate max-w-full leading-tight">
+                  <span className="text-[11px] font-bold text-gray-600 dark:text-stone-300 mt-1 break-words max-w-full leading-tight line-clamp-2">
                     {topProductsData[0]?.name || 'Más vendido'}
                   </span>
                   <span className="text-[10px] font-semibold text-brand-orange uppercase tracking-wider">
@@ -304,7 +304,7 @@ export default function OverviewSection({
                     className="w-3 h-3 rounded-full shrink-0 shadow-xs"
                     style={{ backgroundColor: item.color }}
                   />
-                  <span className="text-gray-700 dark:text-stone-300 truncate">
+                  <span className="text-gray-700 dark:text-stone-300 break-words leading-snug">
                     {item.name}
                   </span>
                 </div>
@@ -351,11 +351,11 @@ export default function OverviewSection({
                       {ord.id.replace(/[^0-9]/g, '').slice(-2) || orderCode(ord.id).slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-bold text-gray-900 dark:text-white text-sm truncate group-hover:text-brand-orange transition-colors">
+                      <p className="font-bold text-gray-900 dark:text-white text-sm break-words group-hover:text-brand-orange transition-colors">
                         {ord.client || ord.clientPhone || 'Cliente'}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-stone-400 truncate flex items-center gap-1.5 mt-0.5">
-                        <span className="truncate max-w-[140px] sm:max-w-[200px]">{ord.address}</span>
+                      <p className="text-xs text-gray-500 dark:text-stone-400 flex flex-wrap items-center gap-x-1.5 mt-0.5">
+                        <span className="break-words min-w-0">{ord.address}</span>
                         <span>•</span>
                         <span className={`font-bold ${
                           ord.status === 'Entregado' || ord.status === 'entregado' ? 'text-emerald-600 dark:text-emerald-400' :
@@ -511,8 +511,8 @@ export default function OverviewSection({
                 {orders.filter(o => o.status === 'En Camino').length > 0 ? (
                   <div className="space-y-1.5">
                     {orders.filter(o => o.status === 'En Camino').slice(0, 2).map((ord) => (
-                      <div key={ord.id} className="flex items-center justify-between text-xs bg-white dark:bg-stone-800/80 px-2.5 py-1.5 rounded-xl border border-gray-100 dark:border-stone-700">
-                        <span className="font-semibold text-gray-800 dark:text-stone-200 truncate max-w-[170px]">
+                      <div key={ord.id} className="flex items-center justify-between gap-2 text-xs bg-white dark:bg-stone-800/80 px-2.5 py-1.5 rounded-xl border border-gray-100 dark:border-stone-700">
+                        <span className="font-semibold text-gray-800 dark:text-stone-200 break-words min-w-0">
                           {ord.client || orderCode(ord.id)}: {ord.address}
                         </span>
                         <span className="text-[10px] font-bold text-brand-orange bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-md shrink-0">

@@ -256,25 +256,25 @@ export default function Landing() {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {filteredProducts.map(product => (
-              <div key={product.id} className="bg-white dark:bg-[#151515] rounded-[24px] border border-gray-100 dark:border-stone-800 shadow-sm overflow-hidden hover:shadow-lg transition-shadow group flex flex-col">
-                <div className="h-48 md:aspect-[16/10] bg-gray-100 dark:bg-stone-800 relative overflow-hidden">
+              <div key={product.id} className="bg-white dark:bg-[#151515] rounded-[20px] sm:rounded-[24px] border border-gray-100 dark:border-stone-800 shadow-sm overflow-hidden hover:shadow-lg transition-shadow group flex flex-col">
+                <div className="h-32 sm:h-48 md:h-auto md:aspect-[16/10] bg-gray-100 dark:bg-stone-800 relative overflow-hidden">
                   <img loading="lazy" decoding="async" src={getProductImage(product.image)} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=800'; }} />
                 </div>
-                <div className="p-6 flex flex-col flex-1 min-w-0">
-                  <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">{product.name}</h3>
-                  <p className="text-sm text-gray-500 dark:text-stone-400 mb-6 flex-1 line-clamp-3 min-w-0">
+                <div className="p-3 sm:p-6 flex flex-col flex-1 min-w-0">
+                  <h3 className="font-bold text-sm sm:text-lg leading-tight text-gray-900 dark:text-white mb-1.5 sm:mb-2">{product.name}</h3>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-stone-400 mb-3 sm:mb-6 flex-1 line-clamp-3 min-w-0">
                     {product.description || 'Deliciosa opción preparada al momento con ingredientes frescos.'}
                   </p>
-                  <div className="flex items-center justify-between mt-auto">
-                    <span className="font-bold text-[clamp(16px,4vw,20px)] text-brand-orange">{formatCOP(product.price)}</span>
+                  <div className="flex items-center justify-between gap-2 mt-auto">
+                    <span className="font-bold text-sm sm:text-xl text-brand-orange truncate">{formatCOP(product.price)}</span>
                     <a
                       href={rutaBase() + '/login'}
-                      className="w-10 h-10 bg-brand-orange text-white rounded-full flex items-center justify-center hover:bg-[#e66500] hover:scale-105 transition-transform"
+                      className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 bg-brand-orange text-white rounded-full flex items-center justify-center hover:bg-[#e66500] hover:scale-105 transition-transform"
                       title="Pedir"
                     >
-                      <Utensils className="w-5 h-5" />
+                      <Utensils className="w-4 h-4 sm:w-5 sm:h-5" />
                     </a>
                   </div>
                 </div>

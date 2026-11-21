@@ -365,9 +365,11 @@ export default function BuilderSection({
             <p className="text-sm text-gray-400 mt-2">Nuestros cocineros están reabasteciendo la cocina.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)] gap-6 h-[70vh] lg:h-auto lg:flex-1 lg:min-h-0">
+          <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)] gap-6 lg:h-auto lg:flex-1 lg:min-h-0">
+            {/* En el celular no se fija la altura del conjunto: antes la lista de ingredientes
+                se quedaba con todo el espacio y la hamburguesa armada quedaba con 0 px de alto. */}
             {/* Visual Burger Canvas / Stage */}
-            <div className="lg:col-span-8 bg-white dark:bg-[#151515] rounded-[28px] border border-gray-100 dark:border-stone-800 flex flex-col items-center justify-between p-4 relative overflow-hidden shadow-sm min-h-0">
+            <div className="lg:col-span-8 h-[400px] sm:h-[460px] lg:h-auto bg-white dark:bg-[#151515] rounded-[28px] border border-gray-100 dark:border-stone-800 flex flex-col items-center justify-between p-4 relative overflow-hidden shadow-sm min-h-0">
               {/* Header Info */}
               <div className="w-full flex justify-between items-center z-20">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">

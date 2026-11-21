@@ -93,6 +93,26 @@ export default function Login() {
 
       <div className="w-full max-w-[1040px] bg-white dark:bg-[#151515] rounded-[36px] overflow-hidden flex flex-col lg:flex-row relative z-10 shadow-[0_30px_80px_-24px_rgba(0,0,0,0.20)] dark:shadow-[0_30px_90px_-20px_rgba(0,0,0,0.75)] transition-colors duration-100">
         
+        {/* Cabecera con imagen solo en celular/tablet (igual que en el registro); en pantallas grandes se usa la barra lateral de abajo */}
+        <div className="lg:hidden relative bg-zinc-950 overflow-hidden min-h-[200px] p-8 flex flex-col justify-center text-center text-white">
+          <div className="absolute inset-0">
+            <img loading="eager" decoding="async"
+              src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=1000&auto=format&fit=crop"
+              alt="Gourmet Burger"
+              className="w-full h-full object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-zinc-950/60"></div>
+          </div>
+          <div className="relative z-10">
+            <div className="w-12 h-12 bg-brand-orange/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-brand-orange/30">
+              <Utensils className="w-6 h-6 text-brand-orange" />
+            </div>
+            <h2 className="text-3xl font-bold leading-tight text-white tracking-normal">
+              El Corazón de tu <span className="text-brand-orange">Cocina</span>
+            </h2>
+          </div>
+        </div>
+
         {/* Left side styling for large screens - visible as sidebar */}
         <div className="hidden lg:flex lg:w-1/2 bg-zinc-950 relative flex-col justify-between p-14 text-white">
           <div className="absolute inset-0 opacity-100">

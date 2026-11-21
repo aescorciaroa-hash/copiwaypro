@@ -8,21 +8,35 @@ require_once __DIR__ . '/Configuracion.php';
 
 class CorreoService
 {
-    // Servidor SMTP. Ej. Gmail: HOST 'smtp.gmail.com', PUERTO 587, 'tls', y en CLAVE una
-    // "contrasena de aplicacion". Sin HOST o REMITENTE el correo no se envia; con
+    // Servidor SMTP. Ej. Gmail: HOST 'smtp.gmail.com', PUERTO 587, 'tls'. La clave (una
+    // "contrasena de aplicacion") NO va aqui: esta en datos_correo.php, afuera del proyecto,
+    // para que no quede en GitHub. Sin clave el correo no se envia; con
     // 'entorno' => 'local' (config/app.php) la respuesta trae el codigo para poder probar.
     const HOST = 'smtp.gmail.com';
     const PUERTO = 587;
     const CIFRADO = 'tls';
     const USUARIO = 'aescorciaroa@gmail.com';
-    const CLAVE = 'gfhyufsjwjyeagmu';
     const REMITENTE = 'aescorciaroa@gmail.com';
     const REMITENTE_NOMBRE = 'CopiwayPRO';
 
-    /** true si hay un servidor SMTP configurado. */
+    /**
+     * Lee la clave de Gmail del archivo datos_correo.php, que esta dos carpetas arriba
+     * de models/ (afuera del proyecto, no va a GitHub). Si no existe devuelve ''.
+     */
+    public static function clave()
+    {
+        $archivo = __DIR__ . '/../../datos_correo.php';
+        if (!is_file($archivo)) {
+            return '';
+        }
+        require $archivo;
+        return $claveGmail;
+    }
+
+    /** true si hay un servidor SMTP configurado (con servidor, remitente y clave). */
     public static function configurado()
     {
-        return self::HOST !== '' && self::REMITENTE !== '';
+        return self::HOST !== '' && self::REMITENTE !== '' && self::clave() !== '';
     }
 
     /** Envia un correo HTML. Devuelve true si el servidor SMTP lo acepto. */
@@ -65,7 +79,7 @@ class CorreoService
             if (self::USUARIO !== '') {
                 self::comando($socket, 'AUTH LOGIN', 334);
                 self::comando($socket, base64_encode(self::USUARIO), 334);
-                self::comando($socket, base64_encode(self::CLAVE), 235);
+                self::comando($socket, base64_encode(self::clave()), 235);
             }
 
             // 4. Quien envia, a quien, y el mensaje (termina con una linea que solo tiene un punto)

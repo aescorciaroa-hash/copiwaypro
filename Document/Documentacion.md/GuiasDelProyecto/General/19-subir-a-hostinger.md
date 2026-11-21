@@ -54,6 +54,28 @@ Tu computador  --git push-->  GitHub  --aviso (webhook)-->  Hostinger descarga l
 
 ---
 
+## Parte 2b. La clave de Gmail (para los correos de recuperar contraseña)
+
+Igual que la base de datos, la clave de Gmail **no** está en el código. `models/CorreoService.php` la lee del archivo `datos_correo.php`, que va **afuera** del proyecto:
+
+| Dónde | Ruta del archivo |
+|---|---|
+| Tu computador | `C:\laragon\www\datos_correo.php` (al lado de la carpeta `Copiwaypro`) |
+| Hostinger | en la 🏠, al lado de `public_html` y de `datos_bd.php` |
+
+Contenido (cambia solo la clave):
+```php
+<?php
+$claveGmail = "abcdefghijklmnop";
+?>
+```
+
+- La clave es una **contraseña de aplicación** de 16 letras, sin espacios. Se crea en [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords). **No** es la contraseña normal de Gmail.
+- Si el archivo no existe, no se envían correos, pero la página sigue funcionando.
+- Para cambiar la clave solo editas `datos_correo.php`. No hace falta `git push`.
+
+---
+
 ## Parte 3. Respaldar lo que ya está en Hostinger
 
 Hostinger solo instala desde Git en una carpeta **vacía**.

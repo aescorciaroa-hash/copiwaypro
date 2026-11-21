@@ -721,6 +721,70 @@ export default function DeliveryDashboard() {
   const enCaminoCount = deliveries.filter(o => o.status === 'En Camino').length;
   const porRecogerCount = deliveries.filter(o => o.status === 'Listos').length;
 
+  // Cabecera del panel: la misma en el celular (arriba) y en el portatil (columna izquierda).
+  const contenidoCabecera = (
+    <>
+    <div className="flex justify-between items-center">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-2xl bg-brand-orange flex items-center justify-center shadow-lg shadow-brand-orange/25 shrink-0">
+          <Navigation className="w-5 h-5 text-white" />
+        </div>
+        <div className="leading-tight">
+          <h1 className="font-black text-xl tracking-tight text-gray-900 dark:text-white">Copiway<span className="text-brand-orange">PRO</span></h1>
+          <p className="text-[11px] font-semibold text-gray-400 dark:text-stone-500">Panel de Domiciliario</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+          className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-stone-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer"
+        >
+          {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
+        </button>
+        <button
+          onClick={handleLogout}
+          className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/30 flex items-center justify-center text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer"
+          title="Cerrar Sesión"
+        >
+          <LogOut size={19} />
+        </button>
+      </div>
+    </div>
+
+    {/* Estado: tarjeta con interruptor */}
+    <label className={`flex items-center justify-between gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-colors ${isAvailable ? 'bg-gradient-to-r from-orange-50 to-amber-50/40 dark:from-brand-orange/10 dark:to-transparent' : 'bg-gray-50 dark:bg-stone-900'}`}>
+      <div className="flex items-center gap-3">
+        <span className="relative flex w-2.5 h-2.5">
+          {isAvailable && <span className="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-60 animate-ping"></span>}
+          <span className={`relative inline-flex w-2.5 h-2.5 rounded-full ${isAvailable ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
+        </span>
+        <div className="leading-tight">
+          <p className="text-[10px] font-bold text-gray-400 dark:text-stone-500 uppercase tracking-wider">Estado</p>
+          <p className={`text-sm font-black ${isAvailable ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-stone-400'}`}>{isAvailable ? 'Disponible para entregas' : 'Desconectado'}</p>
+        </div>
+      </div>
+      <span className="relative inline-flex items-center">
+        <input type="checkbox" className="sr-only peer" checked={isAvailable} onChange={() => setIsAvailable(!isAvailable)} />
+        <span className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow after:transition-all peer-checked:bg-brand-orange"></span>
+      </span>
+    </label>
+
+    {/* Contadores */}
+    <div className="grid grid-cols-2 gap-2">
+      <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl bg-gray-50 dark:bg-stone-900">
+        <div className="w-8 h-8 rounded-xl bg-orange-50 dark:bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0"><Bike className="w-4 h-4" /></div>
+        <div className="leading-tight"><p className="text-lg font-black text-gray-900 dark:text-white">{enCaminoCount}</p><p className="text-[10px] font-bold text-gray-400 dark:text-stone-500">En camino</p></div>
+      </div>
+      <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl bg-gray-50 dark:bg-stone-900">
+        <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0"><Package className="w-4 h-4" /></div>
+        <div className="leading-tight"><p className="text-lg font-black text-gray-900 dark:text-white">{porRecogerCount}</p><p className="text-[10px] font-bold text-gray-400 dark:text-stone-500">Por recoger</p></div>
+      </div>
+    </div>
+    </>
+  );
+
   return (
     <div className="h-[100dvh] w-full bg-gray-50/50 dark:bg-stone-950 text-gray-900 dark:text-gray-100 font-sans flex flex-col transition-colors duration-300 overflow-hidden relative">
       
@@ -736,44 +800,10 @@ export default function DeliveryDashboard() {
         onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
       />
 
-      {/* Cabecera Móvil - Solo visible en celulares */}
-      <header className="md:hidden px-6 py-3 border-b border-gray-100 dark:border-stone-800/50 flex flex-col shrink-0 bg-white dark:bg-[#151515] z-30 shadow-sm">
-          <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-brand-orange flex items-center justify-center shadow-lg shadow-brand-orange/20 shrink-0">
-                <Navigation className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h1 className="font-black text-lg tracking-tight text-gray-900 dark:text-white leading-none">Copiway<span className="text-brand-orange">PRO</span></h1>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={toggleTheme}
-                className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-stone-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors"
-              >
-                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-              <button 
-                onClick={handleLogout}
-                className="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950/30 flex items-center justify-center text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
-              >
-                <LogOut size={18} />
-              </button>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-600 dark:text-stone-400">Estado</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" checked={isAvailable} onChange={() => setIsAvailable(!isAvailable)} />
-              <div className="w-10 h-5.5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-orange"></div>
-              <span className={`ml-2 text-xs font-bold ${isAvailable ? 'text-brand-orange' : 'text-gray-500'}`}>
-                {isAvailable ? 'Disponible' : 'Desconectado'}
-              </span>
-            </label>
-          </div>
+      {/* Cabecera en el celular: el MISMO contenido de la cabecera del portatil
+          (logo, "Panel de Domiciliario", estado con interruptor y contadores). */}
+      <header className="md:hidden px-4 pt-4 pb-3 flex flex-col gap-3 shrink-0 bg-white dark:bg-[#151515] z-30 shadow-sm border-b border-gray-100 dark:border-stone-800/50">
+        {contenidoCabecera}
       </header>
 
       <div className="flex-1 flex flex-col-reverse md:flex-row overflow-hidden relative">
@@ -782,64 +812,7 @@ export default function DeliveryDashboard() {
         
         {/* Cabecera Desktop - Solo visible en laptops */}
         <header className="hidden md:flex px-6 pt-6 pb-4 flex-col gap-4 shrink-0 bg-white dark:bg-[#151515] z-10">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-brand-orange flex items-center justify-center shadow-lg shadow-brand-orange/25 shrink-0">
-                <Navigation className="w-5 h-5 text-white" />
-              </div>
-              <div className="leading-tight">
-                <h1 className="font-black text-xl tracking-tight text-gray-900 dark:text-white">Copiway<span className="text-brand-orange">PRO</span></h1>
-                <p className="text-[11px] font-semibold text-gray-400 dark:text-stone-500">Panel de Domiciliario</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleTheme}
-                title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
-                className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-stone-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-brand-orange dark:hover:text-brand-orange transition-colors cursor-pointer"
-              >
-                {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
-              </button>
-              <button
-                onClick={handleLogout}
-                className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/30 flex items-center justify-center text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer"
-                title="Cerrar Sesión"
-              >
-                <LogOut size={19} />
-              </button>
-            </div>
-          </div>
-
-          {/* Estado: tarjeta con interruptor */}
-          <label className={`flex items-center justify-between gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-colors ${isAvailable ? 'bg-gradient-to-r from-orange-50 to-amber-50/40 dark:from-brand-orange/10 dark:to-transparent' : 'bg-gray-50 dark:bg-stone-900'}`}>
-            <div className="flex items-center gap-3">
-              <span className="relative flex w-2.5 h-2.5">
-                {isAvailable && <span className="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-60 animate-ping"></span>}
-                <span className={`relative inline-flex w-2.5 h-2.5 rounded-full ${isAvailable ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
-              </span>
-              <div className="leading-tight">
-                <p className="text-[10px] font-bold text-gray-400 dark:text-stone-500 uppercase tracking-wider">Estado</p>
-                <p className={`text-sm font-black ${isAvailable ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-stone-400'}`}>{isAvailable ? 'Disponible para entregas' : 'Desconectado'}</p>
-              </div>
-            </div>
-            <span className="relative inline-flex items-center">
-              <input type="checkbox" className="sr-only peer" checked={isAvailable} onChange={() => setIsAvailable(!isAvailable)} />
-              <span className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-stone-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow after:transition-all peer-checked:bg-brand-orange"></span>
-            </span>
-          </label>
-
-          {/* Contadores */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl bg-gray-50 dark:bg-stone-900">
-              <div className="w-8 h-8 rounded-xl bg-orange-50 dark:bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0"><Bike className="w-4 h-4" /></div>
-              <div className="leading-tight"><p className="text-lg font-black text-gray-900 dark:text-white">{enCaminoCount}</p><p className="text-[10px] font-bold text-gray-400 dark:text-stone-500">En camino</p></div>
-            </div>
-            <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl bg-gray-50 dark:bg-stone-900">
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0"><Package className="w-4 h-4" /></div>
-              <div className="leading-tight"><p className="text-lg font-black text-gray-900 dark:text-white">{porRecogerCount}</p><p className="text-[10px] font-bold text-gray-400 dark:text-stone-500">Por recoger</p></div>
-            </div>
-          </div>
+          {contenidoCabecera}
         </header>
 
         <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 space-y-3 min-w-0 custom-scrollbar bg-gray-50/70 dark:bg-stone-950/40 md:bg-transparent md:dark:bg-transparent">

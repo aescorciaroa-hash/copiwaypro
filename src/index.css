@@ -59,6 +59,37 @@ html.dark body {
   color: #fafaf9;
 }
 
+/* Le dice al navegador que la pagina esta en modo oscuro: asi sus controles
+   propios (autocompletado, calendario, barras de desplazamiento) usan colores oscuros. */
+html.dark {
+  color-scheme: dark;
+}
+
+/* Autocompletado del navegador (correo/contrasena guardados): Chrome pinta la
+   casilla de azul claro sin importar el modo oscuro. Con esto cada casilla
+   conserva su propio fondo (la transicion "eterna" evita que se aplique el
+   del navegador) y el texto mantiene el color del tema. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  /* !important: la regla global de transiciones (80ms !important) la anularia. */
+  transition-property: background-color, color !important;
+  transition-duration: 600000s !important;
+  transition-delay: 0s !important;
+  -webkit-text-fill-color: #111827;
+  caret-color: #111827;
+}
+html.dark input:-webkit-autofill,
+html.dark input:-webkit-autofill:hover,
+html.dark input:-webkit-autofill:focus,
+html.dark textarea:-webkit-autofill,
+html.dark select:-webkit-autofill {
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+}
+
 /* Utilities */
 @layer utilities {
   .hide-scrollbar {

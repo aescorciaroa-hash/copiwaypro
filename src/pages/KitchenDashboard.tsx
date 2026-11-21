@@ -661,21 +661,25 @@ export default function KitchenDashboard() {
 
         
         {/* Top Status Header */}
-        <header className="shrink-0 bg-white dark:bg-[#151515] border-b border-gray-100 dark:border-stone-800 h-[70px] md:h-24 flex items-center justify-between px-4 md:px-8 z-10 sticky top-0 shadow-sm transition-colors">
-          <div className="flex items-center gap-2 md:gap-4">
+        {/* En el celular es la MISMA barra de las pantallas grandes, en dos filas:
+            fila 1 = menu, "Sistema en linea" y sonido; fila 2 = preparacion promedio, stock critico y reloj. */}
+        <header className="shrink-0 bg-white dark:bg-[#151515] border-b border-gray-100 dark:border-stone-800 min-h-[70px] py-3 sm:py-0 sm:h-[70px] md:h-24 flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-2 gap-y-3 px-4 md:px-8 z-10 sticky top-0 shadow-sm transition-colors">
+          <div className="contents sm:flex items-center gap-2 md:gap-4">
             <button 
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden w-10 h-10 rounded-xl bg-gray-100 dark:bg-stone-800 flex items-center justify-center text-gray-500 hover:text-brand-orange transition-colors"
+              className="order-1 sm:order-none shrink-0 lg:hidden w-10 h-10 rounded-xl bg-gray-100 dark:bg-stone-800 flex items-center justify-center text-gray-500 hover:text-brand-orange transition-colors"
             >
               <Menu className="w-6 h-6" />
             </button>
-            <div className="hidden sm:flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-3 md:px-5 py-2 md:py-2.5 rounded-full border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
+            <div className="order-2 sm:order-none shrink-0 flex items-center gap-1.5 sm:gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-2.5 sm:px-3 md:px-5 py-2 md:py-2.5 rounded-full border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
-              <span className="font-bold text-[10px] md:text-xs uppercase tracking-wider">Sistema en Línea</span>
+              <span className="font-bold text-[10px] md:text-xs uppercase tracking-wide sm:tracking-wider whitespace-nowrap">Sistema en Línea</span>
             </div>
             
+            {/* Salto a la segunda fila (solo celular) */}
+            <div className="basis-full h-0 order-4 sm:hidden" />
             <div
-              className="hidden sm:flex items-center gap-3 pl-2.5 pr-5 py-1.5 rounded-2xl bg-white dark:bg-[#151515] border border-gray-200 dark:border-stone-800 shadow-sm"
+              className="order-5 sm:order-none flex-1 sm:flex-none min-w-0 flex items-center gap-3 pl-2.5 pr-5 py-1.5 rounded-2xl bg-white dark:bg-[#151515] border border-gray-200 dark:border-stone-800 shadow-sm"
               title={prepStats.count > 0 ? `Promedio entre la llegada del pedido y el momento en que cocina lo marca Listo (${prepStats.count} pedidos de hoy)` : 'Aún no hay pedidos listos hoy'}
             >
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${prepStats.tone.bg} ${prepStats.tone.text}`}>
@@ -692,7 +696,7 @@ export default function KitchenDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className="contents sm:flex items-center gap-2 md:gap-3">
             {/* Ícono de advertencia (como en admin): solo aparece si hay insumos en stock crítico */}
             <AnimatePresence>
               {criticalItems.length > 0 && (
@@ -700,7 +704,7 @@ export default function KitchenDashboard() {
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0, opacity: 0 }}
-                  className="relative"
+                  className="relative order-6 sm:order-none"
                 >
                   <button
                     onClick={() => setShowInventory(!showInventory)}
@@ -722,7 +726,7 @@ export default function KitchenDashboard() {
 
             <button
               onClick={handleToggleSound}
-              className={`flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-2xl font-bold text-[10px] md:text-xs transition-colors border shadow-xs ${
+              className={`order-3 sm:order-none ml-auto sm:ml-0 shrink-0 flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-2xl font-bold text-[10px] md:text-xs transition-colors border shadow-xs ${
                 soundEnabled 
                   ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/40 hover:bg-amber-100'
                   : 'bg-gray-100 dark:bg-stone-800 text-gray-500 dark:text-stone-400 border-gray-200 dark:border-stone-700'
@@ -733,7 +737,7 @@ export default function KitchenDashboard() {
               <span>{soundEnabled ? 'Sonido Activo' : 'Silenciado'}</span>
             </button>
 
-            <div className="flex items-center gap-3 pl-3 pr-4 md:pl-4 md:pr-5 py-1.5 md:py-2 rounded-2xl bg-white dark:bg-[#151515] border border-gray-200 dark:border-stone-800 shadow-sm">
+            <div className="order-7 sm:order-none shrink-0 flex items-center gap-2 sm:gap-3 pl-2 pr-3 sm:pl-3 sm:pr-4 md:pl-4 md:pr-5 py-1.5 md:py-2 rounded-2xl bg-white dark:bg-[#151515] border border-gray-200 dark:border-stone-800 shadow-sm">
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0">
                 <Clock className="w-4 h-4 md:w-5 md:h-5" />
               </div>
@@ -753,25 +757,6 @@ export default function KitchenDashboard() {
             </div>
           </div>
         </header>
-
-        {/* En el celular: "Sistema en linea" y preparacion promedio (en pantallas grandes estan en la barra de arriba) */}
-        <div className="sm:hidden shrink-0 flex items-center justify-between gap-2 px-4 py-2 bg-white dark:bg-[#151515] border-b border-gray-100 dark:border-stone-800">
-          <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-2.5 py-1.5 rounded-full border border-emerald-100 dark:border-emerald-900/30">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="font-bold text-[10px] uppercase tracking-wider">Sistema en Línea</span>
-          </div>
-          <div className="flex items-center gap-2 text-right">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${prepStats.tone.bg} ${prepStats.tone.text}`}>
-              <Timer className="w-3.5 h-3.5" />
-            </div>
-            <div className="leading-tight">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 dark:text-stone-500">Preparación promedio</p>
-              <p className="text-xs font-black text-gray-900 dark:text-white tabular-nums">
-                {prepStats.count > 0 ? `${prepStats.avg} min · ${prepStats.count} hoy` : '—'}
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* Banner flotante de Alerta Sonora / Visual (RF-27 / RF-36) */}
         <AnimatePresence>

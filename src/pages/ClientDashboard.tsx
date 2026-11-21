@@ -1316,7 +1316,7 @@ export default function ClientDashboard() {
       {/* Área Principal */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-gray-50/50 dark:bg-stone-950 pb-20 md:pb-0 min-w-0">
         <header className="min-h-[70px] py-2.5 sm:py-0 sm:h-[70px] md:h-24 border-b border-gray-100 dark:border-white/5 bg-white/80 dark:bg-[#0c0a09]/80 backdrop-blur-xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-3 gap-y-2 px-4 sm:px-6 md:px-10 shrink-0 sticky top-0 z-50 transition-colors duration-300">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="order-1 sm:order-none flex-1 sm:flex-none flex items-center gap-3 min-w-0">
             {/* Icono, titulo y frase de la seccion: tambien en el celular */}
             <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
               <div className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-2xl bg-orange-50 dark:bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0">
@@ -1328,13 +1328,15 @@ export default function ClientDashboard() {
               </div>
             </div>
           </div>
-          {/* En el celular este grupo se "deshace" (contents) para que el estado del
-              local baje a una segunda fila completa y no apriete el titulo. */}
+          {/* En el celular es la MISMA barra del portatil en dos filas (este grupo se
+              "deshace" con contents): fila 1 = seccion, notificaciones y tema;
+              fila 2 = estado de la cocina y perfil. */}
           <div className="contents sm:flex items-center gap-2 sm:gap-4">
+            <div className="basis-full h-0 order-3 sm:hidden" />
             {/* Estado del local: solo se muestra (abrir o cerrar lo hace el administrador en Ajustes) */}
             <div
               title={isStoreOpen ? 'Estamos recibiendo pedidos' : 'En este momento no recibimos pedidos'}
-              className={`order-last w-full sm:order-none sm:w-auto flex items-center gap-2.5 pl-1.5 pr-3.5 py-1.5 md:pr-4 rounded-full border bg-white dark:bg-[#151515] shadow-sm ${
+              className={`order-4 flex-1 min-w-0 sm:order-none sm:flex-none flex items-center gap-2.5 pl-1.5 pr-3.5 py-1.5 md:pr-4 rounded-full border bg-white dark:bg-[#151515] shadow-sm ${
                 isStoreOpen ? 'border-emerald-200 dark:border-emerald-900/50' : 'border-rose-200 dark:border-rose-900/50'
               }`}
             >
@@ -1362,7 +1364,7 @@ export default function ClientDashboard() {
             <button
               onClick={() => setActiveTab('profile')}
               title="Mi Perfil"
-              className={`hidden md:flex items-center gap-3 pl-1.5 pr-4 py-1.5 rounded-full border transition-colors cursor-pointer ${activeTab === 'profile' ? 'border-brand-orange bg-orange-50 dark:bg-brand-orange/10' : 'border-gray-200 dark:border-stone-800 bg-white dark:bg-[#151515] hover:border-brand-orange/40'}`}
+              className={`order-5 sm:order-none shrink-0 flex sm:hidden md:flex items-center gap-3 pl-1.5 pr-4 py-1.5 rounded-full border transition-colors cursor-pointer ${activeTab === 'profile' ? 'border-brand-orange bg-orange-50 dark:bg-brand-orange/10' : 'border-gray-200 dark:border-stone-800 bg-white dark:bg-[#151515] hover:border-brand-orange/40'}`}
             >
               <span className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-orange to-orange-600 text-white text-xs font-black flex items-center justify-center shrink-0">
                 {(userProfile.name || '?').split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase()}
@@ -1376,7 +1378,7 @@ export default function ClientDashboard() {
             </button>
 
             {/* Acciones agrupadas (mismo estilo que el panel del admin) */}
-            <div className="flex items-center gap-1 p-1 rounded-2xl bg-gray-100/80 dark:bg-stone-900/80 border border-gray-200/60 dark:border-stone-800">
+            <div className="order-2 sm:order-none shrink-0 flex items-center gap-1 p-1 rounded-2xl bg-gray-100/80 dark:bg-stone-900/80 border border-gray-200/60 dark:border-stone-800">
             <div className="relative">
               <button onClick={() => setShowNotifications(!showNotifications)} title="Notificaciones" className={`w-9 h-9 md:w-10 md:h-10 relative flex items-center justify-center rounded-xl transition-all cursor-pointer ${showNotifications ? 'bg-white dark:bg-stone-800 text-brand-orange shadow-sm' : 'text-gray-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800 hover:text-brand-orange hover:shadow-sm'}`}>
                 <Bell className="w-5 h-5" />

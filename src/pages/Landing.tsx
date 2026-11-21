@@ -208,7 +208,7 @@ export default function Landing() {
           <div className="absolute top-1/2 right-[10%] -translate-y-1/2 w-[420px] h-[420px] rounded-full bg-amber-300/20 dark:bg-amber-500/[0.08] blur-[120px] pointer-events-none"></div>
           <div className="absolute inset-0 opacity-[0.35] dark:opacity-[0.08] pointer-events-none [background-image:radial-gradient(#d6d3d1_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"></div>
 
-          <div className="relative max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="relative max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {[
               { icon: Clock, titulo: 'Entrega Rápida', texto: 'Rastreo en tiempo real y tiempos de despacho optimizados.' },
               { icon: Flame, titulo: 'Ingredientes Frescos', texto: 'Carnes seleccionadas y vegetales frescos todos los días.' },
@@ -218,12 +218,12 @@ export default function Landing() {
               <div key={titulo} className="group relative">
                 {/* Halo naranja que aparece detrás de la tarjeta al pasar el mouse */}
                 <div className="absolute inset-4 rounded-[28px] bg-brand-orange/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                <div className="relative h-full bg-white dark:bg-[#151515] p-6 md:p-8 rounded-[28px] flex flex-col items-center text-center shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] group-hover:-translate-y-1 transition-transform duration-300">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-4">
-                    <Icon className="w-6 h-6 text-brand-orange" />
+                <div className="relative h-full bg-white dark:bg-[#151515] p-4 sm:p-6 md:p-8 rounded-[22px] sm:rounded-[28px] flex flex-col items-center text-center shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] group-hover:-translate-y-1 transition-transform duration-300">
+                  <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-3 sm:mb-4">
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-brand-orange" />
                   </div>
-                  <h3 className="font-bold text-gray-900 dark:text-white mb-2">{titulo}</h3>
-                  <p className="text-sm text-gray-500 dark:text-stone-400">{texto}</p>
+                  <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white mb-1.5 sm:mb-2 leading-tight">{titulo}</h3>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-stone-400">{texto}</p>
                 </div>
               </div>
             ))}
@@ -346,26 +346,26 @@ export default function Landing() {
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white tracking-normal">Clientes Satisfechos</h2>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
             {reviews.map(review => (
-              <div key={review.id} className="group relative">
+              <div key={review.id} className="group relative last:odd:col-span-2 md:last:odd:col-span-1">
                 <div className="absolute inset-4 rounded-[28px] bg-brand-orange/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-              <div className="relative h-full flex flex-col bg-white dark:bg-[#151515] p-6 md:p-8 rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] group-hover:-translate-y-1 transition-transform duration-300">
-                <div className="flex items-center gap-1 mb-6">
+              <div className="relative h-full flex flex-col bg-white dark:bg-[#151515] p-4 sm:p-6 md:p-8 rounded-[22px] sm:rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] group-hover:-translate-y-1 transition-transform duration-300">
+                <div className="flex items-center gap-0.5 sm:gap-1 mb-3 sm:mb-6">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className={`w-5 h-5 ${i < review.rating ? 'text-brand-orange fill-brand-orange' : 'text-gray-300 dark:text-stone-700'}`} />
+                    <Star key={i} className={`w-3.5 h-3.5 sm:w-5 sm:h-5 ${i < review.rating ? 'text-brand-orange fill-brand-orange' : 'text-gray-300 dark:text-stone-700'}`} />
                   ))}
                 </div>
-                <p className="text-gray-600 dark:text-stone-300 italic mb-8 leading-relaxed">
+                <p className="text-xs sm:text-base text-gray-600 dark:text-stone-300 italic mb-4 sm:mb-8 leading-relaxed">
                   "{review.comment}"
                 </p>
-                <div className="flex items-center gap-4 mt-auto">
-                  <div className="w-12 h-12 bg-gradient-to-br from-brand-orange to-[#e66500] rounded-full flex items-center justify-center text-white font-bold text-lg">
+                <div className="flex items-center gap-2 sm:gap-4 mt-auto">
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 shrink-0 bg-gradient-to-br from-brand-orange to-[#e66500] rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-lg">
                     {review.name.charAt(0)}
                   </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 dark:text-white">{review.name}</h4>
-                    <span className="text-xs text-brand-orange font-medium uppercase tracking-wider">{review.role}</span>
+                  <div className="min-w-0">
+                    <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">{review.name}</h4>
+                    <span className="block text-[10px] sm:text-xs text-brand-orange font-medium uppercase tracking-wider leading-tight">{review.role}</span>
                   </div>
                 </div>
               </div>
@@ -389,37 +389,37 @@ export default function Landing() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-              <div className="bg-white dark:bg-[#151515] p-6 rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-16">
+              <div className="bg-white dark:bg-[#151515] p-4 sm:p-6 rounded-[22px] sm:rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center min-w-0">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-4">
                   <MapPin className="w-5 h-5 text-brand-orange" />
                 </div>
-                <h4 className="font-bold text-gray-900 dark:text-white mb-2">Dirección</h4>
-                <p className="text-sm text-gray-500 dark:text-stone-400">Cocina Oculta - Centro<br/>Neiva, Huila</p>
+                <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white mb-1.5 sm:mb-2">Dirección</h4>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-stone-400">Cocina Oculta - Centro<br/>Neiva, Huila</p>
               </div>
               
-              <div className="bg-white dark:bg-[#151515] p-6 rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center">
+              <div className="bg-white dark:bg-[#151515] p-4 sm:p-6 rounded-[22px] sm:rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center min-w-0">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-4">
                   <Clock className="w-5 h-5 text-brand-orange" />
                 </div>
-                <h4 className="font-bold text-gray-900 dark:text-white mb-2">Horario</h4>
-                <p className="text-sm text-gray-500 dark:text-stone-400">De {storeConfig.openTime} a {storeConfig.closeTime}<br/>Lunes a Domingo</p>
+                <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white mb-1.5 sm:mb-2">Horario</h4>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-stone-400 break-words">De {storeConfig.openTime} a {storeConfig.closeTime}<br/>Lunes a Domingo</p>
               </div>
 
-              <div className="bg-white dark:bg-[#151515] p-6 rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center">
+              <div className="bg-white dark:bg-[#151515] p-4 sm:p-6 rounded-[22px] sm:rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center min-w-0">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-4">
                   <Phone className="w-5 h-5 text-brand-orange" />
                 </div>
-                <h4 className="font-bold text-gray-900 dark:text-white mb-2">Teléfono</h4>
-                <p className="text-sm text-gray-500 dark:text-stone-400">+57 300 123 4567<br/>Atención vía WhatsApp</p>
+                <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white mb-1.5 sm:mb-2">Teléfono</h4>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-stone-400">+57 300 123 4567<br/>Atención vía WhatsApp</p>
               </div>
 
-              <div className="bg-white dark:bg-[#151515] p-6 rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center">
+              <div className="bg-white dark:bg-[#151515] p-4 sm:p-6 rounded-[22px] sm:rounded-[28px] shadow-[0_20px_50px_-24px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.75)] text-center flex flex-col items-center min-w-0">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-amber-400/10 flex items-center justify-center mb-4">
                   <Mail className="w-5 h-5 text-brand-orange" />
                 </div>
-                <h4 className="font-bold text-gray-900 dark:text-white mb-2">Email</h4>
-                <p className="text-sm text-gray-500 dark:text-stone-400">hola@hamburguercopiway.com<br/>Soporte 24/7</p>
+                <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white mb-1.5 sm:mb-2">Email</h4>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-stone-400 break-all">hola@hamburguercopiway.com<br/>Soporte 24/7</p>
               </div>
             </div>
 

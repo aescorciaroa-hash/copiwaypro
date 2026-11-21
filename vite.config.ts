@@ -31,6 +31,9 @@ function borrarIndexHtmlDelBuild(outDir: string): Plugin {
 function limpiarChunksViejos(outDir: string): Plugin {
   return {
     name: 'limpiar-chunks-viejos',
+    // Solo en "npm run build": en "npm run dev" tambien corre buildStart y
+    // borraba los chunks compilados, dejando la pagina en negro en produccion.
+    apply: 'build',
     buildStart() {
       const carpeta = path.resolve(outDir, 'assets/chunks');
       if (fs.existsSync(carpeta)) {

@@ -10,7 +10,7 @@ class PushNotificationService
 {
     // Llaves VAPID. Cada instalacion (cada dominio) deberia tener su propio par.
     const VAPID_PUBLIC_KEY = 'BPzLGFNPSprvi7FA4U_LsU0cIXXAOuNy1QC-6ay1KoW-Ua_Ad9oDDpsYNkKzVsm-ix-ALDVdgwPm8_QF5N1NsaE';
-    const VAPID_PRIVATE_KEY = '36xY3qG43_1TDAFsBYBplslNz7zffuKmf7ZLPuLs2fI';
+    // La llave privada NO va aqui: la lee llavePrivada() de datos_push.php (afuera del proyecto).
     const VAPID_SUBJECT = 'mailto:soporte@copiway.com';
 
     // Cuanto tiempo guarda el servicio push el aviso si el celular esta apagado (4 semanas)
@@ -39,7 +39,7 @@ class PushNotificationService
 
     private function enviarATodosLosDispositivos($idCliente, $idPedido, $payload)
     {
-        if (self::VAPID_PUBLIC_KEY === '' || self::VAPID_PRIVATE_KEY === '') {
+        if (self::VAPID_PUBLIC_KEY === '' || self::llavePrivada() === '') {
             return; // VAPID sin configurar.
         }
 
@@ -118,7 +118,7 @@ class PushNotificationService
         $textoAFirmar = $encabezado . '.' . $datos;
 
         $llavePrivada = self::llavePrivadaPem(
-            self::desdeBase64Url(self::VAPID_PRIVATE_KEY),
+            self::desdeBase64Url(self::llavePrivada()),
             self::desdeBase64Url(self::VAPID_PUBLIC_KEY)
         );
         if (!openssl_sign($textoAFirmar, $firmaDer, $llavePrivada, OPENSSL_ALGO_SHA256)) {
@@ -240,6 +240,20 @@ class PushNotificationService
         $r = str_pad(ltrim($r, "\0"), 32, "\0", STR_PAD_LEFT);
         $s = str_pad(ltrim($s, "\0"), 32, "\0", STR_PAD_LEFT);
         return $r . $s;
+    }
+
+    /**
+     * Lee la llave privada VAPID del archivo datos_push.php, dos carpetas arriba
+     * de models/ (afuera del proyecto, no va a GitHub). Si no existe devuelve ''.
+     */
+    private static function llavePrivada()
+    {
+        $archivo = __DIR__ . '/../../datos_push.php';
+        if (!is_file($archivo)) {
+            return '';
+        }
+        require $archivo;
+        return $llavePrivadaPush;
     }
 }
 ?>

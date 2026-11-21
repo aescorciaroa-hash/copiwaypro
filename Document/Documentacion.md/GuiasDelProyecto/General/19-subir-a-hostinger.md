@@ -76,6 +76,27 @@ $claveGmail = "abcdefghijklmnop";
 
 ---
 
+## Parte 2c. La llave de las notificaciones (push)
+
+La llave **privada** de las notificaciones tampoco está en el código. `models/PushNotificationService.php` la lee del archivo `datos_push.php`, en el mismo lugar que `datos_correo.php`:
+
+| Dónde | Ruta del archivo |
+|---|---|
+| Tu computador | `C:\laragon\www\datos_push.php` |
+| Hostinger | en la 🏠, al lado de `public_html` |
+
+Contenido:
+```php
+<?php
+$llavePrivadaPush = "LA_LLAVE_PRIVADA";
+?>
+```
+
+- La llave **pública** sí sigue en el código (`VAPID_PUBLIC_KEY`): es pública a propósito, el navegador la necesita.
+- Si el archivo no existe, no salen notificaciones al celular, pero la página sigue funcionando.
+
+---
+
 ## Parte 3. Respaldar lo que ya está en Hostinger
 
 Hostinger solo instala desde Git en una carpeta **vacía**.

@@ -43,7 +43,7 @@ Envía la notificación "tu pedido llegó" al celular del cliente. La cifra y la
 1. **Base de datos:** en el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
 2. **Tablas que toca:** NOTIFICACION.
 3. **Quién lo usa:** `models/PedidoService.php` (al entregar un pedido) y `PushController`.
-4. **Otros que usa:** `PushSuscripcion` (a qué celulares mandar), las llaves `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`, y funciones de PHP: `openssl` (cifrar y firmar) y `curl` (enviar). **No usa librerías.**
+4. **Otros que usa:** `PushSuscripcion` (a qué celulares mandar), la llave `VAPID_PUBLIC_KEY`, la llave privada (que lee `llavePrivada()` del archivo `datos_push.php`, afuera del proyecto), y funciones de PHP: `openssl` (cifrar y firmar) y `curl` (enviar). **No usa librerías.**
 5. **Sus métodos que otros pueden llamar:** `notificarPedidoEntregado()`.
 
 ```
@@ -56,7 +56,7 @@ React → /api/... → public/index.php → config/rutas.php → Controlador →
 En el `__construct()` hace `global $conn;` y `$this->conn = $conn;` (la conexión que crea `config/database.php`). Después cada método usa `$this->conn->prepare(...)`.
 
 **¿Con qué se conecta `PushNotificationService`?**  
-Con la base de datos (tablas NOTIFICACION); con quien lo usa: `models/PedidoService.php` (al entregar un pedido) y `PushController`. Y con: `PushSuscripcion` (a qué celulares mandar), las llaves `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`, y funciones de PHP: `openssl` (cifrar y firmar) y `curl` (enviar). **No usa librerías.**
+Con la base de datos (tablas NOTIFICACION); con quien lo usa: `models/PedidoService.php` (al entregar un pedido) y `PushController`. Y con: `PushSuscripcion` (a qué celulares mandar), la llave `VAPID_PUBLIC_KEY`, la llave privada (que lee `llavePrivada()` del archivo `datos_push.php`, afuera del proyecto), y funciones de PHP: `openssl` (cifrar y firmar) y `curl` (enviar). **No usa librerías.**
 
 **¿Dónde se crea la conexión que usa?**  
 En `config/database.php` (`$conn = new mysqli(...)`). La carga `public/index.php` una sola vez.
@@ -96,7 +96,7 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 10 | `{` | Abre la clase `PushNotificationService`. |
 | 11 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Llaves VAPID. Cada instalacion (cada dominio) deberia tener su propio par."* |
 | 12 | `const VAPID_PUBLIC_KEY = 'BPzLGFNPSprvi7FA4U_LsU0cIXXAOuNy1QC-6ay1KoW-Ua_Ad9oDDpsYNkKzVsm-ix-ALDVdgwPm8_QF5N1NsaE';` | Constante `VAPID_PUBLIC_KEY`: la clave pública (la necesita el navegador para suscribirse). |
-| 13 | `const VAPID_PRIVATE_KEY = '36xY3qG43_1TDAFsBYBplslNz7zffuKmf7ZLPuLs2fI';` | Constante `VAPID_PRIVATE_KEY`: la clave privada (firma las notificaciones). No se comparte. |
+| 13 | *(comentario)* | Comentario: no se ejecuta. Dice que la llave privada **no** está aquí: la lee `llavePrivada()` del archivo `datos_push.php`, afuera del proyecto, para que no quede en GitHub (el repositorio es público). |
 | 14 | `const VAPID_SUBJECT = 'mailto:soporte@copiway.com';` | Constante `VAPID_SUBJECT`: un contacto del dueño del sistema. |
 | 16 | *(comentario)* | Comentario: no se ejecuta. Dice: *"Cuanto tiempo guarda el servicio push el aviso si el celular esta apagado (4 semanas)"* |
 | 17 | `const TTL_SEGUNDOS = 2419200;` | Constante `TTL_SEGUNDOS`: si el celular está apagado, el servicio guarda el aviso hasta 4 semanas (2.419.200 segundos). |
@@ -120,7 +120,7 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 38 | `}` | Cierra la función `notificarPedidoEntregado()`. |
 | 40 | `private function enviarATodosLosDispositivos($idCliente, $idPedido, $payload)` | Método `enviarATodosLosDispositivos(...)` (privado): envía la notificación a todos los celulares del cliente. |
 | 41 | `{` | Abre la función `enviarATodosLosDispositivos()`. |
-| 42 | `if (self::VAPID_PUBLIC_KEY === '' \|\| self::VAPID_PRIVATE_KEY === '') {` | Si falta alguna de las llaves VAPID... |
+| 42 | `if (self::VAPID_PUBLIC_KEY === '' \|\| self::llavePrivada() === '') {` | Si falta la llave pública o la privada (por ejemplo, si no existe `datos_push.php`)... |
 | 43 | `return; // VAPID sin configurar.` | ...sale sin enviar nada. |
 | 44 | `}` | Cierra el `if`. |
 | 46 | `$suscripciones = $this->suscripcionModel->listarPorCliente($idCliente);` | Trae los celulares suscritos del cliente (`listarPorCliente()` de `models/PushSuscripcion.php`). |
@@ -183,7 +183,7 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 117 | `], JSON_UNESCAPED_SLASHES));` | Cierra la lista. `JSON_UNESCAPED_SLASHES` = deja las `/` tal cual. |
 | 118 | `$textoAFirmar = $encabezado . '.' . $datos;` | Une las dos partes con un punto: eso es lo que se firma. |
 | 120 | `$llavePrivada = self::llavePrivadaPem(` | Prepara la llave privada VAPID en el formato que entiende openssl... |
-| 121 | `self::desdeBase64Url(self::VAPID_PRIVATE_KEY),` | ...con la llave privada... |
+| 121 | `self::desdeBase64Url(self::llavePrivada()),` | ...con la llave privada (la trae `llavePrivada()`)... |
 | 122 | `self::desdeBase64Url(self::VAPID_PUBLIC_KEY)` | ...y la pública. |
 | 123 | `);` | Cierra la instrucción. |
 | 124 | `if (!openssl_sign($textoAFirmar, $firmaDer, $llavePrivada, OPENSSL_ALGO_SHA256)) {` | **Firma** el texto con la llave privada (`openssl_sign`). La firma queda en `$firmaDer`. Si no se pudo... |
@@ -285,8 +285,18 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | 241 | `$s = str_pad(ltrim($s, "\0"), 32, "\0", STR_PAD_LEFT);` | Deja `s` en 32 bytes exactos. |
 | 242 | `return $r . $s;` | Devuelve los dos pegados (64 bytes). |
 | 243 | `}` | Cierra la función `firmaDerACruda()`. |
-| 244 | `}` | Cierra la función `cabeceraVapid()`. |
-| 245 | `?>` | Cierra el código PHP. |
+| 245-248 | *(comentario)* | Comentario: no se ejecuta. Dice que `llavePrivada()` lee la llave del archivo `datos_push.php`, dos carpetas arriba de `models/`, y que si no existe devuelve `''`. |
+| 249 | `private static function llavePrivada()` | Método `llavePrivada()` (privado): trae la llave privada VAPID, la que firma las notificaciones. No se comparte. |
+| 250 | `{` | Abre la función `llavePrivada()`. |
+| 251 | `$archivo = __DIR__ . '/../../datos_push.php';` | Guarda en `$archivo` la ruta del archivo de la llave. `__DIR__` = la carpeta `models/`; `/../../` = sube dos carpetas, quedando afuera del proyecto (en tu computador: `C:\laragon\www\`; en Hostinger: al lado de `public_html`). |
+| 252 | `if (!is_file($archivo)) {` | `is_file` = "¿existe ese archivo?". `!` = "no". Si el archivo **no** existe... |
+| 253 | `return '';` | ...devuelve vacío: no se envían notificaciones (la app sigue funcionando). |
+| 254 | `}` | Cierra el `if`. |
+| 255 | `require $archivo;` | Trae el archivo `datos_push.php`, que crea la variable `$llavePrivadaPush`. |
+| 256 | `return $llavePrivadaPush;` | Devuelve la llave. |
+| 257 | `}` | Cierra la función `llavePrivada()`. |
+| 258 | `}` | Cierra la clase `PushNotificationService`. |
+| 259 | `?>` | Cierra el código PHP. |
 
 ## ¿Qué pasa si se borra?
 | Si se borra… | Qué deja de funcionar | Error que sale |
@@ -301,7 +311,8 @@ Cada línea del archivo y lo que hace. Las palabras y símbolos están explicado
 | el método `enviarATodosLosDispositivos()` | entregar pedidos con el PIN | `Call to undefined method PushNotificationService::enviarATodosLosDispositivos()` |
 | el método `registrarEnvio()` | entregar pedidos con el PIN | `Call to undefined method PushNotificationService::registrarEnvio()` |
 | la constante `VAPID_PUBLIC_KEY` | lo que la usa dentro de la clase | `Undefined constant PushNotificationService::VAPID_PUBLIC_KEY` |
-| la constante `VAPID_PRIVATE_KEY` | lo que la usa dentro de la clase | `Undefined constant PushNotificationService::VAPID_PRIVATE_KEY` |
+| el método `llavePrivada()` | entregar pedidos con el PIN | `Call to undefined method PushNotificationService::llavePrivada()` |
+| el archivo `datos_push.php` | no salen notificaciones al celular (no hay error: la app sigue funcionando) | ninguno |
 | la constante `VAPID_SUBJECT` | lo que la usa dentro de la clase | `Undefined constant PushNotificationService::VAPID_SUBJECT` |
 
 **Cómo ver el error:** en el navegador, **F12 → Red → la petición en rojo → Respuesta**.

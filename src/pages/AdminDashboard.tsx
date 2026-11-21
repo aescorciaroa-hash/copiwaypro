@@ -1050,8 +1050,8 @@ export default function AdminDashboard() {
               <Menu className="w-6 h-6" />
             </button>
             <div className="flex items-center gap-3 min-w-0">
-              <div className="hidden sm:flex w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-orange-500/5 dark:from-brand-orange/20 dark:to-orange-500/5 text-brand-orange items-center justify-center shrink-0 ring-1 ring-inset ring-brand-orange/20">
-                <seccionActual.icon className="w-[22px] h-[22px]" />
+              <div className="flex w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-brand-orange/15 to-orange-500/5 dark:from-brand-orange/20 dark:to-orange-500/5 text-brand-orange items-center justify-center shrink-0 ring-1 ring-inset ring-brand-orange/20">
+                <seccionActual.icon className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />
               </div>
               <div className="min-w-0">
                 <p className="hidden md:block text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400 dark:text-stone-500">Panel · <span className="capitalize tracking-normal normal-case">{currentTime.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}</span></p>

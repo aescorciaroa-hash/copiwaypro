@@ -400,11 +400,11 @@ export default function MenuSection({
                     <h3 className="font-bold text-gray-900 dark:text-white text-[14px] sm:text-xl leading-tight pr-1 sm:pr-4 line-clamp-2">{product.name}</h3>
                   </div>
                   {product.description && (
-                    <p className="hidden sm:block text-sm text-gray-500 dark:text-stone-400 mb-6 line-clamp-3 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-stone-400 mb-3 sm:mb-6 line-clamp-2 sm:line-clamp-3 leading-relaxed">
                       {product.description}
                     </p>
                   )}
-                  {!product.description && <div className="hidden sm:block mb-6"></div>}
+                  {!product.description && <div className="mb-3 sm:mb-6"></div>}
                   
                   <div className="flex items-center justify-between mt-auto">
                     <div className="bg-gray-50 dark:bg-stone-900/50 text-brand-orange px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl font-bold text-[12px] sm:text-sm whitespace-nowrap">

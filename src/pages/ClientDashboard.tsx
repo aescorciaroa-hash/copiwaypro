@@ -1315,26 +1315,26 @@ export default function ClientDashboard() {
 
       {/* Área Principal */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-gray-50/50 dark:bg-stone-950 pb-20 md:pb-0 min-w-0">
-        <header className="h-[70px] md:h-24 border-b border-gray-100 dark:border-white/5 bg-white/80 dark:bg-[#0c0a09]/80 backdrop-blur-xl flex items-center justify-between gap-3 px-4 sm:px-6 md:px-10 shrink-0 sticky top-0 z-50 transition-colors duration-300">
+        <header className="min-h-[70px] py-2.5 sm:py-0 sm:h-[70px] md:h-24 border-b border-gray-100 dark:border-white/5 bg-white/80 dark:bg-[#0c0a09]/80 backdrop-blur-xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-3 gap-y-2 px-4 sm:px-6 md:px-10 shrink-0 sticky top-0 z-50 transition-colors duration-300">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="md:hidden w-9 h-9 rounded-xl bg-brand-orange flex items-center justify-center shadow-lg shadow-brand-orange/20 shrink-0">
-              <Layers className="w-4 h-4 text-white" />
-            </div>
-            <div className="hidden sm:flex items-center gap-3 min-w-0">
-              <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-orange-50 dark:bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0">
+            {/* Icono, titulo y frase de la seccion: tambien en el celular */}
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-2xl bg-orange-50 dark:bg-brand-orange/10 text-brand-orange flex items-center justify-center shrink-0">
                 <seccionActual.icono className="w-5 h-5 md:w-6 md:h-6" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-lg md:text-xl font-black tracking-tight text-gray-900 dark:text-white truncate">{seccionActual.titulo}</h1>
-                <p className="text-xs font-medium text-gray-500 dark:text-stone-400 truncate">{seccionActual.frase}</p>
+                <h1 className="text-[15px] sm:text-lg md:text-xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">{seccionActual.titulo}</h1>
+                <p className="text-[11px] sm:text-xs font-medium text-gray-500 dark:text-stone-400 leading-tight">{seccionActual.frase}</p>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-4">
+          {/* En el celular este grupo se "deshace" (contents) para que el estado del
+              local baje a una segunda fila completa y no apriete el titulo. */}
+          <div className="contents sm:flex items-center gap-2 sm:gap-4">
             {/* Estado del local: solo se muestra (abrir o cerrar lo hace el administrador en Ajustes) */}
             <div
               title={isStoreOpen ? 'Estamos recibiendo pedidos' : 'En este momento no recibimos pedidos'}
-              className={`flex items-center gap-2.5 pl-1.5 pr-3.5 py-1.5 md:pr-4 rounded-full border bg-white dark:bg-[#151515] shadow-sm ${
+              className={`order-last w-full sm:order-none sm:w-auto flex items-center gap-2.5 pl-1.5 pr-3.5 py-1.5 md:pr-4 rounded-full border bg-white dark:bg-[#151515] shadow-sm ${
                 isStoreOpen ? 'border-emerald-200 dark:border-emerald-900/50' : 'border-rose-200 dark:border-rose-900/50'
               }`}
             >
@@ -1351,7 +1351,7 @@ export default function ClientDashboard() {
                 <span className={`text-xs font-black ${isStoreOpen ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
                   {isStoreOpen ? 'Cocina Abierta' : 'Cocina Cerrada'}
                 </span>
-                <span className="hidden sm:flex items-center gap-1 text-[10px] font-semibold text-gray-500 dark:text-stone-400">
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-gray-500 dark:text-stone-400 whitespace-nowrap">
                   <Clock className="w-3 h-3" />
                   {isStoreOpen ? `Hoy ${storeConfig.openTime || '11:00'} - ${storeConfig.closeTime || '23:00'}` : `Abre a las ${storeConfig.openTime || '11:00'}`}
                 </span>

@@ -210,7 +210,7 @@ export default function MapSection({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Mapa Leaflet */}
           <div className="lg:col-span-2 bg-white dark:bg-[#151515] rounded-[32px] border border-gray-100 dark:border-stone-800 shadow-sm p-4 sm:p-6 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-950/60 text-brand-orange flex items-center justify-center">
                   <MapPin className="w-4 h-4" />
@@ -223,7 +223,7 @@ export default function MapSection({
               </div>
 
               {/* Leyenda */}
-              <div className="hidden sm:flex items-center gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                 <span className="flex items-center gap-1.5 text-gray-600 dark:text-stone-300 font-medium">
                   <span className="w-3 h-3 rounded-full bg-brand-orange shadow-sm border border-white" />
                   Sede Central

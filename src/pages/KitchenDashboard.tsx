@@ -669,7 +669,7 @@ export default function KitchenDashboard() {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <div className="hidden xs:flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-3 md:px-5 py-2 md:py-2.5 rounded-full border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
+            <div className="hidden sm:flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-3 md:px-5 py-2 md:py-2.5 rounded-full border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
               <span className="font-bold text-[10px] md:text-xs uppercase tracking-wider">Sistema en Línea</span>
             </div>
@@ -730,7 +730,7 @@ export default function KitchenDashboard() {
               title={soundEnabled ? 'Silenciar alertas sonoras' : 'Activar timbre sonoro de cocina'}
             >
               {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-500 animate-pulse" /> : <VolumeX className="w-4 h-4 text-gray-400" />}
-              <span className="hidden md:inline">{soundEnabled ? 'Sonido Activo' : 'Silenciado'}</span>
+              <span>{soundEnabled ? 'Sonido Activo' : 'Silenciado'}</span>
             </button>
 
             <div className="flex items-center gap-3 pl-3 pr-4 md:pl-4 md:pr-5 py-1.5 md:py-2 rounded-2xl bg-white dark:bg-[#151515] border border-gray-200 dark:border-stone-800 shadow-sm">
@@ -746,13 +746,32 @@ export default function KitchenDashboard() {
                     {String(time.getSeconds()).padStart(2, '0')}
                   </span>
                 </div>
-                <p className="hidden md:block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-stone-500 mt-1">
+                <p className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-stone-500 mt-1">
                   {time.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })}
                 </p>
               </div>
             </div>
           </div>
         </header>
+
+        {/* En el celular: "Sistema en linea" y preparacion promedio (en pantallas grandes estan en la barra de arriba) */}
+        <div className="sm:hidden shrink-0 flex items-center justify-between gap-2 px-4 py-2 bg-white dark:bg-[#151515] border-b border-gray-100 dark:border-stone-800">
+          <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-2.5 py-1.5 rounded-full border border-emerald-100 dark:border-emerald-900/30">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="font-bold text-[10px] uppercase tracking-wider">Sistema en Línea</span>
+          </div>
+          <div className="flex items-center gap-2 text-right">
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${prepStats.tone.bg} ${prepStats.tone.text}`}>
+              <Timer className="w-3.5 h-3.5" />
+            </div>
+            <div className="leading-tight">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 dark:text-stone-500">Preparación promedio</p>
+              <p className="text-xs font-black text-gray-900 dark:text-white tabular-nums">
+                {prepStats.count > 0 ? `${prepStats.avg} min · ${prepStats.count} hoy` : '—'}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Banner flotante de Alerta Sonora / Visual (RF-27 / RF-36) */}
         <AnimatePresence>

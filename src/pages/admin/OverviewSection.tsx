@@ -68,7 +68,9 @@ export default function OverviewSection({
         const activos = pendientes + enCocina + listos + enCamino;
         // Foto: la del producto más vendido (guardada en el propio servidor); si no hay, la de cualquier producto.
         const masVendido = products.find(p => p.name === topProductsData[0]?.name && p.image);
-        const foto = masVendido?.image || products.find(p => p.active && p.image)?.image || '';
+        // Sin fotos de productos todavia: foto de hamburguesa por defecto (antes quedaba el recuadro vacio).
+        const FOTO_DEFECTO = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=900&auto=format&fit=crop';
+        const foto = masVendido?.image || products.find(p => p.active && p.image)?.image || FOTO_DEFECTO;
 
         return (
           <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-gray-900 via-stone-900 to-[#2a1608] text-white shadow-xl shadow-gray-900/10">
@@ -122,12 +124,18 @@ export default function OverviewSection({
               {/* Cocina en vivo: foto con los pedidos de cada estado encima */}
               <div className="relative block h-52 sm:h-60 lg:h-auto lg:min-h-[270px] rounded-3xl overflow-hidden bg-gradient-to-br from-stone-800 to-[#3a1d08]">
                 {foto && (
-                  <img loading="lazy" decoding="async"
+                  <img loading="eager" decoding="async"
+                    key={foto}
                     src={foto}
                     alt=""
                     className="absolute inset-0 w-full h-full object-cover"
-                    // Si la foto no carga, se esconde y queda el fondo oscuro (no la imagen rota).
-                    onError={e => { e.currentTarget.style.display = 'none'; }}
+                    // Si la foto del producto no carga, se usa la de por defecto; si tampoco
+                    // carga (sin internet), se esconde y queda el fondo oscuro.
+                    onError={e => {
+                      const img = e.currentTarget;
+                      if (img.src !== FOTO_DEFECTO) img.src = FOTO_DEFECTO;
+                      else img.style.display = 'none';
+                    }}
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />

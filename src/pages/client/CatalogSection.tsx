@@ -150,7 +150,7 @@ export default function CatalogSection({
           {catalog.length > 0 && (
             <button
               onClick={() => openCustomizer(catalog[0])}
-              className="relative hidden sm:block h-56 lg:h-auto lg:min-h-[260px] rounded-3xl overflow-hidden group cursor-pointer text-left"
+              className="relative block h-48 sm:h-56 lg:h-auto lg:min-h-[260px] rounded-3xl overflow-hidden group cursor-pointer text-left"
               title={`Pedir ${catalog[0].name}`}
             >
               <img loading="lazy" decoding="async" src={getProductImage(catalog[0].image)} alt={catalog[0].name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -246,7 +246,7 @@ export default function CatalogSection({
                 <div className="flex flex-col flex-1 p-3 sm:p-5 justify-between min-w-0">
                   <div>
                     <h3 className="font-bold text-gray-900 dark:text-white text-[14px] sm:text-[18px] leading-tight mb-1 sm:mb-2 line-clamp-2">{prod.name}</h3>
-                    <p className="hidden sm:block text-[13px] text-gray-500 dark:text-stone-400 leading-relaxed line-clamp-2 mb-3">{prod.description}</p>
+                    <p className="text-[11px] sm:text-[13px] text-gray-500 dark:text-stone-400 leading-snug sm:leading-relaxed line-clamp-2 mb-2 sm:mb-3">{prod.description}</p>
                   </div>
                   <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-50 dark:border-stone-800/60">
                     <span className="bg-orange-50 dark:bg-stone-900/80 text-brand-orange px-2.5 sm:px-3 py-1 rounded-lg font-black text-xs sm:text-sm">

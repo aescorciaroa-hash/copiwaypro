@@ -1042,10 +1042,12 @@ export default function AdminDashboard() {
 
       {/* Área Principal */}
       <main className="flex-1 flex flex-col h-[100dvh] overflow-hidden relative bg-gray-50/50 dark:bg-stone-950 min-w-0">
-        <header className="h-[70px] md:h-24 border-b border-gray-100 dark:border-white/5 bg-white/80 dark:bg-[#0c0a09]/80 backdrop-blur-xl flex items-center justify-between gap-3 px-4 md:px-8 shrink-0 z-10 sticky top-0 transition-colors duration-300">
+        {/* En el celular es la MISMA barra del portatil, repartida en dos filas:
+            fila 1 = menu, seccion, notificaciones y tema; fila 2 = estado de la tienda, Nuevo pedido y perfil. */}
+        <header className="min-h-[70px] py-3 md:py-0 md:h-24 border-b border-gray-100 dark:border-white/5 bg-white/80 dark:bg-[#0c0a09]/80 backdrop-blur-xl flex flex-wrap md:flex-nowrap items-center justify-between gap-x-2 md:gap-x-3 gap-y-3 px-4 md:px-8 shrink-0 z-10 sticky top-0 transition-colors duration-300">
 
           {/* Izquierda: botón de menú (móvil) + sección actual + fecha */}
-          <div className="flex items-center gap-3 md:gap-4 min-w-0">
+          <div className="order-1 flex-1 md:flex-none md:order-none flex items-center gap-3 md:gap-4 min-w-0">
             <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-stone-900 text-gray-600 dark:text-stone-300 transition-colors shrink-0">
               <Menu className="w-6 h-6" />
             </button>
@@ -1054,15 +1056,17 @@ export default function AdminDashboard() {
                 <seccionActual.icon className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />
               </div>
               <div className="min-w-0">
-                <p className="hidden md:block text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400 dark:text-stone-500">Panel · <span className="capitalize tracking-normal normal-case">{currentTime.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}</span></p>
-                <h2 className="font-black text-[17px] md:text-[22px] tracking-tight text-gray-900 dark:text-white leading-tight truncate">{seccionActual.label}</h2>
+                <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.1em] md:tracking-[0.14em] text-gray-400 dark:text-stone-500 leading-tight">Panel · <span className="capitalize tracking-normal normal-case">{currentTime.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}</span></p>
+                <h2 className="font-black text-[17px] md:text-[22px] tracking-tight text-gray-900 dark:text-white leading-tight md:truncate">{seccionActual.label}</h2>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+          <div className="contents md:flex items-center gap-2 md:gap-3 shrink-0">
+            {/* Salto a la segunda fila (solo celular) */}
+            <div className="basis-full h-0 order-3 md:hidden" />
             {/* Estado de la tienda con su horario */}
-            <div className={`hidden xl:flex items-center gap-2.5 pl-3 pr-4 py-2 rounded-2xl border ${
+            <div className={`order-4 md:order-none shrink-0 flex md:hidden xl:flex items-center gap-2 md:gap-2.5 pl-2.5 md:pl-3 pr-2.5 md:pr-4 py-2 rounded-2xl border ${
               isStoreAutomaticallyOpen
                 ? 'bg-emerald-50/80 border-emerald-200/70 dark:bg-emerald-500/10 dark:border-emerald-500/20'
                 : 'bg-gray-50 border-gray-200 dark:bg-stone-900 dark:border-stone-800'
@@ -1085,14 +1089,14 @@ export default function AdminDashboard() {
             <button
               onClick={() => setShowManualForm(true)}
               title="Nuevo pedido manual"
-              className="hidden md:inline-flex items-center gap-2 h-11 px-4 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold shadow-sm hover:bg-brand-orange dark:hover:bg-brand-orange dark:hover:text-white hover:shadow-md hover:shadow-brand-orange/25 active:scale-95 transition-all"
+              className="order-5 md:order-none flex-1 md:flex-none justify-center inline-flex items-center gap-1.5 md:gap-2 h-11 px-2.5 md:px-4 whitespace-nowrap rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold shadow-sm hover:bg-brand-orange dark:hover:bg-brand-orange dark:hover:text-white hover:shadow-md hover:shadow-brand-orange/25 active:scale-95 transition-all"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden lg:inline">Nuevo pedido</span>
+              <span className="md:hidden lg:inline">Nuevo pedido</span>
             </button>
 
             {/* Acciones agrupadas */}
-            <div className="flex items-center gap-1 p-1 rounded-2xl bg-gray-100/80 dark:bg-stone-900/80 border border-gray-200/60 dark:border-stone-800">
+            <div className="order-2 md:order-none shrink-0 flex items-center gap-1 p-1 rounded-2xl bg-gray-100/80 dark:bg-stone-900/80 border border-gray-200/60 dark:border-stone-800">
               <button onClick={() => setShowNotifications(true)} title="Notificaciones" className={`w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-xl transition-all relative ${
                 showNotifications
                   ? 'bg-white dark:bg-stone-800 text-brand-orange shadow-sm'
@@ -1141,7 +1145,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Perfil del administrador */}
-            <div className="hidden md:flex items-center gap-3 pl-1.5 pr-1.5 lg:pr-4 py-1.5 rounded-2xl border border-gray-200/70 dark:border-stone-800 bg-white dark:bg-stone-900/60">
+            <div className="order-6 md:order-none shrink-0 flex items-center gap-3 pl-1.5 pr-1.5 lg:pr-4 py-1.5 rounded-2xl border border-gray-200/70 dark:border-stone-800 bg-white dark:bg-stone-900/60">
               <div className="relative">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-orange to-orange-600 text-white flex items-center justify-center shadow-md shadow-brand-orange/25">
                   <Shield className="w-[18px] h-[18px]" />
@@ -1156,24 +1160,6 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        {/* En el celular: fecha, estado de la tienda y "Nuevo pedido" (en el computador estan en la barra de arriba) */}
-        <div className="md:hidden flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 dark:border-white/5 bg-white/80 dark:bg-[#0c0a09]/80 backdrop-blur-xl shrink-0">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold text-gray-400 dark:text-stone-500 leading-tight first-letter:uppercase">
-              {currentTime.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
-            <p className={`text-xs font-black leading-tight flex items-center gap-1.5 mt-0.5 ${isStoreAutomaticallyOpen ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-600 dark:text-stone-400'}`}>
-              <span className={`w-2 h-2 rounded-full shrink-0 ${isStoreAutomaticallyOpen ? 'bg-emerald-500' : 'bg-gray-400 dark:bg-stone-600'}`} />
-              {isStoreAutomaticallyOpen ? `Tienda abierta · hasta las ${storeConfig.closeTime || '23:00'}` : `Tienda cerrada · abre a las ${storeConfig.openTime || '11:00'}`}
-            </p>
-          </div>
-          <button
-            onClick={() => setShowManualForm(true)}
-            className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold shadow-sm active:scale-95 transition-all shrink-0"
-          >
-            <Plus className="w-4 h-4" /> Nuevo pedido
-          </button>
-        </div>
 
         {/* Panel lateral de notificaciones: sale por la derecha y oscurece el fondo */}
         <AnimatePresence>

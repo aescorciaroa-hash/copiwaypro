@@ -400,7 +400,7 @@ export default function MenuSection({
                     <h3 className="font-bold text-gray-900 dark:text-white text-[14px] sm:text-xl leading-tight pr-1 sm:pr-4 line-clamp-2">{product.name}</h3>
                   </div>
                   {product.description && (
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-stone-400 mb-3 sm:mb-6 line-clamp-2 sm:line-clamp-3 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-stone-400 mb-3 sm:mb-6 sm:line-clamp-3 leading-relaxed">
                       {product.description}
                     </p>
                   )}

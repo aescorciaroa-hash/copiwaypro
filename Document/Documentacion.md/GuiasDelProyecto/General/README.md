@@ -26,3 +26,4 @@ hace cada rol...). Si quieres el detalle de un archivo en particular, está en e
 | 16 | [¿Cómo se conecta todo? + preguntas](16-conexiones-y-preguntas.md) | Cómo se conecta un modelo, con qué se conecta cada archivo y el banco de preguntas del instructor. |
 | 17 | [Banco de preguntas (todos los temas)](17-banco-de-preguntas.md) | Más de 200 preguntas con respuesta corta: MVC, PHP, base de datos, SQL, React, seguridad, pedidos, pagos, caja, errores y cambios. |
 | 18 | [Velocidad y modo sin internet](18-velocidad-y-modo-sin-internet.md) | Por qué el sistema carga rápido: cada pantalla en su archivo, compresión, el navegador guarda los archivos y el Service Worker hace que funcione sin internet. |
+| 19 | [Subir los cambios a Hostinger](19-subir-a-hostinger.md) | Conectar GitHub con Hostinger para que cada `git push` actualice la página sola, sin el administrador de archivos. |

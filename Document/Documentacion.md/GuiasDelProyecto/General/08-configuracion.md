@@ -9,9 +9,9 @@ Cada dato está en el archivo que lo usa:
 
 | Qué | Archivo | Valor por defecto |
 |---|---|---|
-| Conexión a MySQL: `$host`, `$user`, `$password`, `$bd`, `$port` | `config/database.php` | `127.0.0.1`, `root`, vacío, `hamburguer_copiway`, `3306` (así viene Laragon) |
-| `'entorno'` | `config/app.php` | `'local'`. En `local`, si el correo no sale, la recuperación de contraseña devuelve el código para probar. |
-| `'debug'` | `config/app.php` | `true`: muestra el detalle de los errores. **`false` en producción.** |
+| Conexión a MySQL: `$host`, `$user`, `$password`, `$bd`, `$port` | `config/database.php` | En tu computador (Windows): `127.0.0.1`, `root`, vacío, `hamburguer_copiway`, `3306` (así viene Laragon). En Hostinger (Linux): los lee del archivo `datos_bd.php`, que está afuera de `public_html` y no se sube a GitHub. El archivo elige solo con `PHP_OS_FAMILY`. |
+| `'entorno'` | `config/app.php` | Se elige solo: `'local'` en Windows (tu computador) y `'production'` en Hostinger. En `local`, si el correo no sale, la recuperación de contraseña devuelve el código para probar. |
+| `'debug'` | `config/app.php` | Se elige solo: `true` en tu computador (muestra el detalle de los errores) y `false` en Hostinger. |
 | `'zona_horaria'` | `config/app.php` | `'America/Bogota'` |
 | `'ruta_base'` | `config/app.php` | vacío = la carpeta del proyecto se detecta sola (recomendado). |
 | `NOMBRE`, `DURACION_MINUTOS` (sesión) | `config/Session.php` | `'copiway_session'`, `120` minutos |

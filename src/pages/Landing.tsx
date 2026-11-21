@@ -321,7 +321,7 @@ export default function Landing() {
                 Hamburguer Copiway opera como un hub culinario enfocado 100% en la calidad, la rapidez y tu satisfacción al recibir en casa.
               </p>
               
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-3 gap-3 sm:gap-6">
                 <div>
                   <div className="text-2xl sm:text-3xl font-black text-brand-orange mb-1 whitespace-nowrap">+10K</div>
                   <div className="text-[10px] sm:text-sm font-medium text-gray-500 dark:text-stone-400 uppercase tracking-wider leading-tight">Pedidos<br/>Entregados</div>
@@ -330,7 +330,7 @@ export default function Landing() {
                   <div className="text-2xl sm:text-3xl font-black text-brand-orange mb-1 whitespace-nowrap">99%</div>
                   <div className="text-[10px] sm:text-sm font-medium text-gray-500 dark:text-stone-400 uppercase tracking-wider leading-tight">Clientes<br/>Felices</div>
                 </div>
-                <div className="col-span-2 md:col-span-1">
+                <div>
                   <div className="text-2xl sm:text-3xl font-black text-brand-orange mb-1 whitespace-nowrap">3</div>
                   <div className="text-[10px] sm:text-sm font-medium text-gray-500 dark:text-stone-400 uppercase tracking-wider leading-tight">Años de<br/>Experiencia</div>
                 </div>

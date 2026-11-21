@@ -124,6 +124,8 @@ export default function DeliveryDashboard() {
 
   const [mapCenter, setMapCenter] = useState<[number, number]>(UBICACION_NEGOCIO);
   const [destCoords, setDestCoords] = useState<[number, number] | null>(null);
+  // Posicion del domiciliario (GPS o simulada). Distinta de mapCenter, que es solo hacia donde mira el mapa.
+  const [driverPos, setDriverPos] = useState<[number, number] | null>(null);
 
   useEffect(() => {
     if (activeRoute) {
@@ -205,6 +207,7 @@ export default function DeliveryDashboard() {
             isUsingMock = false;
             const { latitude, longitude } = position.coords;
             setMapCenter([latitude, longitude]);
+            setDriverPos([latitude, longitude]);
             const now = Date.now();
             if (now - lastSentAt >= 10000) {
               lastSentAt = now;
@@ -236,6 +239,7 @@ export default function DeliveryDashboard() {
              currentMockLoc = [UBICACION_NEGOCIO[0] + 0.0001, UBICACION_NEGOCIO[1] + 0.0001];
            }
            setMapCenter(currentMockLoc);
+           setDriverPos(currentMockLoc);
         }
       }, 2000);
     }
@@ -597,47 +601,67 @@ export default function DeliveryDashboard() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             
-            <Marker 
-              position={destCoords || mapCenter} 
+            {/* Negocio (punto de salida) en su ubicacion real */}
+            <Marker
+              position={UBICACION_NEGOCIO}
               icon={L.divIcon({
-                html: `<div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
-                         <svg viewBox="0 0 32 32" style="width: 32px; height: 32px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
-                           <path d="M16 0c-5.5 0-10 4.5-10 10 0 7.5 10 22 10 22s10-14.5 10-22c0-5.5-4.5-10-10-10z" fill="#ea4335"/>
-                           <circle cx="16" cy="10" r="6" fill="#fff"/>
-                           <path d="M16 12.5c-.3 0-1.8-1.5-2.5-2.2-.8-.8-.8-2 0-2.8.8-.8 2-.8 2.8 0 .2.2.4.4.5.7.1-.3.3-.5.5-.7.8-.8 2-.8 2.8 0 .8.8.8 2 0 2.8-.7.7-2.2 2.2-2.5 2.2H16z" fill="#ea4335"/>
-                         </svg>
-                       </div>`,
+                html: `<div style="width: 34px; height: 34px; border-radius: 50%; background: #ff7000; border: 3px solid white; box-shadow: 0 4px 10px rgba(255,112,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 17px;">🍔</div>`,
                 className: 'custom-marker',
-                iconSize: [30, 30],
-                iconAnchor: [15, 30]
+                iconSize: [34, 34],
+                iconAnchor: [17, 17]
               })}
             >
               <Popup>Hamburguer Copiway</Popup>
             </Marker>
-            
-            <RoutePolyline 
-               origin={UBICACION_NEGOCIO} 
-               destination={[2.9380, -75.2900]} 
-               outerColor="#1e3a8a" 
-               innerColor="#3b82f6" 
-             />
-            <Marker 
-              position={[2.9380, -75.2900]} 
-              icon={L.divIcon({
-                html: `<div style="width: 24px; height: 24px; background-color: #3b82f6; border-radius: 50%; border: 4px solid white; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.6); cursor: pointer;"></div>`,
-                className: 'custom-marker',
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
-              })}
-            />
+
+            {/* Destino: la direccion real del pedido */}
             {destCoords && (
-                <RoutePolyline
-                  origin={mapCenter}
-                  destination={destCoords}
-                  outerColor="#b91c1c"
-                  innerColor="#ea4335"
-                />
-              )}
+              <Marker
+                position={destCoords}
+                icon={L.divIcon({
+                  html: `<div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
+                           <svg viewBox="0 0 32 32" style="width: 32px; height: 32px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
+                             <path d="M16 0c-5.5 0-10 4.5-10 10 0 7.5 10 22 10 22s10-14.5 10-22c0-5.5-4.5-10-10-10z" fill="#ea4335"/>
+                             <circle cx="16" cy="10" r="5" fill="#fff"/>
+                           </svg>
+                         </div>`,
+                  className: 'custom-marker',
+                  iconSize: [30, 30],
+                  iconAnchor: [15, 30]
+                })}
+              >
+                <Popup>Entrega: {activeRoute.address}</Popup>
+              </Marker>
+            )}
+
+            {/* Domiciliario (posicion del GPS) */}
+            {driverPos && (
+            <Marker
+              position={driverPos}
+              icon={L.divIcon({
+                html: `<div style="width: 22px; height: 22px; background-color: #3b82f6; border-radius: 50%; border: 4px solid white; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.6);"></div>`,
+                className: 'custom-marker',
+                iconSize: [22, 22],
+                iconAnchor: [11, 11]
+              })}
+            >
+              <Popup>Tu ubicación</Popup>
+            </Marker>
+            )}
+
+            {/* Ruta hacia la direccion real: desde el domiciliario si ya va en camino,
+                si no desde el negocio (donde tiene que recoger el pedido). */}
+            {destCoords && (
+              <RoutePolyline
+                origin={activeRoute.status === 'En Camino' && driverPos
+                  // Redondeado a ~100 m: la ruta se recalcula al avanzar, no con cada lectura del GPS.
+                  ? [Math.round(driverPos[0] * 1000) / 1000, Math.round(driverPos[1] * 1000) / 1000]
+                  : UBICACION_NEGOCIO}
+                destination={destCoords}
+                outerColor="#b91c1c"
+                innerColor="#ea4335"
+              />
+            )}
             </MapContainer>
         </div>
         

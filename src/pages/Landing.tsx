@@ -419,7 +419,7 @@ export default function Landing() {
                   <Mail className="w-5 h-5 text-brand-orange" />
                 </div>
                 <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white mb-1.5 sm:mb-2">Email</h4>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-stone-400 break-all">hola@hamburguercopiway.com<br/>Soporte 24/7</p>
+                <p className="text-[11px] sm:text-sm text-gray-500 dark:text-stone-400 break-words">hola@<wbr/>hamburguercopiway.com<br/>Soporte 24/7</p>
               </div>
             </div>
 
